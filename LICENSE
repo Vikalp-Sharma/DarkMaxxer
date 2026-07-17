@@ -1,0 +1,61 @@
+DarkMaxxer Proprietary Commercial Use License
+Copyright (c) 2025-2026 Vikalp Sharma. All rights reserved.
+
+1. OWNERSHIP & INTELLECTUAL PROPERTY
+   This software, including all source code, compiled binaries, algorithms,
+   documentation, graphical user interfaces, assets, and associated materials
+   (collectively, "the Software"), is the exclusive intellectual property of
+   Vikalp Sharma ("the Owner").
+
+2. RESTRICTIONS (NO COPYING OR REDISTRIBUTION)
+   Without express prior written permission from the Owner, you may NOT:
+   a) Copy, reproduce, clone, or duplicate the Software in whole or in part.
+   b) Distribute, sublicense, resell, rent, lease, or share the Software or its
+      binaries with unauthorized third parties.
+   c) Modify, adapt, translate, or create derivative works or competing products
+      based on the Software or its proprietary source code.
+   d) Reverse engineer, decompile, disassemble, or attempt to extract the
+      underlying source code, algorithms, or watermarks of the Software.
+   e) Remove, alter, or obscure any proprietary notices, watermarks, or
+      copyright markings inside the Software or its outputs.
+
+3. PERMITTED COMMERCIAL & CORPORATE USE
+   Subject to strict compliance with Section 2 ("Restrictions"), the Owner
+   grants individuals, corporations, businesses, and enterprises a limited,
+   non-exclusive, non-transferable license to INSTALL AND USE the compiled/distributable
+   version of DarkMaxxer for both PERSONAL AND COMMERCIAL PURPOSES, including:
+   a) Using DarkMaxxer for professional software development, corporate coding
+      projects, internal business operations, and commercial software creation.
+   b) Running DarkMaxxer within company workspaces, enterprise desktop environments,
+      and corporate machines to generate, edit, and build code.
+   c) Any original software code, projects, or applications created or edited BY
+      THE USER using DarkMaxxer belong entirely to the user/company and may be
+      monetized without restriction or royalty owed to the Owner.
+
+4. DISCLAIMER OF WARRANTY
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
+   NONINFRINGEMENT. IN NO EVENT SHALL THE OWNER BE LIABLE FOR ANY
+   CLAIM, DAMAGES, OR OTHER LIABILITY ARISING FROM THE USE OF THE
+   SOFTWARE.
+
+5. TERMINATION
+   This license is effective until terminated. It will terminate
+   automatically if you fail to comply with any of its terms. Upon
+   termination, you and your organization must immediately cease all use
+   and destroy all copies of the Software.
+
+6. THIRD-PARTY COMPONENTS
+   DarkMaxxer uses the following open-source libraries under their
+   respective licenses:
+   - AirLLM (Apache 2.0) — efficient LLM inference engine
+   - PyWebView (BSD) — native GUI webview wrapper
+   - PyTorch (BSD) — machine learning framework
+   - Transformers (Apache 2.0) — HuggingFace model library
+
+7. CONTACT & AUTHORIZATION
+   For custom licensing, white-label permissions, or inquiries, contact:
+   Author & Owner: Vikalp Sharma
+   GitHub: https://github.com/Vikalp-Sharma/
+   Repository: https://github.com/Vikalp-Sharma/DarkMaxxer

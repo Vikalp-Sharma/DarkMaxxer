@@ -1,0 +1,1365 @@
+<!DOCTYPE html><html class="dark" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>DarkMaxxer Settings</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "error-container": "#93000a",
+                        "secondary-fixed-dim": "#dfb7ff",
+                        "on-secondary-fixed-variant": "#661aa3",
+                        "inverse-primary": "#5f5e5f",
+                        "outline": "#919094",
+                        "secondary-container": "#691ea6",
+                        "secondary-fixed": "#f1dbff",
+                        "on-secondary": "#4a007f",
+                        "surface": "#101415",
+                        "on-tertiary-container": "#7270c6",
+                        "inverse-on-surface": "#2d3133",
+                        "tertiary-fixed-dim": "#c3c0ff",
+                        "background": "#101415",
+                        "on-primary-fixed-variant": "#474647",
+                        "on-tertiary-fixed": "#100563",
+                        "on-surface-variant": "#c7c6ca",
+                        "tertiary": "#c3c0ff",
+                        "on-tertiary": "#272377",
+                        "primary-container": "#0b0b0c",
+                        "error": "#ffb4ab",
+                        "inverse-surface": "#e0e3e5",
+                        "primary-fixed": "#e5e2e3",
+                        "on-secondary-fixed": "#2d0050",
+                        "surface-dim": "#101415",
+                        "on-background": "#e0e3e5",
+                        "on-tertiary-fixed-variant": "#3e3c8f",
+                        "surface-container": "#1d2022",
+                        "surface-variant": "#323537",
+                        "outline-variant": "#46464a",
+                        "tertiary-fixed": "#e2dfff",
+                        "surface-container-highest": "#323537",
+                        "on-primary-fixed": "#1c1b1c",
+                        "on-error": "#690005",
+                        "surface-container-high": "#272a2c",
+                        "primary": "#c8c6c7",
+                        "on-secondary-container": "#d5a4ff",
+                        "surface-container-low": "#191c1e",
+                        "on-error-container": "#ffdad6",
+                        "primary-fixed-dim": "#c8c6c7",
+                        "on-primary": "#313031",
+                        "surface-bright": "#363a3b",
+                        "surface-container-lowest": "#0b0f10",
+                        "surface-tint": "#c8c6c7",
+                        "on-surface": "#e0e3e5",
+                        "tertiary-container": "#04003a",
+                        "on-primary-container": "#7b797a",
+                        "secondary": "#dfb7ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-mobile": "16px",
+                        "2xl": "64px",
+                        "xl": "40px",
+                        "margin-desktop": "48px",
+                        "xs": "4px",
+                        "unit": "4px",
+                        "lg": "24px",
+                        "gutter": "24px",
+                        "sm": "8px",
+                        "md": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "display": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "display": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #0B0B0C;
+            background-image: radial-gradient(circle at top right, rgba(105, 30, 166, 0.05), transparent 60%),
+                              radial-gradient(circle at bottom left, rgba(74, 0, 127, 0.05), transparent 60%);
+        }
+        
+        .glass-panel {
+            background: rgba(16, 20, 21, 0.4);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            border-left: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 0 60px -15px rgba(30, 27, 75, 0.4);
+        }
+
+        .glass-inner {
+            background: rgba(45, 49, 51, 0.2);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
+        }
+
+        .noise-overlay {
+            position: absolute;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            opacity: 0.03;
+            pointer-events: none;
+        }
+
+        /* Toggle Switch Styling */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #00E5FF;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: rgba(0, 229, 255, 0.2);
+            border-color: #00E5FF;
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.3);
+        }
+        .toggle-checkbox:checked + .toggle-label:after {
+            transform: translateX(100%);
+            background-color: #00E5FF;
+            box-shadow: 0 0 10px #00E5FF;
+        }
+    </style>
+</head>
+<body class="text-on-surface h-screen w-screen overflow-hidden flex items-center justify-center relative">
+<!-- Background Blur for Modal Effect -->
+<div class="absolute inset-0 z-0">
+<div class="w-full h-full bg-surface-container-lowest/80 backdrop-blur-md"></div>
+<div class="noise-overlay"></div>
+</div>
+<!-- Main Settings Modal -->
+<main class="glass-panel w-full max-w-4xl max-h-[90vh] rounded-xl flex flex-col relative z-10 overflow-hidden shadow-[0_0_80px_rgba(105,30,166,0.15)] mx-margin-mobile md:mx-margin-desktop">
+<!-- Header -->
+<header class="flex justify-between items-center px-xl py-lg border-b border-outline-variant/20 relative">
+<div class="flex items-center space-x-md">
+<span class="material-symbols-outlined text-secondary text-lg" style="font-variation-settings: &quot;FILL&quot; 1;">settings</span>
+<div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Settings</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Configure DarkMaxxer environment</p>
+</div>
+</div>
+<button onclick="window.location.href='index.html'" class="w-10 h-10 rounded-full flex items-center justify-center hover:bg-surface-variant/30 transition-colors text-on-surface-variant hover:text-on-surface">
+<span class="material-symbols-outlined">close</span>
+</button>
+</header>
+<!-- Content Area -->
+<div class="flex-1 overflow-y-auto p-xl flex flex-col md:flex-row gap-xl relative">
+<div class="noise-overlay rounded-xl"></div>
+<!-- Sidebar Navigation (Settings Categories) -->
+<nav class="w-full md:w-64 flex-shrink-0 flex flex-col space-y-sm">
+<button id="tab-preferences" onclick="showSettingsPanel('panel-preferences')" class="w-full text-left px-md py-sm rounded-lg bg-secondary-container/30 text-secondary-fixed border-l-2 border-secondary font-label-md text-label-md transition-all flex items-center space-x-sm shadow-[0_0_20px_rgba(189,140,255,0.25)]">
+<span class="material-symbols-outlined text-lg">tune</span>
+<span class="">Preferences</span>
+</button>
+<button id="tab-about" onclick="showSettingsPanel('panel-about')" class="w-full text-left px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-variant/20 hover:text-on-surface font-label-md text-label-md transition-all flex items-center space-x-sm border-l-2 border-transparent">
+<span class="material-symbols-outlined text-lg">info</span>
+<span class="">About</span>
+</button>
+<button id="tab-license" onclick="showSettingsPanel('panel-license')" class="w-full text-left px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-variant/20 hover:text-on-surface font-label-md text-label-md transition-all flex items-center space-x-sm border-l-2 border-transparent">
+<span class="material-symbols-outlined text-lg">gavel</span>
+<span class="">License</span>
+</button>
+</nav>
+<!-- Settings Panels -->
+<div class="flex-1 space-y-2xl">
+<!-- Preferences Section -->
+<section id="panel-preferences">
+<h2 class="font-headline-md text-headline-md text-on-surface mb-lg">Preferences</h2>
+<div class="glass-inner rounded-lg p-lg space-y-lg border border-outline-variant/10">
+<!-- Toggle Item -->
+<div class="flex items-center justify-between group">
+<div>
+<h3 class="font-label-md text-label-md text-on-surface">Local Inference</h3>
+<p class="font-body-md text-body-md text-on-surface-variant text-sm mt-1">Run models locally on your hardware.</p>
+</div>
+<div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-surface border-2 border-outline-variant appearance-none cursor-pointer z-10 transition-transform duration-200 ease-in-out" id="toggle_local" name="toggle_local" type="checkbox">
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-surface-container-high border-2 border-outline-variant cursor-pointer transition-colors duration-200 ease-in-out" for="toggle_local"></label>
+</div>
+</div>
+<div class="h-px w-full bg-outline-variant/10"></div>
+<!-- Toggle Item -->
+<div class="flex items-center justify-between group">
+<div>
+<h3 class="font-label-md text-label-md text-on-surface">GPU Acceleration</h3>
+<p class="font-body-md text-body-md text-on-surface-variant text-sm mt-1">Utilize dedicated graphics for heavy processing.</p>
+</div>
+<div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-surface border-2 border-outline-variant appearance-none cursor-pointer z-10 transition-transform duration-200 ease-in-out" id="toggle_gpu" name="toggle_gpu" type="checkbox">
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-surface-container-high border-2 border-outline-variant cursor-pointer transition-colors duration-200 ease-in-out" for="toggle_gpu"></label>
+</div>
+</div>
+<div class="h-px w-full bg-outline-variant/10"></div>
+<!-- Toggle Item -->
+<div class="flex items-center justify-between group">
+<div>
+<h3 class="font-label-md text-label-md text-on-surface">Context Memory</h3>
+<p class="font-body-md text-body-md text-on-surface-variant text-sm mt-1">Retain chat history for contextual awareness.</p>
+</div>
+<div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+<input class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-surface border-2 border-outline-variant appearance-none cursor-pointer z-10 transition-transform duration-200 ease-in-out" id="toggle_memory" name="toggle_memory" type="checkbox">
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-surface-container-high border-2 border-outline-variant cursor-pointer transition-colors duration-200 ease-in-out" for="toggle_memory"></label>
+</div>
+</div>
+
+</div>
+</section>
+
+
+<!-- Memory Management Card -->
+<div class="p-md rounded-lg bg-surface-container-low border border-outline-variant/20 space-y-sm mt-lg">
+    <div class="flex items-center justify-between">
+        <div>
+            <h4 class="font-title-sm text-on-surface font-bold">Active Conversation Memory Cache</h4>
+            <p class="text-xs text-on-surface-variant">Clear accumulated context tokens and chat history from memory without deleting workspace files.</p>
+        </div>
+        <button onclick="clearCache()" class="px-md py-sm bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 rounded-lg text-red-300 font-label-sm font-bold flex items-center gap-xs transition-all">
+            <span class="material-symbols-outlined text-sm">delete_sweep</span> Clear Memory Cache
+        </button>
+    </div>
+</div>
+
+<!-- About Section -->
+<section id="panel-about" class="hidden space-y-lg">
+    <div>
+        <h2 class="font-headline-md text-headline-md text-on-surface">About DarkMaxxer IDE</h2>
+        <p class="font-body-sm text-on-surface-variant/70 mt-xs">Local AI Coding Environment & Hardware Diagnostics</p>
+    </div>
+
+    <div class="glass-inner rounded-xl p-lg border border-outline-variant/20 space-y-md shadow-[0_4px_24px_rgba(0,0,0,0.3)]">
+        <div class="flex items-center justify-between border-b border-outline-variant/10 pb-md">
+            <div>
+                <h3 class="font-title-md text-on-surface font-bold">DarkMaxxer Engine</h3>
+                <p class="text-xs text-on-surface-variant">Version 1.0.0 Alpha • Local Hardware Offloading</p>
+            </div>
+            <span class="px-md py-1 rounded-full bg-secondary-container/30 border border-secondary/40 text-secondary-fixed text-xs font-mono font-bold uppercase tracking-wider shadow-[0_0_12px_rgba(189,140,255,0.2)]">AIRLLM ACTIVE</span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-md text-sm font-body-md text-on-surface-variant">
+            <div class="p-md rounded-lg bg-surface-container-lowest/40 border border-outline-variant/10">
+                <span class="text-tertiary font-bold block text-xs uppercase tracking-wider mb-xs">Author / Creator</span>
+                <span class="text-on-surface font-mono font-bold text-md">Vikalp Sharma</span>
+            </div>
+            <div class="p-md rounded-lg bg-surface-container-lowest/40 border border-outline-variant/10">
+                <span class="text-tertiary font-bold block text-xs uppercase tracking-wider mb-xs">Execution Mode</span>
+                <span class="text-emerald-400 font-mono font-bold text-md flex items-center gap-xs"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> 100% Local Sandboxed</span>
+            </div>
+        </div>
+
+        <!-- System Diagnostics Tool -->
+        <div class="p-md rounded-lg bg-surface-container-low border border-outline-variant/20 space-y-sm">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h4 class="font-title-sm text-on-surface font-bold">Hardware & System Diagnostics</h4>
+                    <p class="text-xs text-on-surface-variant">Check local VRAM, CUDA device capabilities, and active workspace paths.</p>
+                </div>
+                <div class="flex gap-sm">
+                    <button onclick="openWorkspace()" class="px-md py-sm bg-surface-variant/30 hover:bg-surface-variant/60 border border-outline-variant/30 rounded-lg text-on-surface font-label-sm flex items-center gap-xs transition-all">
+                        <span class="material-symbols-outlined text-sm">folder_open</span> Open Workspace
+                    </button>
+                    <button id="run-diag-btn" onclick="runDiagnostics()" class="px-md py-sm bg-secondary/20 hover:bg-secondary/40 border border-secondary/40 rounded-lg text-secondary-fixed font-label-sm font-bold flex items-center gap-xs transition-all shadow-[0_0_15px_rgba(189,140,255,0.15)]">
+                        <span class="material-symbols-outlined text-sm">monitor_heart</span> Run System Diagnostics
+                    </button>
+                </div>
+            </div>
+            <div id="diag-results" class="hidden pt-sm border-t border-outline-variant/10"></div>
+        </div>
+        <div class="border-t border-outline-variant/10 pt-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-sm text-xs text-on-surface-variant/60 font-mono">
+            <div class="flex flex-col gap-1">
+                <span>GitHub link: <a href="https://github.com/Vikalp-Sharma/" target="_blank" class="text-secondary hover:underline">github.com/Vikalp-Sharma/</a></span>
+                <span>Repository: <a href="https://github.com/Vikalp-Sharma/DarkMaxxer" target="_blank" class="text-secondary hover:underline">github.com/Vikalp-Sharma/DarkMaxxer</a></span>
+            </div>
+            <span class="px-md py-1 rounded bg-secondary-container/20 text-secondary border border-secondary/30 font-bold">Built with pywebview & AirLLM</span>
+        </div>
+    </div>
+</section>
+
+<!-- License Section -->
+<section id="panel-license" class="hidden space-y-lg">
+    <div>
+        <h2 class="font-headline-md text-headline-md text-on-surface">License & Integrity Audit</h2>
+        <p class="font-body-sm text-on-surface-variant/70 mt-xs">Proprietary Software Rights & Codebase Watermark Verification</p>
+    </div>
+
+    <div class="glass-inner rounded-xl p-lg border border-outline-variant/20 space-y-md shadow-[0_4px_24px_rgba(0,0,0,0.3)]">
+        <div class="flex items-center justify-between border-b border-outline-variant/10 pb-md">
+            <div>
+                <h3 class="font-title-md text-on-surface font-bold">DarkMaxxer Proprietary License</h3>
+                <p class="text-xs text-on-surface-variant">Copyright © 2025 Vikalp Sharma. All rights reserved.</p>
+            </div>
+            <span class="px-md py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-mono font-bold uppercase tracking-wider shadow-[0_0_12px_rgba(16,185,129,0.2)]">PROTECTED</span>
+        </div>
+
+        <div class="bg-surface-container-lowest/40 rounded-lg p-md border border-outline-variant/10 text-xs font-mono text-on-surface-variant space-y-sm leading-relaxed">
+            <p class="text-on-surface font-bold">TERMS AND CONDITIONS:</p>
+            <p>1. <span class="text-secondary-fixed font-bold">[Vikalp Sharma] Ownership:</span> This software, its architectural design, GUI components, and core runtime are the sole intellectual property of Vikalp Sharma.</p>
+            <p>2. <span class="text-secondary-fixed font-bold">Prohibitions:</span> Redistribution, unauthorized copying, reverse engineering, or removal of author watermarks ([Vikalp Sharma]) is strictly prohibited.</p>
+            <p>3. <span class="text-secondary-fixed font-bold">Sandboxing Guarantee:</span> DarkMaxxer operates strictly offline inside the designated workspace directory without collecting or transmitting telemetry.</p>
+            <p>4. <span class="text-secondary-fixed font-bold">Open-Source Notice:</span> Includes AirLLM under MIT License for local model inference.</p>
+        </div>
+
+        <!-- Watermark Audit Tool -->
+        <div class="p-md rounded-lg bg-surface-container-low border border-outline-variant/20 space-y-sm">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h4 class="font-title-sm text-on-surface font-bold font-mono">Codebase Watermark & Security Audit</h4>
+                    <p class="text-xs text-on-surface-variant">Verify that all core Python modules contain mandatory author attribution (`[Vikalp Sharma]`).</p>
+                </div>
+                <button id="run-wm-btn" onclick="verifyWatermarks()" class="px-md py-sm bg-tertiary/20 hover:bg-tertiary/40 border border-tertiary/40 rounded-lg text-tertiary font-label-sm font-bold flex items-center gap-xs transition-all shadow-[0_0_15px_rgba(255,140,180,0.15)]">
+                    <span class="material-symbols-outlined text-sm">verified</span> Verify Watermark Integrity
+                </button>
+            </div>
+            <div id="wm-results" class="hidden pt-sm border-t border-outline-variant/10"></div>
+        </div>
+    </div>
+</section>
+
+</div>
+</div>
+<!-- Persistent Uses AirLLM Watermark Credit Line at Bottom of Settings Panel -->
+<div class="mt-xl pt-md border-t border-outline-variant/20 flex items-center justify-between text-xs font-mono text-on-surface-variant/70">
+    <span class="flex items-center gap-xs text-secondary font-bold">
+        <span class="material-symbols-outlined text-sm">hub</span> Uses AirLLM — Layer-Wise Local Model Inference Engine
+    </span>
+</div>
+</main>
+
+
+
+<!-- Fullscreen Model Loading Modal with Background Blur -->
+<div id="loading-modal" class="fixed inset-0 z-[200] hidden flex-col items-center justify-center transition-all duration-300" style="background: rgba(4, 4, 12, 0.94); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);">
+    <div class="glass-panel ambient-shadow rounded-2xl p-xl flex flex-col items-center justify-center space-y-lg max-w-2xl w-full mx-md border border-secondary/50 shadow-[0_0_100px_rgba(189,140,255,0.4)] relative overflow-hidden bg-surface-container/90">
+        <div class="w-16 h-16 rounded-full bg-secondary-container/40 border border-secondary/60 flex items-center justify-center relative animate-pulse shadow-[0_0_30px_rgba(189,140,255,0.3)] mx-auto">
+            <span class="material-symbols-outlined text-3xl text-secondary animate-spin">sync</span>
+        </div>
+        <div class="text-center">
+            <h3 class="font-headline-md text-on-surface mb-xs font-bold text-xl">Loading AI Model</h3>
+            <p id="loading-modal-status" class="font-body-md text-sm text-secondary font-mono">Initializing model weights into memory...</p>
+        </div>
+        
+        <!-- Live Terminal Log for Loading -->
+        <div id="loading-logs" class="w-full h-48 bg-black/60 border border-white/10 rounded-lg p-sm overflow-y-auto text-xs font-mono text-secondary-fixed text-left whitespace-pre-wrap shadow-inner shadow-black/50" style="scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.2) transparent;"></div>
+        
+        <div class="w-full bg-surface-container-highest/80 rounded-full h-2.5 overflow-hidden border border-outline-variant/30">
+            <div id="loading-modal-bar" class="bg-gradient-to-r from-secondary via-tertiary to-secondary h-full w-1/3 animate-pulse rounded-full transition-all duration-300 shadow-[0_0_12px_rgba(189,140,255,0.8)]"></div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+    // --- Proxy Fix for PyWebView Navigation Crashes ---
+    window.addEventListener('pywebviewready', function() {
+        if (window.pywebview && window.pywebview._returnValuesCallbacks) {
+            const handler = {
+                get: function(target, prop) {
+                    if (!(prop in target)) {
+                        target[prop] = new Proxy({}, {
+                            get: function(t, p) {
+                                if (!(p in t)) return function() {};
+                                return t[p];
+                            }
+                        });
+                    } else if (typeof target[prop] === 'object' && target[prop] !== null && !target[prop]._proxied) {
+                        target[prop] = new Proxy(target[prop], {
+                            get: function(t, p) {
+                                if (!(p in t)) return function() {};
+                                return t[p];
+                            }
+                        });
+                        target[prop]._proxied = true;
+                    }
+                    return target[prop];
+                }
+            };
+            window.pywebview._returnValuesCallbacks = new Proxy(window.pywebview._returnValuesCallbacks, handler);
+        }
+    });
+
+    // --- Global Terminal & Status APIs ---
+    window.appendTerminal = function(msg) {
+        const t = document.getElementById('terminal-output');
+        if(!t) return;
+        const div = document.createElement('div');
+        div.className = "text-on-surface-variant/90";
+        const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+        div.innerHTML = `<span class="text-secondary font-mono">[${time}]</span> ${msg}`;
+        t.appendChild(div);
+        t.scrollTop = t.scrollHeight;
+    };
+
+    window.updateLoadStatus = function(msg, pct) {
+        let text = msg;
+        if (pct !== undefined && pct !== null) text += ` (${pct}%)`;
+        const statusEl = document.getElementById('gpu-status-text');
+        if (statusEl) statusEl.innerText = text;
+        const loadModalStatus = document.getElementById('loading-modal-status');
+        if (loadModalStatus) loadModalStatus.innerText = text;
+        
+        // Append to logs
+        const logsEl = document.getElementById('loading-logs');
+        if (logsEl) {
+            const time = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            logsEl.innerHTML += `<div class="mb-[2px] opacity-90"><span class="text-white/40 mr-1">[${time}]</span> ${text}</div>`;
+            logsEl.scrollTop = logsEl.scrollHeight;
+        }
+
+        const loadModal = document.getElementById('loading-modal');
+        if (loadModal && loadModal.classList.contains('hidden')) {
+            loadModal.classList.remove('hidden');
+            loadModal.style.display = 'flex';
+        }
+        if (typeof window.appendTerminal === 'function') {
+            window.appendTerminal("AI Status: " + text);
+        }
+    };
+
+    window.switchSidebarTab = function(tab, save = true) {
+        if (save && window.pywebview && window.pywebview.api && window.pywebview.api.save_setting) {
+            window.pywebview.api.save_setting('active_sidebar_tab', tab);
+        }
+        const chatsPanel = document.getElementById('sidebar-panel-chats');
+        const explorerPanel = document.getElementById('sidebar-panel-explorer');
+        const btnChats = document.getElementById('tab-btn-chats');
+        const btnExplorer = document.getElementById('tab-btn-explorer');
+        if (tab === 'chats') {
+            if(chatsPanel) chatsPanel.classList.remove('hidden');
+            if(explorerPanel) explorerPanel.classList.add('hidden');
+            if(btnChats) btnChats.className = "flex-1 py-1.5 px-2 rounded-md font-label-md text-xs flex items-center justify-center gap-1.5 bg-secondary-container/60 text-secondary-fixed shadow-sm transition-all";
+            if(btnExplorer) btnExplorer.className = "flex-1 py-1.5 px-2 rounded-md font-label-md text-xs flex items-center justify-center gap-1.5 text-on-surface-variant hover:text-on-surface transition-all";
+            if(typeof refreshConversations === 'function') refreshConversations();
+        } else if (tab === 'explorer') {
+            if(chatsPanel) chatsPanel.classList.add('hidden');
+            if(explorerPanel) explorerPanel.classList.remove('hidden');
+            if(btnChats) btnChats.className = "flex-1 py-1.5 px-2 rounded-md font-label-md text-xs flex items-center justify-center gap-1.5 text-on-surface-variant hover:text-on-surface transition-all";
+            if(btnExplorer) btnExplorer.className = "flex-1 py-1.5 px-2 rounded-md font-label-md text-xs flex items-center justify-center gap-1.5 bg-secondary-container/60 text-secondary-fixed shadow-sm transition-all";
+            if(typeof refreshFileTree === 'function') refreshFileTree();
+        }
+    };
+
+    // --- Global State ---
+    window._activeConvId = null;
+    window._apiInitialized = false;
+    window._lastHistoryLen = 0;
+    window._isGenerating = false;
+
+    function _initApiState() {
+        if (!window.pywebview || !window.pywebview.api) return false;
+        if (window._apiInitialized) return true;
+        window._apiInitialized = true;
+
+        if (typeof refreshConversations === 'function') refreshConversations();
+        if (typeof refreshFileTree === 'function') refreshFileTree();
+        if (typeof restoreState === 'function') restoreState();
+        if (typeof loadSettings === 'function') loadSettings();
+
+        // Start background polling loop for continuous backend response monitoring
+        setInterval(() => {
+            if (!window.pywebview || !window.pywebview.api || !window.pywebview.api.get_active_state) return;
+            window.pywebview.api.get_active_state().then(state => {
+                const input = document.getElementById('chat-input');
+                const sendBtn = document.getElementById('send-btn');
+                const chatBox = document.getElementById('chat-history');
+                const pauseBtn = document.getElementById('pause-btn');
+
+                if (state.is_generating) {
+                    window._isGenerating = true;
+                    if (input) input.disabled = true;
+                    if (sendBtn) { sendBtn.disabled = true; sendBtn.classList.add('hidden'); }
+                    if (pauseBtn) { pauseBtn.classList.remove('hidden'); }
+                    
+                    if (chatBox) {
+                        const lastChild = chatBox.lastElementChild;
+                        if (!lastChild || !lastChild.innerHTML.includes('loading-dots')) {
+                            const loadingEl = document.createElement('div');
+                            loadingEl.className = "p-md rounded-lg mb-sm bg-surface-variant/30 border border-secondary/20 mr-12";
+                            loadingEl.innerHTML = '<div class="font-label-sm mb-xs text-secondary">DarkMaxxer AI</div><div class="whitespace-pre-wrap font-body-md text-on-surface flex items-center">Generating<span class="loading-dots flex ml-xs"><span class="w-1.5 h-1.5 rounded-full bg-primary/60 mx-[1px] animate-bounce" style="animation-delay: 0s"></span><span class="w-1.5 h-1.5 rounded-full bg-primary/60 mx-[1px] animate-bounce" style="animation-delay: 0.15s"></span><span class="w-1.5 h-1.5 rounded-full bg-primary/60 mx-[1px] animate-bounce" style="animation-delay: 0.3s"></span></span></div>';
+                            chatBox.appendChild(loadingEl);
+                            chatBox.scrollTop = chatBox.scrollHeight;
+                        }
+                    }
+                } else {
+                    if (pauseBtn) { pauseBtn.classList.add('hidden'); }
+                    if (sendBtn) { sendBtn.classList.remove('hidden'); }
+                    if (window._isGenerating || (state.history && state.history.length > 0 && state.history.length !== window._lastHistoryLen)) {
+                        window._isGenerating = false;
+                        if (input) input.disabled = false;
+                        if (sendBtn) { sendBtn.disabled = false; sendBtn.innerText = '▶'; }
+                        if (state.history) {
+                            window._lastHistoryLen = state.history.length;
+                            if (typeof renderChat === 'function') renderChat(state.history);
+                        }
+                        if (typeof refreshFileTree === 'function') refreshFileTree();
+                    }
+                }
+            }).catch(() => {});
+        }, 1000);
+
+        return true;
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        const input = document.getElementById('chat-input');
+        if (input) {
+            input.addEventListener('keypress', function (e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendPrompt();
+                }
+            });
+        }
+
+        // Try immediately if pywebview already available
+        if (_initApiState()) return;
+
+        // Listen for pywebviewready event
+        window.addEventListener('pywebviewready', function() {
+            _initApiState();
+        });
+
+        // Polling fallback up to 5 seconds
+        let attempts = 0;
+        const interval = setInterval(() => {
+            attempts++;
+            if (_initApiState() || attempts > 50) {
+                clearInterval(interval);
+            }
+        }, 100);
+    });
+
+    // --- Conversation Management ---
+    function newConversationUI() {
+        const inputEl = document.getElementById('projectName');
+        if(!inputEl) { alert("Could not find project name input."); return; }
+        const title = inputEl.value;
+        if(title.trim() === '') { alert("Please enter a conversation name."); return; }
+
+        pywebview.api.new_conversation(title).then(res => {
+            if(res.success) {
+                document.getElementById('new-conv-modal').classList.add('hidden');
+                inputEl.value = "";
+                refreshConversations();
+                openConversation(res.id);
+            } else {
+                alert("Error: " + res.error);
+            }
+        });
+    }
+
+    function refreshConversations() {
+        pywebview.api.list_conversations().then(convs => {
+            const list = document.getElementById('conversation-list');
+            if(!list) return;
+            list.innerHTML = "";
+            if (!convs || convs.length === 0) {
+                list.innerHTML = '<div class="text-on-surface-variant/50 text-center py-lg font-body-md">No conversations yet</div>';
+                return;
+            }
+            convs.forEach(c => {
+                const el = document.createElement('div');
+                const isActive = c.id === window._activeConvId;
+                el.className = "p-md hover:bg-surface-variant/20 cursor-pointer flex items-center gap-md rounded-lg transition-all " +
+                    (isActive ? "bg-secondary-container/30 text-secondary-fixed border-l-2 border-secondary" : "text-on-surface-variant hover:text-on-surface");
+                el.innerHTML = '<span class="material-symbols-outlined text-sm">memory</span>' +
+                               '<span class="font-label-md flex-1 text-left truncate">' + c.name + '</span>' +
+                               '<button onclick="event.stopPropagation(); deleteConversation(\'' + c.id + '\')" class="p-xs text-on-surface-variant hover:text-error transition-colors"><span class="material-symbols-outlined text-sm">delete</span></button>';
+                el.onclick = () => openConversation(c.id);
+                list.appendChild(el);
+            });
+        });
+    }
+
+    window.deleteConversation = function(id) {
+        pywebview.api.delete_conversation(id).then(res => {
+            if(res.success) {
+                refreshConversations();
+                if(window._activeConvId === id) {
+                    window._activeConvId = null;
+                    const chatBox = document.getElementById('chat-history');
+                    if (chatBox) chatBox.innerHTML = '<div class="text-on-surface-variant/50 text-center py-xl font-body-md">Start a conversation by typing below...</div>';
+                    const fileTree = document.getElementById('file-tree');
+                    if (fileTree) fileTree.innerHTML = '<div class="text-on-surface-variant/50 text-center py-md font-body-md text-xs">No files or folders yet</div>';
+                    deactivateWorkspace();
+                }
+            } else {
+                alert("Error deleting conversation: " + res.error);
+            }
+        }).catch(err => {
+            alert("Error calling delete: " + err);
+        });
+    };
+
+    function openConversation(id) {
+        pywebview.api.open_conversation(id).then(res => {
+            if(res.success) {
+                window._activeConvId = res.conv_id || id;
+                window._lastHistoryLen = (res.history && Array.isArray(res.history)) ? res.history.length : 0;
+                activateWorkspace();
+                if(typeof switchSidebarTab === 'function') switchSidebarTab('chats');
+                renderChat(res.history || []);
+                refreshFileTree();
+                refreshConversations();
+                appendTerminal("Opened conversation: " + id.substring(0, 8) + "...");
+            }
+        });
+    }
+
+    // --- Workspace Activation ---
+    function activateWorkspace() {
+        const sf = document.getElementById('starfield');
+        if(sf) sf.classList.add('hidden');
+        const wep = document.getElementById('workspace-empty-panel');
+        if(wep) wep.classList.add('hidden');
+        const ch = document.getElementById('chat-history');
+        if(ch) ch.classList.remove('hidden');
+        const bar = document.getElementById('chat-input-bar');
+        if(bar) bar.classList.remove('hidden');
+        const modal = document.getElementById('first-run-modal');
+        if(modal) modal.classList.add('hidden');
+    }
+
+    function deactivateWorkspace() {
+        const sf = document.getElementById('starfield');
+        if(sf) sf.classList.remove('hidden');
+        const wep = document.getElementById('workspace-empty-panel');
+        if(wep) wep.classList.remove('hidden');
+        const ch = document.getElementById('chat-history');
+        if(ch) ch.classList.add('hidden');
+        const bar = document.getElementById('chat-input-bar');
+        if(bar) bar.classList.add('hidden');
+    }
+
+    // --- State Restore ---
+    function restoreState() {
+        pywebview.api.get_active_state().then(state => {
+            if (state.ai_path) {
+                const pathEl = document.getElementById('model-folder-path');
+                if (pathEl) pathEl.value = state.ai_path;
+                if (state.ai_loaded) {
+                    const statusEl = document.getElementById('gpu-status-text');
+                    if (statusEl) statusEl.innerText = "✓ Active Model: " + state.ai_path.split(/[\\/]/).pop();
+                } else {
+                    const statusEl = document.getElementById('gpu-status-text');
+                    if (statusEl && statusEl.innerText.indexOf('Loaded') === -1) statusEl.innerText = "Selected: " + state.ai_path.split(/[\\/]/).pop();
+                }
+            }
+
+            if (state.file_ops_active || state.conv_id) {
+                activateWorkspace();
+            }
+            if (state.terminal_logs && Array.isArray(state.terminal_logs) && state.terminal_logs.length > 0) {
+                const term = document.getElementById('terminal-output');
+                const bigTerm = document.getElementById('big-terminal-content');
+                if (term) term.innerHTML = "";
+                if (bigTerm) bigTerm.innerHTML = "";
+                state.terminal_logs.forEach(item => {
+                    const el = document.createElement('div');
+                    el.innerHTML = item;
+                    if (term) term.appendChild(el.cloneNode(true));
+                    if (bigTerm) bigTerm.appendChild(el.cloneNode(true));
+                });
+                if (term) term.scrollTop = term.scrollHeight;
+                if (bigTerm) bigTerm.scrollTop = bigTerm.scrollHeight;
+            }
+            if (state.conv_id) {
+                window._activeConvId = state.conv_id;
+                if (state.history && Array.isArray(state.history)) {
+                    window._lastHistoryLen = state.history.length;
+                    if (typeof renderChat === 'function') renderChat(state.history);
+                } else {
+                    window._lastHistoryLen = 0;
+                    if (typeof renderChat === 'function') renderChat([]);
+                }
+            } else {
+                window._lastHistoryLen = 0;
+            }
+
+            // Restore which sidebar tab user was viewing
+            const targetTab = state.active_sidebar_tab || (state.file_ops_active ? 'explorer' : 'chats');
+            if (typeof switchSidebarTab === 'function') switchSidebarTab(targetTab, false);
+            if (typeof refreshConversations === 'function') refreshConversations();
+            if (typeof refreshFileTree === 'function') refreshFileTree();
+            
+            // Auto-load AI model if path saved but not loaded
+            if (state.ai_path && !state.ai_loaded) {
+                if (typeof appendTerminal === 'function') appendTerminal("Auto-loading AI model: " + state.ai_path);
+                const loadModal = document.getElementById('loading-modal');
+                const loadModalStatus = document.getElementById('loading-modal-status');
+                if (loadModal) {
+                    loadModal.classList.remove('hidden');
+                    loadModal.style.display = 'flex';
+                }
+                if (loadModalStatus) loadModalStatus.innerText = "Auto-loading model: " + state.ai_path.split(/[\\/]/).pop() + "...";
+
+                setTimeout(() => {
+                    pywebview.api.load_model(state.ai_path).then(res => {
+                        const modalEl = document.getElementById('loading-modal');
+                        if (modalEl) {
+                            modalEl.classList.add('hidden');
+                            modalEl.style.display = 'none';
+                        }
+                        if(res.success) {
+                            if (typeof appendTerminal === 'function') appendTerminal("AI model loaded successfully.");
+                            const modal = document.getElementById('first-run-modal');
+                            if(modal) modal.classList.add('hidden');
+                            const statusEl = document.getElementById('gpu-status-text');
+                            if (statusEl) statusEl.innerText = "⚡ Active Model: " + state.ai_path.split(/[\\/]/).pop();
+                        } else {
+                            if (typeof appendTerminal === 'function') appendTerminal("Failed to auto-load model: " + (res.error || "Unknown error"));
+                            alert("Failed to load AI model:\n" + (res.error || "Unknown error"));
+                        }
+                    }).catch(err => {
+                        const modalEl = document.getElementById('loading-modal');
+                        if (modalEl) {
+                            modalEl.classList.add('hidden');
+                            modalEl.style.display = 'none';
+                        }
+                        if (typeof appendTerminal === 'function') appendTerminal("Failed to auto-load model: " + err);
+                        alert("Exception during AI model auto-load:\n" + err);
+                    });
+                }, 50);
+            }
+
+            // Show first-run modal only if no AI model configured and welcome has not been seen/dismissed
+            let welcomeSeen = false;
+            try {
+                welcomeSeen = localStorage.getItem('welcome_seen') || sessionStorage.getItem('welcome_seen');
+            } catch(e) {}
+            if (!state.ai_path && !state.ai_loaded && !welcomeSeen) {
+                const modal = document.getElementById('first-run-modal');
+                if(modal) modal.classList.remove('hidden');
+            } else {
+                const modal = document.getElementById('first-run-modal');
+                if(modal) modal.classList.add('hidden');
+            }
+        });
+    }
+
+    // --- External Folder ---
+    function openExternalFolder() {
+        pywebview.api.open_external_folder().then(res => {
+            if(res.success) {
+                window._activeConvId = null;
+                activateWorkspace();
+                if(typeof switchSidebarTab === 'function') switchSidebarTab('explorer');
+                if(typeof refreshFileTree === 'function') refreshFileTree();
+                appendTerminal("Opened folder: " + res.path);
+            } else if (res.error && res.error !== "Cancelled") {
+                appendTerminal("Folder open error: " + res.error);
+                alert("Folder open error: " + res.error);
+            }
+        });
+    }
+
+    // --- Model Selection ---
+    function browseModelFolder() {
+        pywebview.api.select_model_folder().then(res => {
+            if(res.success) {
+                const el = document.getElementById('model-folder-path');
+                if(el) el.value = res.path;
+                if(window.pywebview && window.pywebview.api && window.pywebview.api.save_setting) {
+                    window.pywebview.api.save_setting('ai_path', res.path);
+                }
+                const statusEl = document.getElementById('gpu-status-text');
+                if (statusEl) statusEl.innerText = "Selected: " + res.path.split(/[\\/]/).pop();
+            }
+        });
+    }
+
+    function browseModelFile() {
+        pywebview.api.select_model_file().then(res => {
+            if(res.success) {
+                const el = document.getElementById('model-folder-path');
+                if(el) el.value = res.path;
+                if(window.pywebview && window.pywebview.api && window.pywebview.api.save_setting) {
+                    window.pywebview.api.save_setting('ai_path', res.path);
+                }
+                const statusEl = document.getElementById('gpu-status-text');
+                if (statusEl) statusEl.innerText = "Selected: " + res.path.split(/[\\/]/).pop();
+            } else if(res.error && res.error !== "No file selected") {
+                alert("Error selecting file: " + res.error);
+            }
+        });
+    }
+
+    function loadModelDirectly() {
+        const pathEl = document.getElementById('model-folder-path');
+        const path = pathEl ? pathEl.value : '';
+        if(!path) { alert("Please browse and select a local model directory or file (.file, .pkl, .bin, etc.) first."); return; }
+
+        try {
+            localStorage.setItem('welcome_seen', 'true');
+            sessionStorage.setItem('welcome_seen', 'true');
+        } catch(e) {}
+
+        if(window.pywebview && window.pywebview.api && window.pywebview.api.save_setting) {
+            window.pywebview.api.save_setting('ai_path', path);
+        }
+
+        const statusEl = document.getElementById('gpu-status-text');
+        if (statusEl) statusEl.innerText = "Loading model weights...";
+
+        const loadModal = document.getElementById('loading-modal');
+        const loadModalStatus = document.getElementById('loading-modal-status');
+        if (loadModal) {
+            loadModal.classList.remove('hidden');
+            loadModal.style.display = 'flex';
+        }
+        if (loadModalStatus) loadModalStatus.innerText = "Loading " + path.split(/[\\/]/).pop() + "...";
+
+        setTimeout(() => {
+            pywebview.api.load_model(path).then(loadRes => {
+                const modalEl = document.getElementById('loading-modal');
+                if (modalEl) {
+                    modalEl.classList.add('hidden');
+                    modalEl.style.display = 'none';
+                }
+                if(loadRes.success) {
+                    if (statusEl) statusEl.innerText = "✓ Active Model: " + path.split(/[\\/]/).pop();
+                    if (window.location.pathname.includes('models.html')) {
+                        window.location.href = "index.html";
+                    } else {
+                        const modal = document.getElementById('first-run-modal');
+                        if(modal) modal.classList.add('hidden');
+                    }
+                } else {
+                    if (statusEl) statusEl.innerText = "Error: " + (loadRes.error || "Unknown error");
+                    alert("Failed to load model:\n" + (loadRes.error || "Unknown error"));
+                }
+            }).catch(err => {
+                const modalEl = document.getElementById('loading-modal');
+                if (modalEl) {
+                    modalEl.classList.add('hidden');
+                    modalEl.style.display = 'none';
+                }
+                if (statusEl) statusEl.innerText = "Error: " + err;
+                alert("Exception during AI model load:\n" + err);
+            });
+        }, 50);
+    }
+
+    function dismissWelcome() {
+        try {
+            localStorage.setItem('welcome_seen', 'true');
+            sessionStorage.setItem('welcome_seen', 'true');
+        } catch(e) {}
+        const modal = document.getElementById('first-run-modal');
+        if(modal) modal.classList.add('hidden');
+    }
+
+    // --- Terminal ---
+    window.showTopError = function(msg) {
+        if (!msg) return;
+        let container = document.getElementById('top-error-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'top-error-container';
+            container.className = 'fixed top-3 left-1/2 transform -translate-x-1/2 z-[300] max-w-2xl w-full px-md flex flex-col gap-2 pointer-events-none';
+            document.body.appendChild(container);
+        }
+        const toast = document.createElement('div');
+        toast.className = 'pointer-events-auto bg-error-container/95 border border-error text-on-error-container p-md rounded-xl shadow-[0_0_30px_rgba(255,84,73,0.4)] flex items-start justify-between gap-sm animate-fade-in backdrop-blur-md';
+        toast.innerHTML = `
+            <div class="flex items-start gap-sm">
+                <span class="material-symbols-outlined text-error text-xl shrink-0 mt-0.5">error</span>
+                <div class="font-body-sm text-sm break-words overflow-auto max-h-40 font-mono">${msg}</div>
+            </div>
+            <button onclick="this.parentElement.remove()" class="text-on-error-container/70 hover:text-on-error-container font-bold px-1 transition-colors shrink-0">✕</button>
+        `;
+        container.prepend(toast);
+    };
+
+    window.showError = window.showTopError;
+
+    window.appendTerminal = function(msg) {
+        if (msg && (msg.toLowerCase().includes('error') || msg.toLowerCase().includes('failed') || msg.toLowerCase().includes('cannot access') || msg.includes('❌') || msg.toLowerCase().includes('exception'))) {
+            window.showTopError(msg);
+        }
+        const term = document.getElementById('terminal-output');
+        const bigTerm = document.getElementById('big-terminal-content');
+        
+        const el = document.createElement('div');
+        const time = new Date().toLocaleTimeString('en-US', {hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit'});
+        el.innerHTML = '<span class="text-secondary">[' + time + ']</span> ' + msg;
+        
+        if(term) {
+            term.appendChild(el.cloneNode(true));
+            term.scrollTop = term.scrollHeight;
+        }
+        if(bigTerm) {
+            bigTerm.appendChild(el.cloneNode(true));
+            bigTerm.scrollTop = bigTerm.scrollHeight;
+        }
+    }
+
+    function clearTerminal() {
+        const term = document.getElementById('terminal-output');
+        const bigTerm = document.getElementById('big-terminal-content');
+        if(term) term.innerHTML = '';
+        if(bigTerm) bigTerm.innerHTML = '';
+        if(window.pywebview && window.pywebview.api && window.pywebview.api.clear_terminal_logs) {
+            window.pywebview.api.clear_terminal_logs();
+        }
+        appendTerminal("Terminal cleared.");
+    }
+
+    let terminalIsPoppedOut = false;
+    function toggleTerminalPopout() {
+        terminalIsPoppedOut = !terminalIsPoppedOut;
+        const smallTerm = document.getElementById('small-terminal-container');
+        const bigModal = document.getElementById('big-terminal-modal');
+        const smallContent = document.getElementById('terminal-output');
+        const bigContent = document.getElementById('big-terminal-content');
+
+        if (terminalIsPoppedOut) {
+            // Pop out
+            if (smallTerm) smallTerm.style.display = 'none';
+            if (bigModal) {
+                bigModal.classList.remove('hidden');
+                bigModal.style.display = 'flex';
+            }
+            if (smallContent && bigContent) {
+                bigContent.innerHTML = smallContent.innerHTML;
+                bigContent.scrollTop = bigContent.scrollHeight;
+            }
+        } else {
+            // Restore
+            if (smallTerm) smallTerm.style.display = 'flex';
+            if (bigModal) {
+                bigModal.classList.add('hidden');
+                bigModal.style.display = 'none';
+            }
+            if (smallContent && bigContent) {
+                smallContent.innerHTML = bigContent.innerHTML;
+                smallContent.scrollTop = bigContent.scrollHeight;
+            }
+        }
+    }
+
+    // --- File Tree ---
+    function refreshFileTree() {
+        pywebview.api.get_file_tree().then(res => {
+            const tree = document.getElementById('file-tree');
+            if(!tree) return;
+            tree.innerHTML = "";
+
+            const files = res.files || [];
+            const folders = res.folders || [];
+
+            if (!res.active || (files.length === 0 && folders.length === 0)) {
+                tree.innerHTML = '<div class="text-on-surface-variant/50 text-center py-md font-body-md text-xs">No files or folders yet</div>';
+                return;
+            }
+
+            const root = { name: 'root', type: 'folder', children: {} };
+
+            folders.forEach(f => {
+                const parts = f.split('/');
+                let current = root;
+                parts.forEach((part, i) => {
+                    if (!current.children[part]) {
+                        current.children[part] = {
+                            name: part,
+                            path: parts.slice(0, i + 1).join('/'),
+                            type: 'folder',
+                            children: {}
+                        };
+                    }
+                    current = current.children[part];
+                });
+            });
+
+            files.forEach(f => {
+                const parts = f.split('/');
+                let current = root;
+                parts.slice(0, -1).forEach((part, i) => {
+                    if (!current.children[part]) {
+                        current.children[part] = {
+                            name: part,
+                            path: parts.slice(0, i + 1).join('/'),
+                            type: 'folder',
+                            children: {}
+                        };
+                    }
+                    current = current.children[part];
+                });
+                const fileName = parts[parts.length - 1];
+                current.children[fileName] = {
+                    name: fileName,
+                    path: f,
+                    type: 'file'
+                };
+            });
+
+            function renderNode(node, level = 0) {
+                const container = document.createElement('div');
+                const keys = Object.keys(node.children || {}).sort((a, b) => {
+                    const nodeA = node.children[a];
+                    const nodeB = node.children[b];
+                    if (nodeA.type === nodeB.type) return nodeA.name.localeCompare(nodeB.name);
+                    return nodeA.type === 'folder' ? -1 : 1;
+                });
+
+                keys.forEach(k => {
+                    const child = node.children[k];
+                    const el = document.createElement('div');
+                    const paddingLeft = (level * 14) + 4;
+
+                    if (child.type === 'folder') {
+                        el.className = "py-xs text-on-surface-variant hover:text-primary flex items-center gap-xs cursor-pointer text-xs select-none rounded";
+                        el.style.paddingLeft = paddingLeft + "px";
+                        el.innerHTML = '<span class="material-symbols-outlined text-sm text-secondary transition-transform folder-arrow">folder_open</span> <span class="font-medium text-on-surface/90">' + child.name + '</span>';
+                        
+                        const subContainer = document.createElement('div');
+                        subContainer.className = "folder-children";
+                        subContainer.appendChild(renderNode(child, level + 1));
+
+                        el.onclick = (e) => {
+                            e.stopPropagation();
+                            const arrow = el.querySelector('.folder-arrow');
+                            if (subContainer.style.display === 'none') {
+                                subContainer.style.display = 'block';
+                                arrow.textContent = 'folder_open';
+                            } else {
+                                subContainer.style.display = 'none';
+                                arrow.textContent = 'folder';
+                            }
+                        };
+
+                        container.appendChild(el);
+                        container.appendChild(subContainer);
+                    } else {
+                        el.className = "py-xs text-on-surface-variant hover:text-primary flex items-center gap-xs cursor-pointer text-xs select-none rounded";
+                        el.style.paddingLeft = paddingLeft + "px";
+                        const icon = child.name.endsWith('.py') ? 'code' : child.name.endsWith('.js') ? 'javascript' : child.name.endsWith('.html') ? 'html' : child.name.endsWith('.json') ? 'data_object' : child.name.endsWith('.css') ? 'css' : child.name.endsWith('.md') ? 'markdown' : 'description';
+                        el.innerHTML = '<span class="material-symbols-outlined text-sm text-tertiary/80">' + icon + '</span> <span>' + child.name + '</span>';
+                        el.onclick = (e) => {
+                            e.stopPropagation();
+                            viewFileContent(child.path);
+                        };
+                        container.appendChild(el);
+                    }
+                });
+                return container;
+            }
+
+            tree.appendChild(renderNode(root, 0));
+        });
+    }
+
+    function viewFileContent(path) {
+        pywebview.api.read_file(path).then(res => {
+            if(res.success) {
+                appendTerminal("Viewing: " + path);
+                // Show content in chat area as a system message
+                const chatBox = document.getElementById('chat-history');
+                if(chatBox) {
+                    const el = document.createElement('div');
+                    el.className = "p-md rounded-lg bg-surface-container-highest/50 border border-outline-variant/20";
+                    el.innerHTML = '<div class="font-label-sm mb-xs text-tertiary">📄 ' + path + '</div><pre class="whitespace-pre-wrap font-mono text-xs text-on-surface-variant overflow-auto max-h-64">' + res.content.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</pre>';
+                    chatBox.appendChild(el);
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                }
+            } else {
+                appendTerminal("Error reading " + path + ": " + res.error);
+            }
+        });
+    }
+
+    // --- Chat ---
+    function renderChat(history) {
+        const chatBox = document.getElementById('chat-history');
+        if(!chatBox) return;
+        chatBox.innerHTML = "";
+        if (!history || history.length === 0) {
+            chatBox.innerHTML = '<div class="text-on-surface-variant/50 text-center py-xl font-body-md">Start a conversation by typing below...</div>';
+            return;
+        }
+        history.forEach(msg => {
+            const isUser = msg.role === 'user';
+            const el = document.createElement('div');
+            el.className = 'p-md rounded-lg mb-sm ' + (isUser ? 'bg-surface-container border border-outline-variant/20 ml-12' : 'bg-surface-variant/30 border border-secondary/20 mr-12');
+
+            const header = document.createElement('div');
+            header.className = 'font-label-sm mb-xs ' + (isUser ? 'text-primary' : 'text-secondary');
+            header.innerText = isUser ? 'You' : 'DarkMaxxer AI';
+
+            const content = document.createElement('div');
+            content.className = "whitespace-pre-wrap font-body-md text-on-surface";
+            content.innerText = msg.content;
+
+            el.appendChild(header);
+            el.appendChild(content);
+            chatBox.appendChild(el);
+        });
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function sendPrompt() {
+        const input = document.getElementById('chat-input');
+        if(!input) return;
+        const prompt = input.value;
+        if(!prompt.trim()) return;
+
+        pywebview.api.get_active_state().then(state => {
+            if (!state.ai_loaded) {
+                const chatBox = document.getElementById('chat-history');
+                const errEl = document.createElement('div');
+                errEl.className = "p-md rounded-lg mb-sm bg-error-container/30 border border-error/30 mr-12";
+                errEl.innerHTML = '<div class="font-label-sm mb-xs text-error">⚠️ No AI Model Loaded</div><div class="whitespace-pre-wrap font-body-md text-on-error-container">You must select and load a local AI model from the Models page (📦) before you can prompt or talk with DarkMaxxer AI.</div>';
+                if(chatBox) {
+                    const placeholder = chatBox.querySelector('.text-center');
+                    if(placeholder) placeholder.remove();
+                    chatBox.appendChild(errEl);
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                }
+                appendTerminal("Prompt blocked: No AI Model loaded.");
+                return;
+            }
+
+            input.value = "";
+            input.disabled = true;
+            const sendBtn = document.getElementById('send-btn');
+            const pauseBtn = document.getElementById('pause-btn');
+            if(sendBtn) { sendBtn.disabled = true; sendBtn.classList.add('hidden'); }
+            if(pauseBtn) { pauseBtn.classList.remove('hidden'); }
+            appendTerminal("Sending prompt to LLM...");
+
+            const chatBox = document.getElementById('chat-history');
+            if (chatBox) {
+                const placeholder = chatBox.querySelector('.text-center');
+                if(placeholder) placeholder.remove();
+
+                const el = document.createElement('div');
+                el.className = "p-md rounded-lg mb-sm bg-surface-container border border-outline-variant/20 ml-12";
+                el.innerHTML = '<div class="font-label-sm mb-xs text-primary">You</div><div class="whitespace-pre-wrap font-body-md text-on-surface">' + prompt.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>';
+                chatBox.appendChild(el);
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+
+            pywebview.api.send_prompt(prompt).then(res => {
+                // send_prompt returns immediately (async generation)
+                // The polling loop will handle UI updates when generation is done
+                if(!res.success && res.error) {
+                    input.disabled = false;
+                    if(sendBtn) { sendBtn.disabled = false; sendBtn.classList.remove('hidden'); sendBtn.innerText = '▶'; }
+                    if(pauseBtn) { pauseBtn.classList.add('hidden'); }
+                    appendTerminal("Error: " + res.error);
+                    const errEl = document.createElement('div');
+                    errEl.className = "p-md rounded-lg mb-sm bg-error-container/30 border border-error/30 mr-12";
+                    errEl.innerHTML = '<div class="font-label-sm mb-xs text-error">Error</div><div class="whitespace-pre-wrap font-body-md text-on-error-container">' + res.error + '</div>';
+                    if(chatBox) chatBox.appendChild(errEl);
+                }
+            }).catch(err => {
+                input.disabled = false;
+                if(sendBtn) { sendBtn.disabled = false; sendBtn.classList.remove('hidden'); sendBtn.innerText = '▶'; }
+                if(pauseBtn) { pauseBtn.classList.add('hidden'); }
+                appendTerminal("Network error: " + err);
+            });
+        });
+    }
+
+    function pauseGeneration() {
+        pywebview.api.cancel_generation().then(res => {
+            const input = document.getElementById('chat-input');
+            const sendBtn = document.getElementById('send-btn');
+            const pauseBtn = document.getElementById('pause-btn');
+            const chatBox = document.getElementById('chat-history');
+            if (input) { input.disabled = false; input.focus(); }
+            if (sendBtn) { sendBtn.disabled = false; sendBtn.innerText = '▶'; sendBtn.classList.remove('hidden'); }
+            if (pauseBtn) { pauseBtn.classList.add('hidden'); }
+            window._isGenerating = false;
+            // Remove any loading dots
+            if (chatBox) {
+                const loadingEls = chatBox.querySelectorAll('.loading-dots');
+                loadingEls.forEach(el => {
+                    const parent = el.closest('.p-md');
+                    if (parent) parent.remove();
+                });
+            }
+            appendTerminal('Generation paused. You can now type a new prompt.');
+        }).catch(err => {
+            appendTerminal('Error pausing generation: ' + err);
+        });
+    }
+
+    // --- Settings ---
+    function showSettingsPanel(panelId) {
+        ['panel-preferences', 'panel-about', 'panel-license'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.classList.add('hidden');
+        });
+        const target = document.getElementById(panelId);
+        if (target) target.classList.remove('hidden');
+
+        ['tab-preferences', 'tab-about', 'tab-license'].forEach(id => {
+            const btn = document.getElementById(id);
+            if (!btn) return;
+            if (('panel-' + id.replace('tab-', '')) === panelId) {
+                btn.className = "w-full text-left px-md py-sm rounded-lg bg-secondary-container/30 text-secondary-fixed border-l-2 border-secondary font-label-md text-label-md transition-all flex items-center space-x-sm shadow-[0_0_20px_rgba(189,140,255,0.25)]";
+            } else {
+                btn.className = "w-full text-left px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-variant/20 hover:text-on-surface font-label-md text-label-md transition-all flex items-center space-x-sm border-l-2 border-transparent";
+            }
+        });
+    }
+
+    function loadSettings() {
+        if(!window.pywebview || !window.pywebview.api) return;
+        pywebview.api.get_settings().then(res => {
+            if(res.success && res.settings) {
+                const s = res.settings;
+                const toggles = {
+                    'toggle_local': s.local_inference !== undefined ? s.local_inference : true,
+                    'toggle_gpu': s.gpu_acceleration !== undefined ? s.gpu_acceleration : true,
+                    'toggle_memory': s.context_memory !== undefined ? s.context_memory : true
+                };
+                Object.entries(toggles).forEach(([id, val]) => {
+                    const el = document.getElementById(id);
+                    if (el) el.checked = val;
+                });
+            }
+        });
+    }
+
+    function saveSettings() {
+        const local_inf = document.getElementById('toggle_local') ? document.getElementById('toggle_local').checked : true;
+        const gpu_acc = document.getElementById('toggle_gpu') ? document.getElementById('toggle_gpu').checked : true;
+        const ctx_mem = document.getElementById('toggle_memory') ? document.getElementById('toggle_memory').checked : true;
+
+        const new_settings = {
+            local_inference: local_inf,
+            gpu_acceleration: gpu_acc,
+            context_memory: ctx_mem
+        };
+
+        if(window.pywebview && window.pywebview.api) {
+            pywebview.api.save_settings(new_settings).then(res => {
+                if(res.success) {
+                    const btn = document.querySelector('button[onclick="saveSettings()"]');
+                    if(btn) {
+                        const oldText = btn.innerText;
+                        btn.innerText = '✓ Saved successfully!';
+                        setTimeout(() => { btn.innerText = oldText; }, 2000);
+                    }
+                } else {
+                    alert("Failed to save: " + (res.error || "Unknown error"));
+                }
+            });
+        }
+    }
+
+    function resetSettings() {
+        const defaults = { local_inference: true, gpu_acceleration: true, context_memory: true };
+        if(window.pywebview && window.pywebview.api) {
+            pywebview.api.save_settings(defaults).then(res => {
+                if(res.success) {
+                    loadSettings();
+                    const btn = document.querySelector('button[onclick="resetSettings()"]');
+                    if(btn) {
+                        const oldText = btn.innerText;
+                        btn.innerText = '✓ Reset!';
+                        setTimeout(() => { btn.innerText = oldText; }, 2000);
+                    }
+                }
+            });
+        }
+    }
+
+    function runDiagnostics() {
+        const box = document.getElementById('diag-results');
+        const btn = document.getElementById('run-diag-btn');
+        if(!box || !window.pywebview || !window.pywebview.api) return;
+        if(btn) btn.innerText = "⏳ Running Diagnostics...";
+        pywebview.api.run_diagnostics().then(res => {
+            if(btn) btn.innerText = "✓ System Diagnosed";
+            box.classList.remove('hidden');
+            box.innerHTML = `
+                <div class="grid grid-cols-2 gap-sm text-xs font-mono">
+                    <div class="p-sm rounded bg-surface-container-lowest/50 border border-outline-variant/10"><span class="text-tertiary font-bold">OS:</span> ${res.os}</div>
+                    <div class="p-sm rounded bg-surface-container-lowest/50 border border-outline-variant/10"><span class="text-tertiary font-bold">Python:</span> ${res.python}</div>
+                    <div class="p-sm rounded bg-surface-container-lowest/50 border border-outline-variant/10"><span class="text-tertiary font-bold">GPU / Device:</span> ${res.device}</div>
+                    <div class="p-sm rounded bg-surface-container-lowest/50 border border-outline-variant/10"><span class="text-tertiary font-bold">VRAM:</span> ${res.vram}</div>
+                    <div class="col-span-2 p-sm rounded bg-surface-container-lowest/50 border border-outline-variant/10 truncate"><span class="text-tertiary font-bold">Workspace:</span> ${res.workspace}</div>
+                    <div class="col-span-2 p-sm rounded bg-surface-container-lowest/50 border border-outline-variant/10 truncate"><span class="text-tertiary font-bold">Active Model:</span> ${res.model_path}</div>
+                </div>
+            `;
+            setTimeout(() => { if(btn) btn.innerText = "▶ Run System Diagnostics"; }, 3000);
+        });
+    }
+
+    function verifyWatermarks() {
+        const box = document.getElementById('wm-results');
+        const btn = document.getElementById('run-wm-btn');
+        if(!box || !window.pywebview || !window.pywebview.api) return;
+        if(btn) btn.innerText = "⏳ Auditing Integrity...";
+        pywebview.api.verify_watermarks().then(res => {
+            if(btn) btn.innerText = "✓ Audit Complete";
+            box.classList.remove('hidden');
+            let items = res.files.map(f => `
+                <div class="flex justify-between items-center py-xs border-b border-outline-variant/10 last:border-none">
+                    <span class="font-mono text-xs">${f.file}</span>
+                    <span class="text-xs px-sm py-0.5 rounded ${f.status === 'Passed' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-red-500/20 text-red-300 border border-red-500/30'}">${f.status}</span>
+                </div>
+            `).join('');
+            box.innerHTML = `
+                <div class="p-sm rounded bg-surface-container-lowest/50 border border-outline-variant/10 text-xs font-mono space-y-xs">
+                    <div class="font-bold text-sm ${res.all_passed ? 'text-emerald-400' : 'text-red-400'} mb-sm">${res.all_passed ? '✓ 100% Watermark Integrity Confirmed' : '⚠ Audit Warning Found'}</div>
+                    ${items}
+                </div>
+            `;
+            setTimeout(() => { if(btn) btn.innerText = "🛡 Verify Watermark Integrity"; }, 3000);
+        });
+    }
+
+    function clearCache() {
+        if(!confirm("Are you sure you want to clear the active conversation memory?")) return;
+        if(window.pywebview && window.pywebview.api) {
+            pywebview.api.clear_all_history().then(res => {
+                if(res.success) {
+                    alert("✓ Conversation memory cache cleared successfully.");
+                } else {
+                    alert("Error clearing cache: " + res.error);
+                }
+            });
+        }
+    }
+
+    function openWorkspace() {
+        if(window.pywebview && window.pywebview.api) {
+            pywebview.api.open_workspace_in_explorer().then(res => {
+                if(!res.success) alert("Could not open workspace: " + res.error);
+            });
+        }
+    }
+</script>
+
+</body></html>

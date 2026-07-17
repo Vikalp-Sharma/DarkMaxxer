@@ -1,0 +1,11 @@
+# DarkMaxxer Local AI IDE - Offline Inference Dependencies
+# Note: All models must be loaded from local path on disk (`.gguf`, `.safetensors`, `.bin`, `.pth`)
+airllm
+pywebview
+transformers
+torch
+accelerate
+huggingface_hub
+gguf
+pillow
+pyinstaller

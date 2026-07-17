@@ -1,0 +1,7 @@
+Fatal Startup Error:
+Traceback (most recent call last):
+  File "S:\DarkMaxxer\main.py", line 760, in <module>
+    sys.exit(1)
+    ~~~~~~~~^^^
+SystemExit: 1
+

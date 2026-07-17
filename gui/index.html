@@ -1,0 +1,1523 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>DarkMaxxer IDE - Empty Workspace</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "error-container": "#93000a",
+                        "secondary-fixed-dim": "#dfb7ff",
+                        "on-secondary-fixed-variant": "#661aa3",
+                        "inverse-primary": "#5f5e5f",
+                        "outline": "#919094",
+                        "secondary-container": "#691ea6",
+                        "secondary-fixed": "#f1dbff",
+                        "on-secondary": "#4a007f",
+                        "surface": "#101415",
+                        "on-tertiary-container": "#7270c6",
+                        "inverse-on-surface": "#2d3133",
+                        "tertiary-fixed-dim": "#c3c0ff",
+                        "background": "#101415",
+                        "on-primary-fixed-variant": "#474647",
+                        "on-tertiary-fixed": "#100563",
+                        "on-surface-variant": "#c7c6ca",
+                        "tertiary": "#c3c0ff",
+                        "on-tertiary": "#272377",
+                        "primary-container": "#0b0b0c",
+                        "error": "#ffb4ab",
+                        "inverse-surface": "#e0e3e5",
+                        "primary-fixed": "#e5e2e3",
+                        "on-secondary-fixed": "#2d0050",
+                        "surface-dim": "#101415",
+                        "on-background": "#e0e3e5",
+                        "on-tertiary-fixed-variant": "#3e3c8f",
+                        "surface-container": "#1d2022",
+                        "surface-variant": "#323537",
+                        "outline-variant": "#46464a",
+                        "tertiary-fixed": "#e2dfff",
+                        "surface-container-highest": "#323537",
+                        "on-primary-fixed": "#1c1b1c",
+                        "on-error": "#690005",
+                        "surface-container-high": "#272a2c",
+                        "primary": "#c8c6c7",
+                        "on-secondary-container": "#d5a4ff",
+                        "surface-container-low": "#191c1e",
+                        "on-error-container": "#ffdad6",
+                        "primary-fixed-dim": "#c8c6c7",
+                        "on-primary": "#313031",
+                        "surface-bright": "#363a3b",
+                        "surface-container-lowest": "#0b0f10",
+                        "surface-tint": "#c8c6c7",
+                        "on-surface": "#e0e3e5",
+                        "tertiary-container": "#04003a",
+                        "on-primary-container": "#7b797a",
+                        "secondary": "#dfb7ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-mobile": "16px",
+                        "2xl": "64px",
+                        "xl": "40px",
+                        "margin-desktop": "48px",
+                        "xs": "4px",
+                        "unit": "4px",
+                        "lg": "24px",
+                        "gutter": "24px",
+                        "sm": "8px",
+                        "md": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "display": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "display": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #0B0B0C;
+            background-image: radial-gradient(circle at 50% 50%, rgba(105, 30, 166, 0.05) 0%, rgba(11, 11, 12, 1) 100%);
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* Glassmorphism Utilities */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            border-left: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+        
+        .glass-panel::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: -1;
+            border-radius: inherit;
+        }
+
+        .ambient-glow {
+            box-shadow: 0 0 60px -15px rgba(30, 27, 75, 0.4);
+        }
+
+        /* CSS Starfield Background for the Empty State */
+        .starfield-container {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            background-color: #0B0B0C;
+            z-index: 0;
+        }
+
+        .star {
+            position: absolute;
+            background: #fff;
+            border-radius: 50%;
+            animation: twinkle var(--duration, 2s) infinite ease-in-out alternate;
+        }
+
+        @keyframes twinkle {
+            0% { opacity: 0.2; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1.2); }
+        }
+
+        .dying-star {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(223,183,255,1) 0%, rgba(105,30,166,0.8) 40%, rgba(45,0,80,0) 70%);
+            box-shadow: 0 0 100px 20px rgba(105,30,166,0.6), 0 0 200px 50px rgba(0, 255, 255, 0.2);
+            animation: pulse-star 4s infinite alternate ease-in-out;
+            z-index: 1;
+        }
+
+        @keyframes pulse-star {
+            0% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.8; box-shadow: 0 0 80px 10px rgba(105,30,166,0.5), 0 0 150px 30px rgba(0, 255, 255, 0.1); }
+            100% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; box-shadow: 0 0 120px 30px rgba(105,30,166,0.8), 0 0 250px 60px rgba(0, 255, 255, 0.3); }
+        }
+
+        .nebula {
+            position: absolute;
+            width: 800px;
+            height: 800px;
+            background: radial-gradient(circle, rgba(105,30,166,0.1) 0%, transparent 70%);
+            filter: blur(60px);
+            animation: drift 20s infinite linear alternate;
+            z-index: 0;
+        }
+
+        .nebula-cyan {
+            background: radial-gradient(circle, rgba(0, 255, 255, 0.05) 0%, transparent 70%);
+            animation-duration: 25s;
+            animation-direction: alternate-reverse;
+        }
+
+        @keyframes drift {
+            0% { transform: translate(-10%, -10%) scale(1); }
+            100% { transform: translate(10%, 10%) scale(1.2); }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .rgb-flow {
+            background-size: 200% auto;
+            animation: gradient-flow 5s linear infinite;
+        }
+
+        @keyframes gradient-flow {
+            0% { background-position: 0% center; }
+            100% { background-position: 200% center; }
+        }
+    </style>
+</head>
+<body class="text-on-surface font-body-md antialiased selection:bg-secondary-container selection:text-secondary-fixed">
+<!-- TopNavBar -->
+<header class="bg-surface/10 dark:bg-surface/10 backdrop-blur-2xl docked full-width top-0 border-b border-outline-variant/20 shadow-[0_0_60px_-15px_rgba(30,27,75,0.4)] flex justify-between items-center w-full px-md h-16 z-50 shrink-0">
+<div class="flex items-center gap-sm">
+
+<nav class="hidden md:flex gap-lg">
+<a class="text-on-surface-variant font-label-md text-label-md hover:text-primary transition-colors duration-300 cursor-pointer active:scale-95 transition-transform" onclick="try{localStorage.setItem('welcome_seen','true');sessionStorage.setItem('welcome_seen','true')}catch(e){}" href="models.html">Models</a>
+<a class="text-primary border-b-2 border-primary pb-1 font-label-md text-label-md hover:text-primary transition-colors duration-300 cursor-pointer active:scale-95 transition-transform" href="#" onclick="return false;">Editor</a>
+<a class="text-on-surface-variant font-label-md text-label-md hover:text-primary transition-colors duration-300 cursor-pointer active:scale-95 transition-transform" onclick="toggleTerminalPopout(); return false;" href="#" onclick="return false;">Terminal</a>
+
+</nav>
+</div>
+<div class="flex items-center gap-md">
+
+
+<div class="flex gap-xs">
+<button onclick="try{localStorage.setItem('welcome_seen','true');sessionStorage.setItem('welcome_seen','true')}catch(e){};window.location.href='settings.html'" class="p-xs text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined">settings</span></button>
+
+</div>
+
+</div>
+</header>
+<div class="flex flex-1 overflow-hidden relative z-10">
+<!-- SideNavBar -->
+<nav class="bg-surface-container-lowest/20 dark:bg-surface-container-lowest/20 backdrop-blur-3xl docked full-height left-0 w-64 border-r border-outline-variant/10 shadow-2xl flex flex-col h-full shrink-0 z-20">
+<div class="p-md border-b border-outline-variant/10">
+<div class="flex items-center gap-sm mb-md">
+<div class="w-10 h-10 rounded-md bg-surface-container-high flex items-center justify-center border border-outline-variant/20">
+<span class="material-symbols-outlined text-secondary">memory</span>
+</div>
+<div>
+<div class="font-label-md text-on-surface">DarkMaxxer IDE</div>
+<div class="text-xs text-on-surface-variant">v2.5.0-pro</div>
+</div>
+</div>
+<!-- Tab Selector: Chats vs Explorer -->
+<div class="flex gap-xs bg-surface-container-high/60 p-1 rounded-lg border border-outline-variant/20 mb-sm">
+<button onclick="switchSidebarTab('chats')" id="tab-btn-chats" class="flex-1 py-1.5 px-2 rounded-md font-label-md text-xs flex items-center justify-center gap-1.5 bg-secondary-container/60 text-secondary-fixed shadow-sm transition-all"><span class="material-symbols-outlined text-sm">chat</span> Chats</button>
+<button onclick="switchSidebarTab('explorer')" id="tab-btn-explorer" class="flex-1 py-1.5 px-2 rounded-md font-label-md text-xs flex items-center justify-center gap-1.5 text-on-surface-variant hover:text-on-surface transition-all"><span class="material-symbols-outlined text-sm">folder_open</span> Explorer</button>
+</div>
+</div>
+
+<!-- Chats Panel -->
+<div id="sidebar-panel-chats" class="flex-1 flex flex-col overflow-hidden">
+<div class="p-sm pb-0">
+<button onclick="document.getElementById('new-conv-modal').classList.remove('hidden')" class="w-full bg-surface-variant/30 hover:bg-surface-variant/50 border border-outline-variant/20 text-on-surface font-label-sm py-sm rounded-md flex items-center justify-center gap-xs transition-colors shadow-sm">
+<span class="material-symbols-outlined text-sm">add</span> New Chat
+</button>
+</div>
+<div class="flex-1 overflow-y-auto p-sm space-y-1" id="conversation-list">
+<div class="text-on-surface-variant/50 text-center py-lg font-body-md text-xs">Loading conversations...</div>
+</div>
+</div>
+
+<!-- Explorer Panel -->
+<div id="sidebar-panel-explorer" class="hidden flex-1 flex flex-col overflow-hidden">
+<div class="p-sm pb-0">
+<button onclick="openExternalFolder()" class="w-full bg-surface-variant/30 hover:bg-surface-variant/50 border border-outline-variant/20 text-on-surface font-label-sm py-sm rounded-md flex items-center justify-center gap-xs transition-colors shadow-sm">
+<span class="material-symbols-outlined text-sm">folder_open</span> Open Folder
+</button>
+</div>
+<div class="flex-1 overflow-y-auto p-sm font-mono text-xs text-on-surface space-y-1" id="file-tree">
+<div class="text-on-surface-variant/50 text-center py-lg font-body-md text-xs">No workspace folder opened yet</div>
+</div>
+</div>
+</nav>
+<!-- Main Workspace Area -->
+<main class="flex-1 relative overflow-hidden flex">
+<!-- Central Empty State / Starfield -->
+<div class="flex-1 relative m-sm rounded-lg overflow-hidden border border-outline-variant/10 shadow-[inset_0_0_100px_rgba(0,0,0,0.8)] flex items-center justify-center">
+<!-- Starfield Background -->
+<div id="chat-history" class="absolute inset-0 z-10 overflow-y-auto p-md pb-24 space-y-2 flex flex-col hidden"></div>
+<div class="starfield-container" id="starfield">
+<div class="nebula" style="top: 10%; left: 20%;"></div>
+<div class="nebula nebula-cyan" style="bottom: 10%; right: 20%;"></div>
+<div class="dying-star"></div>
+<!-- Stars will be injected via JS -->
+<div class="star" style="left: 10.6987%; top: 13.3153%; width: 2.41927px; height: 2.41927px; opacity: 0.167273; --duration: 2.464578189066491s;"></div><div class="star" style="left: 87.0379%; top: 68.1214%; width: 2.01604px; height: 2.01604px; opacity: 0.939909; --duration: 2.621797368296866s;"></div><div class="star" style="left: 81.1929%; top: 91.2896%; width: 2.04594px; height: 2.04594px; opacity: 0.955679; --duration: 2.3714713528938702s;"></div><div class="star" style="left: 97.2922%; top: 56.8736%; width: 1.6057px; height: 1.6057px; opacity: 0.54883; --duration: 1.717208548588363s;"></div><div class="star" style="left: 97.1531%; top: 22.1322%; width: 1.96376px; height: 1.96376px; opacity: 0.271768; --duration: 3.6767362977040374s;"></div><div class="star" style="left: 95.1905%; top: 66.136%; width: 0.587669px; height: 0.587669px; opacity: 0.381109; --duration: 3.007174292047711s; background-color: rgb(223, 183, 255);"></div><div class="star" style="left: 18.9705%; top: 91.4613%; width: 1.18994px; height: 1.18994px; opacity: 0.750998; --duration: 1.0091300429300176s;"></div><div class="star" style="left: 12.1996%; top: 78.023%; width: 1.45536px; height: 1.45536px; opacity: 0.972867; --duration: 2.9009847322897397s;"></div><div class="star" style="left: 34.0486%; top: 87.4666%; width: 2.49043px; height: 2.49043px; opacity: 0.324724; --duration: 2.8962006889120913s;"></div><div class="star" style="left: 53.5051%; top: 51.3083%; width: 1.03899px; height: 1.03899px; opacity: 0.670367; --duration: 1.788228761495637s; background-color: rgb(195, 192, 255);"></div><div class="star" style="left: 87.0433%; top: 7.80012%; width: 1.67839px; height: 1.67839px; opacity: 0.898751; --duration: 1.1733525563408347s;"></div><div class="star" style="left: 13.3113%; top: 92.717%; width: 1.79865px; height: 1.79865px; opacity: 0.890301; --duration: 1.6960137723573s;"></div><div class="star" style="left: 44.6228%; top: 36.3984%; width: 2.48102px; height: 2.48102px; opacity: 0.488506; --duration: 3.431808991574828s;"></div><div class="star" style="left: 17.0999%; top: 75.4116%; width: 0.636174px; height: 0.636174px; opacity: 0.0128754; --duration: 2.49574047111849s;"></div><div class="star" style="left: 46.0725%; top: 44.0902%; width: 1.74684px; height: 1.74684px; opacity: 0.461151; --duration: 1.009646939028297s;"></div><div class="star" style="left: 71.1925%; top: 49.9752%; width: 0.742838px; height: 0.742838px; opacity: 0.590916; --duration: 3.880615844057527s;"></div><div class="star" style="left: 66.0884%; top: 46.0339%; width: 1.36221px; height: 1.36221px; opacity: 0.793454; --duration: 3.131670826231699s;"></div><div class="star" style="left: 38.4591%; top: 87.5581%; width: 0.720505px; height: 0.720505px; opacity: 0.977778; --duration: 1.3099699093140007s; background-color: rgb(195, 192, 255);"></div><div class="star" style="left: 31.2738%; top: 48.239%; width: 1.5706px; height: 1.5706px; opacity: 0.252196; --duration: 2.053946252667167s;"></div><div class="star" style="left: 26.2833%; top: 71.5863%; width: 1.2703px; height: 1.2703px; opacity: 0.553035; --duration: 3.288507188363867s;"></div><div class="star" style="left: 3.15905%; top: 47.2425%; width: 1.55599px; height: 1.55599px; opacity: 0.554148; --duration: 3.489245186372892s;"></div><div class="star" style="left: 62.6308%; top: 61.6584%; width: 1.95733px; height: 1.95733px; opacity: 0.450587; --duration: 3.7312134211807684s;"></div><div class="star" style="left: 52.7747%; top: 50.3764%; width: 1.33322px; height: 1.33322px; opacity: 0.655119; --duration: 3.5588564135862777s;"></div><div class="star" style="left: 39.408%; top: 72.7411%; width: 0.936063px; height: 0.936063px; opacity: 0.405806; --duration: 2.2778421583437476s;"></div><div class="star" style="left: 87.773%; top: 15.9774%; width: 2.34378px; height: 2.34378px; opacity: 0.00756486; --duration: 2.681989469631176s;"></div><div class="star" style="left: 78.3159%; top: 29.7918%; width: 1.47632px; height: 1.47632px; opacity: 0.0957157; --duration: 2.685283812848538s;"></div><div class="star" style="left: 27.122%; top: 30.9769%; width: 1.455px; height: 1.455px; opacity: 0.423803; --duration: 3.3109203332486694s;"></div><div class="star" style="left: 38.6387%; top: 31.4661%; width: 1.04658px; height: 1.04658px; opacity: 0.973553; --duration: 1.2993482539527061s; background-color: rgb(195, 192, 255);"></div><div class="star" style="left: 6.45772%; top: 33.2475%; width: 1.33749px; height: 1.33749px; opacity: 0.459426; --duration: 2.5543045332440464s; background-color: rgb(223, 183, 255);"></div><div class="star" style="left: 33.3333%; top: 47.8072%; width: 1.67496px; height: 1.67496px; opacity: 0.0551027; --duration: 3.2907082457131533s; background-color: rgb(223, 183, 255);"></div><div class="star" style="left: 46.5605%; top: 37.8438%; width: 0.627914px; height: 0.627914px; opacity: 0.313512; --duration: 3.5653820362629705s;"></div><div class="star" style="left: 29.8801%; top: 50.8331%; width: 1.50169px; height: 1.50169px; opacity: 0.165427; --duration: 3.458277448806666s;"></div><div class="star" style="left: 95.336%; top: 37.3872%; width: 1.0592px; height: 1.0592px; opacity: 0.144936; --duration: 1.633059090892048s;"></div><div class="star" style="left: 66.5334%; top: 26.3892%; width: 1.27756px; height: 1.27756px; opacity: 0.112158; --duration: 1.5584454259103977s;"></div><div class="star" style="left: 42.274%; top: 63.142%; width: 1.60425px; height: 1.60425px; opacity: 0.485525; --duration: 1.0684678682760582s;"></div><div class="star" style="left: 38.4059%; top: 93.6967%; width: 1.61359px; height: 1.61359px; opacity: 0.884616; --duration: 3.8942424755778653s;"></div><div class="star" style="left: 56.9515%; top: 72.8216%; width: 0.638301px; height: 0.638301px; opacity: 0.472728; --duration: 3.1057806839555053s;"></div><div class="star" style="left: 78.4545%; top: 14.9078%; width: 1.21454px; height: 1.21454px; opacity: 0.866821; --duration: 3.6271565309175466s;"></div><div class="star" style="left: 34.1085%; top: 89.4039%; width: 2.21078px; height: 2.21078px; opacity: 0.459345; --duration: 2.1143508177274275s;"></div><div class="star" style="left: 14.8737%; top: 97.1457%; width: 0.678145px; height: 0.678145px; opacity: 0.46536; --duration: 1.6473901940767823s;"></div><div class="star" style="left: 67.4071%; top: 23.8011%; width: 2.46734px; height: 2.46734px; opacity: 0.604764; --duration: 1.8204981079530744s;"></div><div class="star" style="left: 31.5667%; top: 77.2118%; width: 1.56266px; height: 1.56266px; opacity: 0.618318; --duration: 1.8280328211650865s;"></div><div class="star" style="left: 41.7267%; top: 63.5253%; width: 1.88698px; height: 1.88698px; opacity: 0.0300862; --duration: 3.44841898095573s;"></div><div class="star" style="left: 77.211%; top: 66.7936%; width: 1.92984px; height: 1.92984px; opacity: 0.0280178; --duration: 1.2919725882659718s;"></div><div class="star" style="left: 62.9735%; top: 74.0583%; width: 1.20455px; height: 1.20455px; opacity: 0.46508; --duration: 3.814950339971533s;"></div><div class="star" style="left: 4.89003%; top: 88.7336%; width: 1.29928px; height: 1.29928px; opacity: 0.386353; --duration: 2.779014081291488s;"></div><div class="star" style="left: 21.9651%; top: 25.185%; width: 1.71343px; height: 1.71343px; opacity: 0.735242; --duration: 1.311886829311924s;"></div><div class="star" style="left: 14.8164%; top: 10.5639%; width: 1.65735px; height: 1.65735px; opacity: 0.349417; --duration: 1.381393045466524s;"></div><div class="star" style="left: 17.655%; top: 15.8276%; width: 2.09756px; height: 2.09756px; opacity: 0.847245; --duration: 3.5073050936100447s;"></div><div class="star" style="left: 67.1794%; top: 7.79293%; width: 0.928444px; height: 0.928444px; opacity: 0.883335; --duration: 1.6424141975969087s;"></div><div class="star" style="left: 4.03689%; top: 88.1323%; width: 1.69778px; height: 1.69778px; opacity: 0.421848; --duration: 1.2802223050044579s;"></div><div class="star" style="left: 71.9679%; top: 66.3423%; width: 1.68023px; height: 1.68023px; opacity: 0.876821; --duration: 1.363510312839225s;"></div><div class="star" style="left: 42.9649%; top: 17.8031%; width: 1.26864px; height: 1.26864px; opacity: 0.32287; --duration: 2.526060204002584s;"></div><div class="star" style="left: 84.2255%; top: 13.6783%; width: 1.66954px; height: 1.66954px; opacity: 0.233063; --duration: 3.2165192893962136s;"></div><div class="star" style="left: 77.9267%; top: 53.0324%; width: 0.978104px; height: 0.978104px; opacity: 0.803222; --duration: 1.955919121330921s;"></div><div class="star" style="left: 44.9819%; top: 53.0708%; width: 1.53052px; height: 1.53052px; opacity: 0.568638; --duration: 1.0608128269366346s;"></div><div class="star" style="left: 63.5038%; top: 65.7971%; width: 2.07333px; height: 2.07333px; opacity: 0.326142; --duration: 2.658891568918315s;"></div><div class="star" style="left: 41.5605%; top: 97.6512%; width: 0.550682px; height: 0.550682px; opacity: 0.8039; --duration: 3.5714651050261845s;"></div><div class="star" style="left: 80.8985%; top: 55.7794%; width: 1.5866px; height: 1.5866px; opacity: 0.364321; --duration: 2.7270226265162067s;"></div><div class="star" style="left: 31.4635%; top: 36.4578%; width: 1.59743px; height: 1.59743px; opacity: 0.637153; --duration: 3.8463152988337157s;"></div><div class="star" style="left: 10.7739%; top: 19.1594%; width: 0.578112px; height: 0.578112px; opacity: 0.144832; --duration: 2.442290573961392s;"></div><div class="star" style="left: 93.1783%; top: 82.0835%; width: 1.19221px; height: 1.19221px; opacity: 0.355549; --duration: 2.415889359416913s; background-color: rgb(223, 183, 255);"></div><div class="star" style="left: 99.1904%; top: 64.8379%; width: 2.35858px; height: 2.35858px; opacity: 0.953879; --duration: 2.271016243972019s;"></div><div class="star" style="left: 17.697%; top: 26.687%; width: 1.43795px; height: 1.43795px; opacity: 0.72937; --duration: 1.681299718142709s; background-color: rgb(223, 183, 255);"></div><div class="star" style="left: 41.456%; top: 68.5671%; width: 1.1777px; height: 1.1777px; opacity: 0.5008; --duration: 2.5873871712870393s; background-color: rgb(223, 183, 255);"></div><div class="star" style="left: 55.5156%; top: 10.4184%; width: 1.3688px; height: 1.3688px; opacity: 0.505715; --duration: 3.2829321419615036s;"></div><div class="star" style="left: 61.7226%; top: 97.2792%; width: 1.76324px; height: 1.76324px; opacity: 0.57262; --duration: 1.308917191012823s; background-color: rgb(223, 183, 255);"></div><div class="star" style="left: 17.1212%; top: 73.7384%; width: 1.25076px; height: 1.25076px; opacity: 0.963693; --duration: 3.738108099898802s;"></div><div class="star" style="left: 96.5066%; top: 78.3226%; width: 1.1714px; height: 1.1714px; opacity: 0.991866; --duration: 1.8684331474474192s; background-color: rgb(223, 183, 255);"></div><div class="star" style="left: 91.7407%; top: 33.9132%; width: 1.45403px; height: 1.45403px; opacity: 0.713852; --duration: 1.7509860668108115s;"></div><div class="star" style="left: 38.0383%; top: 30.0724%; width: 1.9522px; height: 1.9522px; opacity: 0.201668; --duration: 2.709604264642277s; background-color: rgb(195, 192, 255);"></div><div class="star" style="left: 25.8038%; top: 39.0603%; width: 0.983833px; height: 0.983833px; opacity: 0.687638; --duration: 2.888695728042077s; background-color: rgb(195, 192, 255);"></div><div class="star" style="left: 3.97345%; top: 81.0928%; width: 2.28527px; height: 2.28527px; opacity: 0.951723; --duration: 3.4727571505313337s;"></div><div class="star" style="left: 30.7102%; top: 27.4317%; width: 0.558555px; height: 0.558555px; opacity: 0.878665; --duration: 3.493731331515562s;"></div><div class="star" style="left: 25.5052%; top: 21.7976%; width: 0.782881px; height: 0.782881px; opacity: 0.882497; --duration: 1.6811674467172182s;"></div><div class="star" style="left: 34.8982%; top: 48.7414%; width: 2.38275px; height: 2.38275px; opacity: 0.535099; --duration: 1.3614430361767762s;"></div><div class="star" style="left: 23.3265%; top: 74.6589%; width: 2.12061px; height: 2.12061px; opacity: 0.695753; --duration: 2.19307744104153s;"></div><div class="star" style="left: 39.163%; top: 97.6537%; width: 2.14582px; height: 2.14582px; opacity: 0.0542386; --duration: 1.0797896610620565s;"></div><div class="star" style="left: 41.9204%; top: 10.8083%; width: 0.61859px; height: 0.61859px; opacity: 0.412343; --duration: 2.0188705141990444s; background-color: rgb(195, 192, 255);"></div><div class="star" style="left: 48.282%; top: 57.2598%; width: 0.944768px; height: 0.944768px; opacity: 0.946461; --duration: 1.8855421799002956s;"></div><div class="star" style="left: 76.2633%; top: 1.88862%; width: 2.22839px; height: 2.22839px; opacity: 0.867339; --duration: 2.6196454090253654s;"></div><div class="star" style="left: 7.99379%; top: 69.21%; width: 0.987412px; height: 0.987412px; opacity: 0.368318; --duration: 1.5427016365647108s;"></div><div class="star" style="left: 57.1015%; top: 16.6375%; width: 0.82599px; height: 0.82599px; opacity: 0.843089; --duration: 3.0709304088154523s; background-color: rgb(195, 192, 255);"></div><div class="star" style="left: 77.9273%; top: 6.60994%; width: 1.59169px; height: 1.59169px; opacity: 0.171961; --duration: 3.822791567382055s;"></div><div class="star" style="left: 11.8704%; top: 25.7662%; width: 2.37316px; height: 2.37316px; opacity: 0.440738; --duration: 1.204537041926597s;"></div><div class="star" style="left: 19.504%; top: 90.4515%; width: 2.06578px; height: 2.06578px; opacity: 0.572054; --duration: 2.8568850393817082s;"></div><div class="star" style="left: 90.0154%; top: 3.50693%; width: 1.65469px; height: 1.65469px; opacity: 0.701893; --duration: 2.797077768609575s;"></div><div class="star" style="left: 42.7075%; top: 57.9554%; width: 2.06406px; height: 2.06406px; opacity: 0.353469; --duration: 3.672071141889588s;"></div><div class="star" style="left: 92.2779%; top: 47.9015%; width: 0.656225px; height: 0.656225px; opacity: 0.15919; --duration: 3.640796345257389s;"></div><div class="star" style="left: 43.0144%; top: 56.5296%; width: 1.20757px; height: 1.20757px; opacity: 0.486989; --duration: 2.2594033893570207s;"></div><div class="star" style="left: 24.2944%; top: 2.5494%; width: 1.12092px; height: 1.12092px; opacity: 0.261959; --duration: 2.832272332587428s;"></div><div class="star" style="left: 92.4899%; top: 96.9359%; width: 2.13153px; height: 2.13153px; opacity: 0.307541; --duration: 3.2749284088560935s;"></div><div class="star" style="left: 77.4469%; top: 13.8225%; width: 1.40792px; height: 1.40792px; opacity: 0.165775; --duration: 2.6409079102246547s;"></div><div class="star" style="left: 61.2425%; top: 59.6192%; width: 1.27615px; height: 1.27615px; opacity: 0.693274; --duration: 3.658235374959136s;"></div><div class="star" style="left: 17.7206%; top: 97.14%; width: 0.879293px; height: 0.879293px; opacity: 0.90083; --duration: 3.9368304690744216s; background-color: rgb(195, 192, 255);"></div><div class="star" style="left: 17.6944%; top: 52.7366%; width: 2.48976px; height: 2.48976px; opacity: 0.85887; --duration: 3.3545487048790172s;"></div><div class="star" style="left: 47.5306%; top: 10.0689%; width: 1.68941px; height: 1.68941px; opacity: 0.412746; --duration: 1.204290892033591s;"></div><div class="star" style="left: 81.1779%; top: 42.7144%; width: 1.33731px; height: 1.33731px; opacity: 0.328658; --duration: 3.9473483833372773s;"></div><div class="star" style="left: 99.7618%; top: 77.9619%; width: 0.931741px; height: 0.931741px; opacity: 0.838479; --duration: 1.9865290507248812s;"></div><div class="star" style="left: 66.3242%; top: 51.9567%; width: 1.98173px; height: 1.98173px; opacity: 0.7675; --duration: 1.8213975432993328s;"></div><div class="star" style="left: 8.34236%; top: 9.86103%; width: 2.43168px; height: 2.43168px; opacity: 0.220089; --duration: 1.1448655308115818s;"></div><div class="star" style="left: 11.0709%; top: 53.3846%; width: 1.89693px; height: 1.89693px; opacity: 0.672053; --duration: 1.7617525427504066s;"></div><div class="star" style="left: 30.9111%; top: 78.7343%; width: 1.15261px; height: 1.15261px; opacity: 0.186139; --duration: 1.926533979443322s; background-color: rgb(195, 192, 255);"></div><div class="star" style="left: 76.7057%; top: 12.974%; width: 0.678972px; height: 0.678972px; opacity: 0.413988; --duration: 3.440087397431705s; background-color: rgb(223, 183, 255);"></div><div class="star" style="left: 69.0971%; top: 65.4771%; width: 0.542462px; height: 0.542462px; opacity: 0.584256; --duration: 2.5976537754853326s;"></div><div class="star" style="left: 42.6193%; top: 67.1616%; width: 2.24028px; height: 2.24028px; opacity: 0.400797; --duration: 3.5452759154549836s;"></div><div class="star" style="left: 37.9993%; top: 97.5592%; width: 1.49894px; height: 1.49894px; opacity: 0.0349107; --duration: 1.1335059629914448s;"></div><div class="star" style="left: 72.4877%; top: 19.8257%; width: 1.74624px; height: 1.74624px; opacity: 0.94487; --duration: 1.6663224692803493s;"></div><div class="star" style="left: 13.5385%; top: 99.5836%; width: 1.18149px; height: 1.18149px; opacity: 0.218452; --duration: 3.0213625763137486s; background-color: rgb(223, 183, 255);"></div><div class="star" style="left: 97.9256%; top: 96.5934%; width: 1.51424px; height: 1.51424px; opacity: 0.429233; --duration: 1.3220503216820187s;"></div><div class="star" style="left: 15.2223%; top: 52.5537%; width: 0.548105px; height: 0.548105px; opacity: 0.166803; --duration: 1.6271523560680161s;"></div><div class="star" style="left: 50.7047%; top: 23.7789%; width: 1.13223px; height: 1.13223px; opacity: 0.160812; --duration: 3.48627058857689s;"></div><div class="star" style="left: 23.0042%; top: 49.2013%; width: 2.36428px; height: 2.36428px; opacity: 0.622467; --duration: 2.4502188477083893s; background-color: rgb(195, 192, 255);"></div><div class="star" style="left: 23.9087%; top: 38.5066%; width: 2.08965px; height: 2.08965px; opacity: 0.473923; --duration: 2.8055349923435284s;"></div><div class="star" style="left: 62.9269%; top: 14.9694%; width: 2.12111px; height: 2.12111px; opacity: 0.157825; --duration: 3.130606104491962s; background-color: rgb(223, 183, 255);"></div><div class="star" style="left: 67.9249%; top: 73.2289%; width: 0.507128px; height: 0.507128px; opacity: 0.86545; --duration: 3.1670632759129265s; background-color: rgb(223, 183, 255);"></div><div class="star" style="left: 24.0637%; top: 17.6337%; width: 1.73763px; height: 1.73763px; opacity: 0.949414; --duration: 2.389164310008567s;"></div><div class="star" style="left: 60.1761%; top: 65.2955%; width: 2.26325px; height: 2.26325px; opacity: 0.934946; --duration: 2.1390411002713963s;"></div><div class="star" style="left: 34.7975%; top: 47.4486%; width: 1.38402px; height: 1.38402px; opacity: 0.0197661; --duration: 1.0697393036525815s;"></div><div class="star" style="left: 17.3008%; top: 71.7731%; width: 2.45933px; height: 2.45933px; opacity: 0.113682; --duration: 3.584604073679429s;"></div><div class="star" style="left: 66.133%; top: 79.1942%; width: 1.99393px; height: 1.99393px; opacity: 0.651019; --duration: 2.588858887816349s;"></div><div class="star" style="left: 21.1213%; top: 65.3008%; width: 0.941224px; height: 0.941224px; opacity: 0.778012; --duration: 1.6142438387440579s;"></div><div class="star" style="left: 12.8265%; top: 77.6971%; width: 1.78975px; height: 1.78975px; opacity: 0.463634; --duration: 2.292554051634148s;"></div><div class="star" style="left: 90.4267%; top: 80.2053%; width: 1.41692px; height: 1.41692px; opacity: 0.700971; --duration: 1.4341658985598598s;"></div><div class="star" style="left: 57.6065%; top: 76.7092%; width: 2.16078px; height: 2.16078px; opacity: 0.584157; --duration: 3.449142983540817s;"></div><div class="star" style="left: 10.8229%; top: 99.8428%; width: 2.39915px; height: 2.39915px; opacity: 0.441718; --duration: 3.8970810490884777s;"></div><div class="star" style="left: 65.0058%; top: 37.0025%; width: 1.63119px; height: 1.63119px; opacity: 0.254803; --duration: 1.2529050867398168s; background-color: rgb(195, 192, 255);"></div><div class="star" style="left: 43.6651%; top: 48.2839%; width: 1.66744px; height: 1.66744px; opacity: 0.314156; --duration: 3.02761437552716s;"></div><div class="star" style="left: 42.7989%; top: 97.5318%; width: 0.903406px; height: 0.903406px; opacity: 0.803305; --duration: 2.879368372664792s;"></div><div class="star" style="left: 73.1179%; top: 87.8864%; width: 1.88531px; height: 1.88531px; opacity: 0.574954; --duration: 3.603639141578144s;"></div><div class="star" style="left: 63.7105%; top: 39.3712%; width: 1.75473px; height: 1.75473px; opacity: 0.582737; --duration: 3.2774805924018264s;"></div><div class="star" style="left: 68.6566%; top: 19.615%; width: 0.590101px; height: 0.590101px; opacity: 0.409642; --duration: 1.159587083478153s;"></div><div class="star" style="left: 96.3974%; top: 82.8886%; width: 1.05359px; height: 1.05359px; opacity: 0.335761; --duration: 3.9593509934073783s;"></div><div class="star" style="left: 38.4152%; top: 78.65%; width: 2.11821px; height: 2.11821px; opacity: 0.585581; --duration: 2.2749467749932997s;"></div><div class="star" style="left: 35.0525%; top: 79.3617%; width: 1.62959px; height: 1.62959px; opacity: 0.623757; --duration: 1.9867296770797735s; background-color: rgb(223, 183, 255);"></div><div class="star" style="left: 4.97036%; top: 8.20201%; width: 2.26126px; height: 2.26126px; opacity: 0.123411; --duration: 3.4339703545695155s;"></div><div class="star" style="left: 48.9116%; top: 12.2349%; width: 1.01845px; height: 1.01845px; opacity: 0.693859; --duration: 3.4704014636883467s;"></div><div class="star" style="left: 9.08354%; top: 8.57345%; width: 1.12087px; height: 1.12087px; opacity: 0.660871; --duration: 2.2611186896497326s;"></div><div class="star" style="left: 3.16998%; top: 32.8262%; width: 1.02272px; height: 1.02272px; opacity: 0.569942; --duration: 3.127349350906893s;"></div><div class="star" style="left: 29.5098%; top: 98.3868%; width: 0.7555px; height: 0.7555px; opacity: 0.0244036; --duration: 2.864275449689653s; background-color: rgb(195, 192, 255);"></div><div class="star" style="left: 4.29212%; top: 87.765%; width: 1.01167px; height: 1.01167px; opacity: 0.193221; --duration: 2.133536089243871s;"></div><div class="star" style="left: 54.0312%; top: 6.33741%; width: 1.65809px; height: 1.65809px; opacity: 0.656619; --duration: 1.7354243767413746s;"></div><div class="star" style="left: 20.6687%; top: 56.834%; width: 1.0771px; height: 1.0771px; opacity: 0.561398; --duration: 3.360176270184316s;"></div><div class="star" style="left: 35.3899%; top: 28.9957%; width: 1.71411px; height: 1.71411px; opacity: 0.950135; --duration: 1.0729738424337676s;"></div><div class="star" style="left: 33.8014%; top: 50.6827%; width: 2.29244px; height: 2.29244px; opacity: 0.457548; --duration: 1.0813665939377897s; background-color: rgb(223, 183, 255);"></div><div class="star" style="left: 42.3176%; top: 72.9666%; width: 1.36482px; height: 1.36482px; opacity: 0.19111; --duration: 2.1532899158503422s;"></div><div class="star" style="left: 48.5272%; top: 51.3447%; width: 0.927405px; height: 0.927405px; opacity: 0.614384; --duration: 1.589410385027016s;"></div><div class="star" style="left: 61.2046%; top: 12.5515%; width: 0.804032px; height: 0.804032px; opacity: 0.304098; --duration: 2.5832730444230094s;"></div><div class="star" style="left: 64.5066%; top: 93.6554%; width: 2.32164px; height: 2.32164px; opacity: 0.107227; --duration: 1.8962052213334393s;"></div><div class="star" style="left: 27.3577%; top: 83.7851%; width: 1.28377px; height: 1.28377px; opacity: 0.437795; --duration: 2.7240660864503496s;"></div></div>
+<!-- Empty State Message -->
+<div id="workspace-empty-panel" class="relative z-10 glass-panel p-xl rounded-xl text-center max-w-md border border-white/10 flex flex-col items-center">
+<div class="w-16 h-16 rounded-full bg-secondary-container/20 flex items-center justify-center mb-md border border-secondary/30 shadow-[0_0_30px_rgba(105,30,166,0.3)]">
+<span class="material-symbols-outlined text-3xl text-secondary">code</span>
+</div>
+<h2 class="font-headline-md text-on-surface mb-sm">Workspace Empty</h2>
+<p class="font-body-md text-on-surface-variant mb-lg">Select a file from the explorer or open a folder to begin maximizing your dark potential.</p>
+<div class="flex gap-md">
+<button onclick="openExternalFolder()" class="bg-surface-variant/50 hover:bg-surface-variant/80 text-on-surface border border-outline-variant/30 font-label-md px-md py-sm rounded-md transition-colors">
+                            Open Folder
+                        </button>
+</div>
+</div>
+</div>
+<!-- Chat History Sidebar (Glassmorphic) -->
+<div id="small-terminal-container" class="hidden xl:flex w-80 glass-panel flex-col z-10 m-sm rounded-lg border border-outline-variant/20">
+<div class="p-sm border-b border-outline-variant/10 flex justify-between items-center">
+<span class="font-label-sm text-on-surface-variant uppercase tracking-wider">Terminal Output</span>
+<div class="flex gap-2"><span class="material-symbols-outlined text-sm text-on-surface-variant cursor-pointer hover:text-primary" onclick="toggleTerminalPopout()" title="Pop out">open_in_full</span><span class="material-symbols-outlined text-sm text-on-surface-variant cursor-pointer hover:text-primary" onclick="clearTerminal()" title="Clear">clear_all</span></div>
+</div>
+<div id="terminal-output" class="p-md flex-1 overflow-y-auto font-mono text-xs text-on-surface-variant/80 space-y-2">
+<div class="text-secondary opacity-50">DarkMaxxer Terminal Ready</div>
+</div>
+<div class="p-sm border-t border-outline-variant/10">
+<div class="flex items-center bg-surface-container-highest/50 rounded-md px-sm py-xs border border-outline-variant/30 focus-within:border-secondary transition-colors">
+<span class="text-secondary font-mono text-xs mr-2">&gt;</span>
+<input class="bg-transparent border-none text-xs font-mono text-on-surface focus:ring-0 w-full placeholder:text-on-surface-variant/30" placeholder="Enter command..." type="text">
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- Footer -->
+
+<script>
+        // Generate Starfield
+        const starfield = document.getElementById('starfield');
+        const numStars = 150;
+
+        for (let i = 0; i < numStars; i++) {
+            const star = document.createElement('div');
+            star.classList.add('star');
+            
+            // Random position
+            star.style.left = `${Math.random() * 100}%`;
+            star.style.top = `${Math.random() * 100}%`;
+            
+            // Random size (tiny to small)
+            const size = Math.random() * 2 + 0.5;
+            star.style.width = `${size}px`;
+            star.style.height = `${size}px`;
+            
+            // Random opacity and animation duration
+            star.style.opacity = Math.random();
+            star.style.setProperty('--duration', `${Math.random() * 3 + 1}s`);
+            
+            // Some stars have slight colors
+            if (Math.random() > 0.8) {
+                star.style.backgroundColor = Math.random() > 0.5 ? '#dfb7ff' : '#c3c0ff';
+            }
+
+            starfield.appendChild(star);
+        }
+    </script>
+
+
+
+<!-- Big Terminal Modal Overlay -->
+<div id="big-terminal-modal" class="fixed inset-0 z-[150] hidden bg-surface-container/95 backdrop-blur-xl flex flex-col transition-all duration-300">
+    <div class="flex items-center justify-between px-md py-sm bg-surface-container-high border-b border-outline-variant/20">
+        <span class="font-label-md text-secondary flex items-center"><span class="material-symbols-outlined mr-xs">terminal</span> DarkMaxxer Execution Logs</span>
+        <div class="flex gap-4">
+            <button onclick="clearTerminal()" class="p-xs bg-surface-variant/30 hover:bg-surface-variant/50 border border-outline-variant/20 rounded-md text-on-surface transition-colors flex items-center justify-center" title="Clear">
+                <span class="material-symbols-outlined text-sm">clear_all</span>
+            </button>
+            <button onclick="toggleTerminalPopout()" class="p-xs bg-surface-variant/30 hover:bg-surface-variant/50 border border-outline-variant/20 rounded-md text-on-surface transition-colors flex items-center justify-center" title="Close fullscreen">
+                <span class="material-symbols-outlined text-sm">close_fullscreen</span>
+            </button>
+        </div>
+    </div>
+    <div id="big-terminal-content" class="flex-1 p-md overflow-y-auto font-mono text-sm text-on-surface-variant bg-surface-container-lowest/90 shadow-inner space-y-2">
+    </div>
+</div>
+
+<!-- Chat Input Bar -->
+<div id="chat-input-bar" class="hidden absolute bottom-0 left-0 right-0 z-20 p-sm" style="background: linear-gradient(to top, rgba(16,20,21,0.95), rgba(16,20,21,0.7), transparent);">
+    <div class="flex items-center gap-sm bg-surface-container border border-outline-variant/30 rounded-xl px-md py-sm shadow-[0_0_20px_rgba(0,0,0,0.5)] focus-within:border-secondary transition-colors">
+        <span class="material-symbols-outlined text-on-surface-variant">chat</span>
+        <input id="chat-input" type="text" class="flex-1 bg-transparent border-none text-on-surface font-body-md outline-none placeholder:text-on-surface-variant/40" placeholder="Ask DarkMaxxer AI anything...">
+        <button id="send-btn" onclick="sendPrompt()" class="px-md py-xs bg-secondary-container/50 hover:bg-secondary-container text-on-secondary-container rounded-lg font-label-md transition-colors border border-secondary/30">▶</button>
+        <button id="pause-btn" onclick="pauseGeneration()" class="hidden px-md py-xs bg-error-container/50 hover:bg-error-container text-on-error-container rounded-lg font-label-md transition-colors border border-error/30 animate-pulse">⏸ Pause</button>
+    </div>
+</div>
+
+<!-- Modal Overlay Container -->
+<div id="new-conv-modal" class="fixed inset-0 hidden z-50 flex items-center justify-center bg-background/60 backdrop-blur-md p-margin-mobile md:p-margin-desktop">
+<!-- The Modal -->
+<div class="glass-panel ambient-shadow rounded-xl w-full max-w-md p-xl flex flex-col relative overflow-hidden transform transition-all scale-100 opacity-100">
+<!-- Modal Header -->
+<div class="mb-lg">
+<h2 class="font-headline-lg text-headline-lg text-on-surface mb-xs">Name your project</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Initialize a new secure mind space.</p>
+</div>
+<!-- Input Area -->
+<div class="mb-xl relative z-10">
+<label class="sr-only" for="projectName">Project Name</label>
+<input autocomplete="off" autofocus="" class="w-full bg-surface-container/30 border border-outline-variant/30 text-on-surface font-body-md text-body-md rounded-lg px-md py-sm focus:outline-none input-glow transition-all duration-300 placeholder:text-on-surface-variant/50 backdrop-blur-sm" id="projectName" placeholder="e.g. Nexus-Core-V2" type="text">
+</div>
+<!-- Actions -->
+<div class="flex justify-end space-x-md relative z-10">
+<button onclick="document.getElementById('new-conv-modal').classList.add('hidden')" class="px-md py-sm rounded-lg font-label-md text-label-md text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/30 transition-colors duration-200" type="button">
+                    Cancel
+                </button>
+<button onclick="newConversationUI()" class="flex items-center space-x-sm px-md py-sm rounded-lg font-label-md text-label-md text-surface-container-lowest bg-gradient-to-r from-secondary-container to-on-secondary-fixed border-t border-white/20 hover:from-secondary hover:to-secondary-fixed-dim hover:text-surface-container-lowest transition-all duration-300 shadow-[0_0_15px_rgba(0,255,255,0.3)] hover:shadow-[0_0_25px_rgba(0,255,255,0.6)] group" type="button">
+<span>Create Conversation</span>
+<span class="material-symbols-outlined text-[18px] text-[#00FFFF] group-hover:text-white transition-colors duration-200" style="font-variation-settings: 'FILL' 1;">add_circle</span>
+</button>
+</div>
+</div>
+</div>
+
+<!-- First-Run Model Selection Modal -->
+<div id="first-run-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center" style="background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);">
+    <div class="bg-surface-container rounded-xl border border-outline-variant/30 p-xl max-w-lg w-full mx-md shadow-[0_0_60px_rgba(105,30,166,0.3)]">
+        <div class="flex items-center gap-md mb-lg">
+            <div class="w-12 h-12 rounded-full bg-secondary-container/30 flex items-center justify-center border border-secondary/30">
+                <span class="material-symbols-outlined text-2xl text-secondary">model_training</span>
+            </div>
+            <div>
+                <h2 class="font-headline-md text-on-surface">Welcome to DarkMaxxer</h2>
+                <p class="font-body-md text-on-surface-variant">Select a local AI model to get started</p>
+            </div>
+        </div>
+        <div class="space-y-md">
+            <label class="font-label-md text-on-surface-variant flex items-center gap-xs">
+                <span class="material-symbols-outlined text-sm">folder_open</span>
+                Select Local Model Folder or Weight File (.gguf, .safetensors, .bin, .pth)
+            </label>
+            <div class="flex items-center gap-sm">
+                <input type="text" id="model-folder-path" class="flex-1 bg-surface-container-lowest/40 border border-outline-variant/30 text-on-surface rounded-lg py-sm px-md outline-none font-body-sm focus:border-secondary transition-colors" placeholder="Browse local model folder or weight file path...">
+                <button onclick="browseModelFolder()" class="px-md py-sm bg-surface-variant/30 hover:bg-surface-variant/50 border border-outline-variant/20 rounded-lg text-on-surface transition-colors font-label-md whitespace-nowrap flex items-center gap-xs" title="Select a Model Folder">
+                    <span class="material-symbols-outlined text-sm">folder</span> Folder
+                </button>
+                <button onclick="browseModelFile()" class="px-md py-sm bg-secondary/20 hover:bg-secondary/40 border border-secondary/40 rounded-lg text-secondary-fixed transition-colors font-label-md font-bold whitespace-nowrap flex items-center gap-xs shadow-[0_0_12px_rgba(189,140,255,0.15)]" title="Select a single Model File (.file, .pkl, .bin, .safetensors, .pth, .gguf)">
+                    <span class="material-symbols-outlined text-sm">draft</span> File
+                </button>
+            </div>
+            <div class="text-xs text-on-surface-variant/60 font-body-md">
+                <span id="gpu-status-text">Select an offline model directory or weight file on disk to begin local inference</span>
+            </div>
+            <button onclick="loadModelDirectly()" class="w-full py-sm px-md rounded-lg font-label-md bg-gradient-to-r from-secondary-container to-tertiary-container hover:from-secondary hover:to-tertiary text-on-secondary-fixed border-t border-white/20 transition-all shadow-[0_0_15px_rgba(105,30,166,0.3)] hover:shadow-[0_0_25px_rgba(105,30,166,0.6)]">
+                <span class="flex items-center justify-center gap-sm">
+                    <span class="material-symbols-outlined">speed</span>
+                    Load Model
+                </span>
+            </button>
+            <div class="flex justify-between items-center pt-sm border-t border-outline-variant/10">
+                <a href="models.html" onclick="try{localStorage.setItem('welcome_seen','true');sessionStorage.setItem('welcome_seen','true')}catch(e){}" class="text-on-surface-variant hover:text-primary font-label-sm transition-colors">Advanced model options →</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Fullscreen Model Loading Modal with Background Blur -->
+<div id="loading-modal" class="fixed inset-0 z-[200] hidden flex-col items-center justify-center transition-all duration-300" style="background: rgba(4, 4, 12, 0.94); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);">
+    <div class="glass-panel ambient-shadow rounded-2xl p-xl flex flex-col items-center justify-center space-y-lg max-w-2xl w-full mx-md border border-secondary/50 shadow-[0_0_100px_rgba(189,140,255,0.4)] relative overflow-hidden bg-surface-container/90">
+        <div class="w-16 h-16 rounded-full bg-secondary-container/40 border border-secondary/60 flex items-center justify-center relative animate-pulse shadow-[0_0_30px_rgba(189,140,255,0.3)] mx-auto">
+            <span class="material-symbols-outlined text-3xl text-secondary animate-spin">sync</span>
+        </div>
+        <div class="text-center">
+            <h3 class="font-headline-md text-on-surface mb-xs font-bold text-xl">Loading AI Model</h3>
+            <p id="loading-modal-status" class="font-body-md text-sm text-secondary font-mono">Initializing model weights into memory...</p>
+        </div>
+        
+        <!-- Live Terminal Log for Loading -->
+        <div id="loading-logs" class="w-full h-48 bg-black/60 border border-white/10 rounded-lg p-sm overflow-y-auto text-xs font-mono text-secondary-fixed text-left whitespace-pre-wrap shadow-inner shadow-black/50" style="scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.2) transparent;"></div>
+        
+        <div class="w-full bg-surface-container-highest/80 rounded-full h-2.5 overflow-hidden border border-outline-variant/30">
+            <div id="loading-modal-bar" class="bg-gradient-to-r from-secondary via-tertiary to-secondary h-full w-1/3 animate-pulse rounded-full transition-all duration-300 shadow-[0_0_12px_rgba(189,140,255,0.8)]"></div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+    // --- Proxy Fix for PyWebView Navigation Crashes ---
+    window.addEventListener('pywebviewready', function() {
+        if (window.pywebview && window.pywebview._returnValuesCallbacks) {
+            const handler = {
+                get: function(target, prop) {
+                    if (!(prop in target)) {
+                        target[prop] = new Proxy({}, {
+                            get: function(t, p) {
+                                if (!(p in t)) return function() {};
+                                return t[p];
+                            }
+                        });
+                    } else if (typeof target[prop] === 'object' && target[prop] !== null && !target[prop]._proxied) {
+                        target[prop] = new Proxy(target[prop], {
+                            get: function(t, p) {
+                                if (!(p in t)) return function() {};
+                                return t[p];
+                            }
+                        });
+                        target[prop]._proxied = true;
+                    }
+                    return target[prop];
+                }
+            };
+            window.pywebview._returnValuesCallbacks = new Proxy(window.pywebview._returnValuesCallbacks, handler);
+        }
+    });
+
+    // --- Global Terminal & Status APIs ---
+    window.appendTerminal = function(msg) {
+        const t = document.getElementById('terminal-output');
+        if(!t) return;
+        const div = document.createElement('div');
+        div.className = "text-on-surface-variant/90";
+        const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+        div.innerHTML = `<span class="text-secondary font-mono">[${time}]</span> ${msg}`;
+        t.appendChild(div);
+        t.scrollTop = t.scrollHeight;
+    };
+
+    window.updateLoadStatus = function(msg, pct) {
+        let text = msg;
+        if (pct !== undefined && pct !== null) text += ` (${pct}%)`;
+        const statusEl = document.getElementById('gpu-status-text');
+        if (statusEl) statusEl.innerText = text;
+        const loadModalStatus = document.getElementById('loading-modal-status');
+        if (loadModalStatus) loadModalStatus.innerText = text;
+        
+        // Append to logs
+        const logsEl = document.getElementById('loading-logs');
+        if (logsEl) {
+            const time = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            logsEl.innerHTML += `<div class="mb-[2px] opacity-90"><span class="text-white/40 mr-1">[${time}]</span> ${text}</div>`;
+            logsEl.scrollTop = logsEl.scrollHeight;
+        }
+
+        const loadModal = document.getElementById('loading-modal');
+        if (loadModal && loadModal.classList.contains('hidden')) {
+            loadModal.classList.remove('hidden');
+            loadModal.style.display = 'flex';
+        }
+        if (typeof window.appendTerminal === 'function') {
+            window.appendTerminal("AI Status: " + text);
+        }
+    };
+
+    window.switchSidebarTab = function(tab, save = true) {
+        if (save && window.pywebview && window.pywebview.api && window.pywebview.api.save_setting) {
+            window.pywebview.api.save_setting('active_sidebar_tab', tab);
+        }
+        const chatsPanel = document.getElementById('sidebar-panel-chats');
+        const explorerPanel = document.getElementById('sidebar-panel-explorer');
+        const btnChats = document.getElementById('tab-btn-chats');
+        const btnExplorer = document.getElementById('tab-btn-explorer');
+        if (tab === 'chats') {
+            if(chatsPanel) chatsPanel.classList.remove('hidden');
+            if(explorerPanel) explorerPanel.classList.add('hidden');
+            if(btnChats) btnChats.className = "flex-1 py-1.5 px-2 rounded-md font-label-md text-xs flex items-center justify-center gap-1.5 bg-secondary-container/60 text-secondary-fixed shadow-sm transition-all";
+            if(btnExplorer) btnExplorer.className = "flex-1 py-1.5 px-2 rounded-md font-label-md text-xs flex items-center justify-center gap-1.5 text-on-surface-variant hover:text-on-surface transition-all";
+            if(typeof refreshConversations === 'function') refreshConversations();
+        } else if (tab === 'explorer') {
+            if(chatsPanel) chatsPanel.classList.add('hidden');
+            if(explorerPanel) explorerPanel.classList.remove('hidden');
+            if(btnChats) btnChats.className = "flex-1 py-1.5 px-2 rounded-md font-label-md text-xs flex items-center justify-center gap-1.5 text-on-surface-variant hover:text-on-surface transition-all";
+            if(btnExplorer) btnExplorer.className = "flex-1 py-1.5 px-2 rounded-md font-label-md text-xs flex items-center justify-center gap-1.5 bg-secondary-container/60 text-secondary-fixed shadow-sm transition-all";
+            if(typeof refreshFileTree === 'function') refreshFileTree();
+        }
+    };
+
+    // --- Global State ---
+    window._activeConvId = null;
+    window._apiInitialized = false;
+    window._lastHistoryLen = 0;
+    window._isGenerating = false;
+
+    function _initApiState() {
+        if (!window.pywebview || !window.pywebview.api) return false;
+        if (window._apiInitialized) return true;
+        window._apiInitialized = true;
+
+        if (typeof refreshConversations === 'function') refreshConversations();
+        if (typeof refreshFileTree === 'function') refreshFileTree();
+        if (typeof restoreState === 'function') restoreState();
+        if (typeof loadSettings === 'function') loadSettings();
+
+        // Start background polling loop for continuous backend response monitoring
+        setInterval(() => {
+            if (!window.pywebview || !window.pywebview.api || !window.pywebview.api.get_active_state) return;
+            window.pywebview.api.get_active_state().then(state => {
+                const input = document.getElementById('chat-input');
+                const sendBtn = document.getElementById('send-btn');
+                const chatBox = document.getElementById('chat-history');
+                const pauseBtn = document.getElementById('pause-btn');
+
+                if (state.is_generating) {
+                    window._isGenerating = true;
+                    if (input) input.disabled = true;
+                    if (sendBtn) { sendBtn.disabled = true; sendBtn.classList.add('hidden'); }
+                    if (pauseBtn) { pauseBtn.classList.remove('hidden'); }
+                    
+                    if (chatBox) {
+                        const lastChild = chatBox.lastElementChild;
+                        if (!lastChild || !lastChild.innerHTML.includes('loading-dots')) {
+                            const loadingEl = document.createElement('div');
+                            loadingEl.className = "p-md rounded-lg mb-sm bg-surface-variant/30 border border-secondary/20 mr-12";
+                            loadingEl.innerHTML = '<div class="font-label-sm mb-xs text-secondary">DarkMaxxer AI</div><div class="whitespace-pre-wrap font-body-md text-on-surface flex items-center">Generating<span class="loading-dots flex ml-xs"><span class="w-1.5 h-1.5 rounded-full bg-primary/60 mx-[1px] animate-bounce" style="animation-delay: 0s"></span><span class="w-1.5 h-1.5 rounded-full bg-primary/60 mx-[1px] animate-bounce" style="animation-delay: 0.15s"></span><span class="w-1.5 h-1.5 rounded-full bg-primary/60 mx-[1px] animate-bounce" style="animation-delay: 0.3s"></span></span></div>';
+                            chatBox.appendChild(loadingEl);
+                            chatBox.scrollTop = chatBox.scrollHeight;
+                        }
+                    }
+                } else {
+                    if (pauseBtn) { pauseBtn.classList.add('hidden'); }
+                    if (sendBtn) { sendBtn.classList.remove('hidden'); }
+                    if (window._isGenerating || (state.history && state.history.length > 0 && state.history.length !== window._lastHistoryLen)) {
+                        window._isGenerating = false;
+                        if (input) input.disabled = false;
+                        if (sendBtn) { sendBtn.disabled = false; sendBtn.innerText = '▶'; }
+                        if (state.history) {
+                            window._lastHistoryLen = state.history.length;
+                            if (typeof renderChat === 'function') renderChat(state.history);
+                        }
+                        if (typeof refreshFileTree === 'function') refreshFileTree();
+                    }
+                }
+            }).catch(() => {});
+        }, 1000);
+
+        return true;
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        const input = document.getElementById('chat-input');
+        if (input) {
+            input.addEventListener('keypress', function (e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendPrompt();
+                }
+            });
+        }
+
+        // Try immediately if pywebview already available
+        if (_initApiState()) return;
+
+        // Listen for pywebviewready event
+        window.addEventListener('pywebviewready', function() {
+            _initApiState();
+        });
+
+        // Polling fallback up to 5 seconds
+        let attempts = 0;
+        const interval = setInterval(() => {
+            attempts++;
+            if (_initApiState() || attempts > 50) {
+                clearInterval(interval);
+            }
+        }, 100);
+    });
+
+    // --- Conversation Management ---
+    function newConversationUI() {
+        const inputEl = document.getElementById('projectName');
+        if(!inputEl) { alert("Could not find project name input."); return; }
+        const title = inputEl.value;
+        if(title.trim() === '') { alert("Please enter a conversation name."); return; }
+
+        pywebview.api.new_conversation(title).then(res => {
+            if(res.success) {
+                document.getElementById('new-conv-modal').classList.add('hidden');
+                inputEl.value = "";
+                refreshConversations();
+                openConversation(res.id);
+            } else {
+                alert("Error: " + res.error);
+            }
+        });
+    }
+
+    function refreshConversations() {
+        pywebview.api.list_conversations().then(convs => {
+            const list = document.getElementById('conversation-list');
+            if(!list) return;
+            list.innerHTML = "";
+            if (!convs || convs.length === 0) {
+                list.innerHTML = '<div class="text-on-surface-variant/50 text-center py-lg font-body-md">No conversations yet</div>';
+                return;
+            }
+            convs.forEach(c => {
+                const el = document.createElement('div');
+                const isActive = c.id === window._activeConvId;
+                el.className = "p-md hover:bg-surface-variant/20 cursor-pointer flex items-center gap-md rounded-lg transition-all " +
+                    (isActive ? "bg-secondary-container/30 text-secondary-fixed border-l-2 border-secondary" : "text-on-surface-variant hover:text-on-surface");
+                el.innerHTML = '<span class="material-symbols-outlined text-sm">memory</span>' +
+                               '<span class="font-label-md flex-1 text-left truncate">' + c.name + '</span>' +
+                               '<button onclick="event.stopPropagation(); deleteConversation(\'' + c.id + '\')" class="p-xs text-on-surface-variant hover:text-error transition-colors"><span class="material-symbols-outlined text-sm">delete</span></button>';
+                el.onclick = () => openConversation(c.id);
+                list.appendChild(el);
+            });
+        });
+    }
+
+    window.deleteConversation = function(id) {
+        pywebview.api.delete_conversation(id).then(res => {
+            if(res.success) {
+                refreshConversations();
+                if(window._activeConvId === id) {
+                    window._activeConvId = null;
+                    const chatBox = document.getElementById('chat-history');
+                    if (chatBox) chatBox.innerHTML = '<div class="text-on-surface-variant/50 text-center py-xl font-body-md">Start a conversation by typing below...</div>';
+                    const fileTree = document.getElementById('file-tree');
+                    if (fileTree) fileTree.innerHTML = '<div class="text-on-surface-variant/50 text-center py-md font-body-md text-xs">No files or folders yet</div>';
+                    deactivateWorkspace();
+                }
+            } else {
+                alert("Error deleting conversation: " + res.error);
+            }
+        }).catch(err => {
+            alert("Error calling delete: " + err);
+        });
+    };
+
+    function openConversation(id) {
+        pywebview.api.open_conversation(id).then(res => {
+            if(res.success) {
+                window._activeConvId = res.conv_id || id;
+                window._lastHistoryLen = (res.history && Array.isArray(res.history)) ? res.history.length : 0;
+                activateWorkspace();
+                if(typeof switchSidebarTab === 'function') switchSidebarTab('chats');
+                renderChat(res.history || []);
+                refreshFileTree();
+                refreshConversations();
+                appendTerminal("Opened conversation: " + id.substring(0, 8) + "...");
+            }
+        });
+    }
+
+    // --- Workspace Activation ---
+    function activateWorkspace() {
+        const sf = document.getElementById('starfield');
+        if(sf) sf.classList.add('hidden');
+        const wep = document.getElementById('workspace-empty-panel');
+        if(wep) wep.classList.add('hidden');
+        const ch = document.getElementById('chat-history');
+        if(ch) ch.classList.remove('hidden');
+        const bar = document.getElementById('chat-input-bar');
+        if(bar) bar.classList.remove('hidden');
+        const modal = document.getElementById('first-run-modal');
+        if(modal) modal.classList.add('hidden');
+    }
+
+    function deactivateWorkspace() {
+        const sf = document.getElementById('starfield');
+        if(sf) sf.classList.remove('hidden');
+        const wep = document.getElementById('workspace-empty-panel');
+        if(wep) wep.classList.remove('hidden');
+        const ch = document.getElementById('chat-history');
+        if(ch) ch.classList.add('hidden');
+        const bar = document.getElementById('chat-input-bar');
+        if(bar) bar.classList.add('hidden');
+    }
+
+    // --- State Restore ---
+    function restoreState() {
+        pywebview.api.get_active_state().then(state => {
+            if (state.ai_path) {
+                const pathEl = document.getElementById('model-folder-path');
+                if (pathEl) pathEl.value = state.ai_path;
+                if (state.ai_loaded) {
+                    const statusEl = document.getElementById('gpu-status-text');
+                    if (statusEl) statusEl.innerText = "✓ Active Model: " + state.ai_path.split(/[\\/]/).pop();
+                } else {
+                    const statusEl = document.getElementById('gpu-status-text');
+                    if (statusEl && statusEl.innerText.indexOf('Loaded') === -1) statusEl.innerText = "Selected: " + state.ai_path.split(/[\\/]/).pop();
+                }
+            }
+
+            if (state.file_ops_active || state.conv_id) {
+                activateWorkspace();
+            }
+            if (state.terminal_logs && Array.isArray(state.terminal_logs) && state.terminal_logs.length > 0) {
+                const term = document.getElementById('terminal-output');
+                const bigTerm = document.getElementById('big-terminal-content');
+                if (term) term.innerHTML = "";
+                if (bigTerm) bigTerm.innerHTML = "";
+                state.terminal_logs.forEach(item => {
+                    const el = document.createElement('div');
+                    el.innerHTML = item;
+                    if (term) term.appendChild(el.cloneNode(true));
+                    if (bigTerm) bigTerm.appendChild(el.cloneNode(true));
+                });
+                if (term) term.scrollTop = term.scrollHeight;
+                if (bigTerm) bigTerm.scrollTop = bigTerm.scrollHeight;
+            }
+            if (state.conv_id) {
+                window._activeConvId = state.conv_id;
+                if (state.history && Array.isArray(state.history)) {
+                    window._lastHistoryLen = state.history.length;
+                    if (typeof renderChat === 'function') renderChat(state.history);
+                } else {
+                    window._lastHistoryLen = 0;
+                    if (typeof renderChat === 'function') renderChat([]);
+                }
+            } else {
+                window._lastHistoryLen = 0;
+            }
+
+            // Restore which sidebar tab user was viewing
+            const targetTab = state.active_sidebar_tab || (state.file_ops_active ? 'explorer' : 'chats');
+            if (typeof switchSidebarTab === 'function') switchSidebarTab(targetTab, false);
+            if (typeof refreshConversations === 'function') refreshConversations();
+            if (typeof refreshFileTree === 'function') refreshFileTree();
+            
+            // Auto-load AI model if path saved but not loaded
+            if (state.ai_path && !state.ai_loaded) {
+                if (typeof appendTerminal === 'function') appendTerminal("Auto-loading AI model: " + state.ai_path);
+                const loadModal = document.getElementById('loading-modal');
+                const loadModalStatus = document.getElementById('loading-modal-status');
+                if (loadModal) {
+                    loadModal.classList.remove('hidden');
+                    loadModal.style.display = 'flex';
+                }
+                if (loadModalStatus) loadModalStatus.innerText = "Auto-loading model: " + state.ai_path.split(/[\\/]/).pop() + "...";
+
+                setTimeout(() => {
+                    pywebview.api.load_model(state.ai_path).then(res => {
+                        const modalEl = document.getElementById('loading-modal');
+                        if (modalEl) {
+                            modalEl.classList.add('hidden');
+                            modalEl.style.display = 'none';
+                        }
+                        if(res.success) {
+                            if (typeof appendTerminal === 'function') appendTerminal("AI model loaded successfully.");
+                            const modal = document.getElementById('first-run-modal');
+                            if(modal) modal.classList.add('hidden');
+                            const statusEl = document.getElementById('gpu-status-text');
+                            if (statusEl) statusEl.innerText = "⚡ Active Model: " + state.ai_path.split(/[\\/]/).pop();
+                        } else {
+                            if (typeof appendTerminal === 'function') appendTerminal("Failed to auto-load model: " + (res.error || "Unknown error"));
+                            alert("Failed to load AI model:\n" + (res.error || "Unknown error"));
+                        }
+                    }).catch(err => {
+                        const modalEl = document.getElementById('loading-modal');
+                        if (modalEl) {
+                            modalEl.classList.add('hidden');
+                            modalEl.style.display = 'none';
+                        }
+                        if (typeof appendTerminal === 'function') appendTerminal("Failed to auto-load model: " + err);
+                        alert("Exception during AI model auto-load:\n" + err);
+                    });
+                }, 50);
+            }
+            const modal = document.getElementById('first-run-modal');
+            if (modal) {
+                if (!state.ai_path && sessionStorage.getItem('welcome_seen') !== 'true') {
+                    modal.classList.remove('hidden');
+                    modal.style.display = 'flex';
+                } else {
+                    modal.classList.add('hidden');
+                }
+            }
+        });
+    }
+
+    // --- External Folder ---
+    function openExternalFolder() {
+        pywebview.api.open_external_folder().then(res => {
+            if(res.success) {
+                window._activeConvId = null;
+                activateWorkspace();
+                if(typeof switchSidebarTab === 'function') switchSidebarTab('explorer');
+                if(typeof refreshFileTree === 'function') refreshFileTree();
+                appendTerminal("Opened folder: " + res.path);
+            } else if (res.error && res.error !== "Cancelled") {
+                appendTerminal("Folder open error: " + res.error);
+                alert("Folder open error: " + res.error);
+            }
+        });
+    }
+
+    // --- Model Selection ---
+    function browseModelFolder() {
+        pywebview.api.select_model_folder().then(res => {
+            if(res.success) {
+                const el = document.getElementById('model-folder-path');
+                if(el) el.value = res.path;
+                if(window.pywebview && window.pywebview.api && window.pywebview.api.save_setting) {
+                    window.pywebview.api.save_setting('ai_path', res.path);
+                }
+                const statusEl = document.getElementById('gpu-status-text');
+                if (statusEl) statusEl.innerText = "Selected: " + res.path.split(/[\\/]/).pop();
+            }
+        });
+    }
+
+    function browseModelFile() {
+        pywebview.api.select_model_file().then(res => {
+            if(res.success) {
+                const el = document.getElementById('model-folder-path');
+                if(el) el.value = res.path;
+                if(window.pywebview && window.pywebview.api && window.pywebview.api.save_setting) {
+                    window.pywebview.api.save_setting('ai_path', res.path);
+                }
+                const statusEl = document.getElementById('gpu-status-text');
+                if (statusEl) statusEl.innerText = "Selected: " + res.path.split(/[\\/]/).pop();
+            } else if(res.error && res.error !== "No file selected") {
+                alert("Error selecting file: " + res.error);
+            }
+        });
+    }
+
+    function loadModelDirectly() {
+        const pathEl = document.getElementById('model-folder-path');
+        const path = pathEl ? pathEl.value.trim() : '';
+        if(!path) { alert("Please select or browse a local model folder or weight file on disk first."); return; }
+
+        const proceedWithLoad = () => {
+            try {
+                localStorage.setItem('welcome_seen', 'true');
+                sessionStorage.setItem('welcome_seen', 'true');
+            } catch(e) {}
+
+            if(window.pywebview && window.pywebview.api && window.pywebview.api.save_setting) {
+                window.pywebview.api.save_setting('ai_path', path);
+            }
+
+            const statusEl = document.getElementById('gpu-status-text');
+            if (statusEl) statusEl.innerText = "Loading model weights...";
+
+            const loadModal = document.getElementById('loading-modal');
+            const loadModalStatus = document.getElementById('loading-modal-status');
+            if (loadModal) {
+                loadModal.classList.remove('hidden');
+                loadModal.style.display = 'flex';
+            }
+            if (loadModalStatus) loadModalStatus.innerText = "Loading " + path.split(/[\\/]/).pop() + "...";
+
+            setTimeout(() => {
+                pywebview.api.load_model(path).then(loadRes => {
+                    const modalEl = document.getElementById('loading-modal');
+                    if (modalEl) {
+                        modalEl.classList.add('hidden');
+                        modalEl.style.display = 'none';
+                    }
+                    if(loadRes.success) {
+                        if (statusEl) statusEl.innerText = "✓ Active Model: " + path.split(/[\\/]/).pop();
+                        if (window.location.pathname.includes('models.html')) {
+                            window.location.href = "index.html";
+                        } else {
+                            const modal = document.getElementById('first-run-modal');
+                            if(modal) modal.classList.add('hidden');
+                        }
+                    } else {
+                        if (statusEl) statusEl.innerText = "Error: " + (loadRes.error || "Unknown error");
+                        alert("Failed to load model:\n" + (loadRes.error || "Unknown error"));
+                    }
+                }).catch(err => {
+                    const modalEl = document.getElementById('loading-modal');
+                    if (modalEl) {
+                        modalEl.classList.add('hidden');
+                        modalEl.style.display = 'none';
+                    }
+                    if (statusEl) statusEl.innerText = "Error: " + err;
+                    alert("Exception during AI model load:\n" + err);
+                });
+            }, 50);
+        };
+
+        if (window.pywebview && window.pywebview.api && window.pywebview.api.check_model_compatibility) {
+            window.pywebview.api.check_model_compatibility(path).then(compRes => {
+                if (compRes && !compRes.compatible) {
+                    alert("GPU / VRAM Incompatible:\n" + compRes.message + "\nPlease select a compatible model or lower VRAM alternative.");
+                    return;
+                }
+                proceedWithLoad();
+            });
+        } else {
+            proceedWithLoad();
+        }
+    }
+
+    function dismissWelcome() {
+        try {
+            localStorage.setItem('welcome_seen', 'true');
+            sessionStorage.setItem('welcome_seen', 'true');
+        } catch(e) {}
+        const modal = document.getElementById('first-run-modal');
+        if(modal) modal.classList.add('hidden');
+    }
+
+    // --- Terminal ---
+    window.showTopError = function(msg) {
+        if (!msg) return;
+        let container = document.getElementById('top-error-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'top-error-container';
+            container.className = 'fixed top-3 left-1/2 transform -translate-x-1/2 z-[300] max-w-2xl w-full px-md flex flex-col gap-2 pointer-events-none';
+            document.body.appendChild(container);
+        }
+        const toast = document.createElement('div');
+        toast.className = 'pointer-events-auto bg-error-container/95 border border-error text-on-error-container p-md rounded-xl shadow-[0_0_30px_rgba(255,84,73,0.4)] flex items-start justify-between gap-sm animate-fade-in backdrop-blur-md';
+        toast.innerHTML = `
+            <div class="flex items-start gap-sm">
+                <span class="material-symbols-outlined text-error text-xl shrink-0 mt-0.5">error</span>
+                <div class="font-body-sm text-sm break-words overflow-auto max-h-40 font-mono">${msg}</div>
+            </div>
+            <button onclick="this.parentElement.remove()" class="text-on-error-container/70 hover:text-on-error-container font-bold px-1 transition-colors shrink-0">✕</button>
+        `;
+        container.prepend(toast);
+    };
+
+    window.showError = window.showTopError;
+
+    window.appendTerminal = function(msg) {
+        if (msg && (msg.toLowerCase().includes('error') || msg.toLowerCase().includes('failed') || msg.toLowerCase().includes('cannot access') || msg.includes('❌') || msg.toLowerCase().includes('exception'))) {
+            window.showTopError(msg);
+        }
+        const term = document.getElementById('terminal-output');
+        const bigTerm = document.getElementById('big-terminal-content');
+        
+        const el = document.createElement('div');
+        const time = new Date().toLocaleTimeString('en-US', {hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit'});
+        el.innerHTML = '<span class="text-secondary">[' + time + ']</span> ' + msg;
+        
+        if(term) {
+            term.appendChild(el.cloneNode(true));
+            term.scrollTop = term.scrollHeight;
+        }
+        if(bigTerm) {
+            bigTerm.appendChild(el.cloneNode(true));
+            bigTerm.scrollTop = bigTerm.scrollHeight;
+        }
+    }
+
+    function clearTerminal() {
+        const term = document.getElementById('terminal-output');
+        const bigTerm = document.getElementById('big-terminal-content');
+        if(term) term.innerHTML = '';
+        if(bigTerm) bigTerm.innerHTML = '';
+        if(window.pywebview && window.pywebview.api && window.pywebview.api.clear_terminal_logs) {
+            window.pywebview.api.clear_terminal_logs();
+        }
+        appendTerminal("Terminal cleared.");
+    }
+
+    let terminalIsPoppedOut = false;
+    function toggleTerminalPopout() {
+        terminalIsPoppedOut = !terminalIsPoppedOut;
+        const smallTerm = document.getElementById('small-terminal-container');
+        const bigModal = document.getElementById('big-terminal-modal');
+        const smallContent = document.getElementById('terminal-output');
+        const bigContent = document.getElementById('big-terminal-content');
+
+        if (terminalIsPoppedOut) {
+            // Pop out
+            if (smallTerm) smallTerm.style.display = 'none';
+            if (bigModal) {
+                bigModal.classList.remove('hidden');
+                bigModal.style.display = 'flex';
+            }
+            if (smallContent && bigContent) {
+                bigContent.innerHTML = smallContent.innerHTML;
+                bigContent.scrollTop = bigContent.scrollHeight;
+            }
+        } else {
+            // Restore
+            if (smallTerm) smallTerm.style.display = 'flex';
+            if (bigModal) {
+                bigModal.classList.add('hidden');
+                bigModal.style.display = 'none';
+            }
+            if (smallContent && bigContent) {
+                smallContent.innerHTML = bigContent.innerHTML;
+                smallContent.scrollTop = bigContent.scrollHeight;
+            }
+        }
+    }
+
+    // --- File Tree ---
+    function refreshFileTree() {
+        pywebview.api.get_file_tree().then(res => {
+            const tree = document.getElementById('file-tree');
+            if(!tree) return;
+            tree.innerHTML = "";
+
+            const files = res.files || [];
+            const folders = res.folders || [];
+
+            if (!res.active || (files.length === 0 && folders.length === 0)) {
+                tree.innerHTML = '<div class="text-on-surface-variant/50 text-center py-md font-body-md text-xs">No files or folders yet</div>';
+                return;
+            }
+
+            const root = { name: 'root', type: 'folder', children: {} };
+
+            folders.forEach(f => {
+                const parts = f.split('/');
+                let current = root;
+                parts.forEach((part, i) => {
+                    if (!current.children[part]) {
+                        current.children[part] = {
+                            name: part,
+                            path: parts.slice(0, i + 1).join('/'),
+                            type: 'folder',
+                            children: {}
+                        };
+                    }
+                    current = current.children[part];
+                });
+            });
+
+            files.forEach(f => {
+                const parts = f.split('/');
+                let current = root;
+                parts.slice(0, -1).forEach((part, i) => {
+                    if (!current.children[part]) {
+                        current.children[part] = {
+                            name: part,
+                            path: parts.slice(0, i + 1).join('/'),
+                            type: 'folder',
+                            children: {}
+                        };
+                    }
+                    current = current.children[part];
+                });
+                const fileName = parts[parts.length - 1];
+                current.children[fileName] = {
+                    name: fileName,
+                    path: f,
+                    type: 'file'
+                };
+            });
+
+            function renderNode(node, level = 0) {
+                const container = document.createElement('div');
+                const keys = Object.keys(node.children || {}).sort((a, b) => {
+                    const nodeA = node.children[a];
+                    const nodeB = node.children[b];
+                    if (nodeA.type === nodeB.type) return nodeA.name.localeCompare(nodeB.name);
+                    return nodeA.type === 'folder' ? -1 : 1;
+                });
+
+                keys.forEach(k => {
+                    const child = node.children[k];
+                    const el = document.createElement('div');
+                    const paddingLeft = (level * 14) + 4;
+
+                    if (child.type === 'folder') {
+                        el.className = "py-xs text-on-surface-variant hover:text-primary flex items-center gap-xs cursor-pointer text-xs select-none rounded";
+                        el.style.paddingLeft = paddingLeft + "px";
+                        el.innerHTML = '<span class="material-symbols-outlined text-sm text-secondary transition-transform folder-arrow">folder_open</span> <span class="font-medium text-on-surface/90">' + child.name + '</span>';
+                        
+                        const subContainer = document.createElement('div');
+                        subContainer.className = "folder-children";
+                        subContainer.appendChild(renderNode(child, level + 1));
+
+                        el.onclick = (e) => {
+                            e.stopPropagation();
+                            const arrow = el.querySelector('.folder-arrow');
+                            if (subContainer.style.display === 'none') {
+                                subContainer.style.display = 'block';
+                                arrow.textContent = 'folder_open';
+                            } else {
+                                subContainer.style.display = 'none';
+                                arrow.textContent = 'folder';
+                            }
+                        };
+
+                        container.appendChild(el);
+                        container.appendChild(subContainer);
+                    } else {
+                        el.className = "py-xs text-on-surface-variant hover:text-primary flex items-center gap-xs cursor-pointer text-xs select-none rounded";
+                        el.style.paddingLeft = paddingLeft + "px";
+                        const icon = child.name.endsWith('.py') ? 'code' : child.name.endsWith('.js') ? 'javascript' : child.name.endsWith('.html') ? 'html' : child.name.endsWith('.json') ? 'data_object' : child.name.endsWith('.css') ? 'css' : child.name.endsWith('.md') ? 'markdown' : 'description';
+                        el.innerHTML = '<span class="material-symbols-outlined text-sm text-tertiary/80">' + icon + '</span> <span>' + child.name + '</span>';
+                        el.onclick = (e) => {
+                            e.stopPropagation();
+                            viewFileContent(child.path);
+                        };
+                        container.appendChild(el);
+                    }
+                });
+                return container;
+            }
+
+            tree.appendChild(renderNode(root, 0));
+        });
+    }
+
+    function viewFileContent(path) {
+        pywebview.api.read_file(path).then(res => {
+            if(res.success) {
+                appendTerminal("Viewing: " + path);
+                // Show content in chat area as a system message
+                const chatBox = document.getElementById('chat-history');
+                if(chatBox) {
+                    const el = document.createElement('div');
+                    el.className = "p-md rounded-lg bg-surface-container-highest/50 border border-outline-variant/20";
+                    el.innerHTML = '<div class="font-label-sm mb-xs text-tertiary">📄 ' + path + '</div><pre class="whitespace-pre-wrap font-mono text-xs text-on-surface-variant overflow-auto max-h-64">' + res.content.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</pre>';
+                    chatBox.appendChild(el);
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                }
+            } else {
+                appendTerminal("Error reading " + path + ": " + res.error);
+            }
+        });
+    }
+
+    function copyCodeToClipboard(btn, encodedCode) {
+        const code = decodeURIComponent(encodedCode);
+        navigator.clipboard.writeText(code).then(() => {
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<span class="material-symbols-outlined text-sm">check</span> Copied!';
+            btn.classList.add('text-emerald-400', 'border-emerald-400/40');
+            setTimeout(() => {
+                btn.innerHTML = originalHTML;
+                btn.classList.remove('text-emerald-400', 'border-emerald-400/40');
+            }, 2000);
+        }).catch(err => {
+            console.error('Copy failed:', err);
+        });
+    }
+
+    function formatChatMessage(text) {
+        if (!text) return "";
+        const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const codeBlockRegex = /```([a-zA-Z0-9_+\-#.]*)\n?([\s\S]*?)```/g;
+        return escaped.replace(codeBlockRegex, (match, lang, codeContent) => {
+            const language = (lang || "code").trim().toLowerCase() || "code";
+            const cleanCode = codeContent.replace(/\s+$/, "");
+            const rawCode = cleanCode.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+            const encoded = encodeURIComponent(rawCode);
+            return `<div class="bg-surface-container-highest border border-outline-variant/30 rounded-lg my-3 overflow-hidden shadow-md text-left">
+                <div class="flex items-center justify-between px-3 py-1.5 bg-surface-container/90 border-b border-outline-variant/20 text-xs font-mono text-on-surface-variant">
+                    <span class="flex items-center gap-1.5 font-bold"><span class="material-symbols-outlined text-sm text-secondary">code</span> ${language}</span>
+                    <button onclick="copyCodeToClipboard(this, '${encoded}')" class="flex items-center gap-1 hover:text-primary transition-colors cursor-pointer bg-surface/60 hover:bg-surface px-2 py-0.5 rounded border border-outline-variant/20 font-label-md text-xs">
+                        <span class="material-symbols-outlined text-sm">content_copy</span> Copy
+                    </button>
+                </div>
+                <pre class="p-3.5 overflow-x-auto text-xs font-mono leading-relaxed m-0 text-on-surface/90 bg-surface/30"><code>${cleanCode}</code></pre>
+            </div>`;
+        });
+    }
+
+    // --- Chat ---
+    function renderChat(history) {
+        const chatBox = document.getElementById('chat-history');
+        if(!chatBox) return;
+        chatBox.innerHTML = "";
+        if (!history || history.length === 0) {
+            chatBox.innerHTML = '<div class="text-on-surface-variant/50 text-center py-xl font-body-md">Start a conversation by typing below...</div>';
+            return;
+        }
+        history.forEach(msg => {
+            const isUser = msg.role === 'user';
+            const el = document.createElement('div');
+            el.className = 'p-md rounded-lg mb-sm ' + (isUser ? 'bg-surface-container border border-outline-variant/20 ml-12' : 'bg-surface-variant/30 border border-secondary/20 mr-12');
+
+            const header = document.createElement('div');
+            header.className = 'font-label-sm mb-xs ' + (isUser ? 'text-primary' : 'text-secondary');
+            header.innerText = isUser ? 'You' : 'DarkMaxxer AI';
+
+            const content = document.createElement('div');
+            content.className = "whitespace-pre-wrap font-body-md text-on-surface leading-relaxed";
+            content.innerHTML = formatChatMessage(msg.content);
+
+            el.appendChild(header);
+            el.appendChild(content);
+            chatBox.appendChild(el);
+        });
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function sendPrompt() {
+        const input = document.getElementById('chat-input');
+        if(!input) return;
+        const prompt = input.value;
+        if(!prompt.trim()) return;
+
+        pywebview.api.get_active_state().then(state => {
+            if (!state.ai_loaded) {
+                const chatBox = document.getElementById('chat-history');
+                const errEl = document.createElement('div');
+                errEl.className = "p-md rounded-lg mb-sm bg-error-container/30 border border-error/30 mr-12";
+                errEl.innerHTML = '<div class="font-label-sm mb-xs text-error">⚠️ No AI Model Loaded</div><div class="whitespace-pre-wrap font-body-md text-on-error-container">You must select and load a local AI model from the Models page (📦) before you can prompt or talk with DarkMaxxer AI.</div>';
+                if(chatBox) {
+                    const placeholder = chatBox.querySelector('.text-center');
+                    if(placeholder) placeholder.remove();
+                    chatBox.appendChild(errEl);
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                }
+                appendTerminal("Prompt blocked: No AI Model loaded.");
+                return;
+            }
+
+            input.value = "";
+            input.disabled = true;
+            const sendBtn = document.getElementById('send-btn');
+            const pauseBtn = document.getElementById('pause-btn');
+            if(sendBtn) { sendBtn.disabled = true; sendBtn.classList.add('hidden'); }
+            if(pauseBtn) { pauseBtn.classList.remove('hidden'); }
+            appendTerminal("Sending prompt to LLM...");
+
+            const chatBox = document.getElementById('chat-history');
+            if (chatBox) {
+                const placeholder = chatBox.querySelector('.text-center');
+                if(placeholder) placeholder.remove();
+
+                const el = document.createElement('div');
+                el.className = "p-md rounded-lg mb-sm bg-surface-container border border-outline-variant/20 ml-12";
+                el.innerHTML = '<div class="font-label-sm mb-xs text-primary">You</div><div class="whitespace-pre-wrap font-body-md text-on-surface">' + prompt.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>';
+                chatBox.appendChild(el);
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+
+            pywebview.api.send_prompt(prompt).then(res => {
+                // send_prompt returns immediately (async generation)
+                // The polling loop will handle UI updates when generation is done
+                if(!res.success && res.error) {
+                    input.disabled = false;
+                    if(sendBtn) { sendBtn.disabled = false; sendBtn.classList.remove('hidden'); sendBtn.innerText = '▶'; }
+                    if(pauseBtn) { pauseBtn.classList.add('hidden'); }
+                    appendTerminal("Error: " + res.error);
+                    const errEl = document.createElement('div');
+                    errEl.className = "p-md rounded-lg mb-sm bg-error-container/30 border border-error/30 mr-12";
+                    errEl.innerHTML = '<div class="font-label-sm mb-xs text-error">Error</div><div class="whitespace-pre-wrap font-body-md text-on-error-container">' + res.error + '</div>';
+                    if(chatBox) chatBox.appendChild(errEl);
+                }
+            }).catch(err => {
+                input.disabled = false;
+                if(sendBtn) { sendBtn.disabled = false; sendBtn.classList.remove('hidden'); sendBtn.innerText = '▶'; }
+                if(pauseBtn) { pauseBtn.classList.add('hidden'); }
+                appendTerminal("Network error: " + err);
+            });
+        });
+    }
+
+    function pauseGeneration() {
+        pywebview.api.cancel_generation().then(res => {
+            const input = document.getElementById('chat-input');
+            const sendBtn = document.getElementById('send-btn');
+            const pauseBtn = document.getElementById('pause-btn');
+            const chatBox = document.getElementById('chat-history');
+            if (input) { input.disabled = false; input.focus(); }
+            if (sendBtn) { sendBtn.disabled = false; sendBtn.innerText = '▶'; sendBtn.classList.remove('hidden'); }
+            if (pauseBtn) { pauseBtn.classList.add('hidden'); }
+            window._isGenerating = false;
+            // Remove any loading dots
+            if (chatBox) {
+                const loadingEls = chatBox.querySelectorAll('.loading-dots');
+                loadingEls.forEach(el => {
+                    const parent = el.closest('.p-md');
+                    if (parent) parent.remove();
+                });
+            }
+            appendTerminal('Generation paused. You can now type a new prompt.');
+        }).catch(err => {
+            appendTerminal('Error pausing generation: ' + err);
+        });
+    }
+
+    // --- Settings ---
+    function showSettingsPanel(panelId) {
+        ['panel-preferences', 'panel-about', 'panel-license'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.classList.add('hidden');
+        });
+        const target = document.getElementById(panelId);
+        if (target) target.classList.remove('hidden');
+
+        ['tab-preferences', 'tab-about', 'tab-license'].forEach(id => {
+            const btn = document.getElementById(id);
+            if (!btn) return;
+            if (('panel-' + id.replace('tab-', '')) === panelId) {
+                btn.className = "w-full text-left px-md py-sm rounded-lg bg-secondary-container/30 text-secondary-fixed border-l-2 border-secondary font-label-md text-label-md transition-all flex items-center space-x-sm shadow-[0_0_20px_rgba(189,140,255,0.25)]";
+            } else {
+                btn.className = "w-full text-left px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-variant/20 hover:text-on-surface font-label-md text-label-md transition-all flex items-center space-x-sm border-l-2 border-transparent";
+            }
+        });
+    }
+
+    function loadSettings() {
+        if(!window.pywebview || !window.pywebview.api) return;
+        pywebview.api.get_settings().then(res => {
+            if(res.success && res.settings) {
+                const s = res.settings;
+                const toggles = {
+                    'toggle_local': s.local_inference !== undefined ? s.local_inference : true,
+                    'toggle_gpu': s.gpu_acceleration !== undefined ? s.gpu_acceleration : true,
+                    'toggle_memory': s.context_memory !== undefined ? s.context_memory : true
+                };
+                Object.entries(toggles).forEach(([id, val]) => {
+                    const el = document.getElementById(id);
+                    if (el) el.checked = val;
+                });
+            }
+        });
+    }
+
+    function saveSettings() {
+        const local_inf = document.getElementById('toggle_local') ? document.getElementById('toggle_local').checked : true;
+        const gpu_acc = document.getElementById('toggle_gpu') ? document.getElementById('toggle_gpu').checked : true;
+        const ctx_mem = document.getElementById('toggle_memory') ? document.getElementById('toggle_memory').checked : true;
+
+        const new_settings = {
+            local_inference: local_inf,
+            gpu_acceleration: gpu_acc,
+            context_memory: ctx_mem
+        };
+
+        if(window.pywebview && window.pywebview.api) {
+            pywebview.api.save_settings(new_settings).then(res => {
+                if(res.success) {
+                    const btn = document.querySelector('button[onclick="saveSettings()"]');
+                    if(btn) {
+                        const oldText = btn.innerText;
+                        btn.innerText = '✓ Saved successfully!';
+                        setTimeout(() => { btn.innerText = oldText; }, 2000);
+                    }
+                } else {
+                    alert("Failed to save: " + (res.error || "Unknown error"));
+                }
+            });
+        }
+    }
+
+    function resetSettings() {
+        const defaults = { local_inference: true, gpu_acceleration: true, context_memory: true };
+        if(window.pywebview && window.pywebview.api) {
+            pywebview.api.save_settings(defaults).then(res => {
+                if(res.success) {
+                    loadSettings();
+                    const btn = document.querySelector('button[onclick="resetSettings()"]');
+                    if(btn) {
+                        const oldText = btn.innerText;
+                        btn.innerText = '✓ Reset!';
+                        setTimeout(() => { btn.innerText = oldText; }, 2000);
+                    }
+                }
+            });
+        }
+    }
+
+    function runDiagnostics() {
+        const box = document.getElementById('diag-results');
+        const btn = document.getElementById('run-diag-btn');
+        if(!box || !window.pywebview || !window.pywebview.api) return;
+        if(btn) btn.innerText = "⏳ Running Diagnostics...";
+        pywebview.api.run_diagnostics().then(res => {
+            if(btn) btn.innerText = "✓ System Diagnosed";
+            box.classList.remove('hidden');
+            box.innerHTML = `
+                <div class="grid grid-cols-2 gap-sm text-xs font-mono">
+                    <div class="p-sm rounded bg-surface-container-lowest/50 border border-outline-variant/10"><span class="text-tertiary font-bold">OS:</span> ${res.os}</div>
+                    <div class="p-sm rounded bg-surface-container-lowest/50 border border-outline-variant/10"><span class="text-tertiary font-bold">Python:</span> ${res.python}</div>
+                    <div class="p-sm rounded bg-surface-container-lowest/50 border border-outline-variant/10"><span class="text-tertiary font-bold">GPU / Device:</span> ${res.device}</div>
+                    <div class="p-sm rounded bg-surface-container-lowest/50 border border-outline-variant/10"><span class="text-tertiary font-bold">VRAM:</span> ${res.vram}</div>
+                    <div class="col-span-2 p-sm rounded bg-surface-container-lowest/50 border border-outline-variant/10 truncate"><span class="text-tertiary font-bold">Workspace:</span> ${res.workspace}</div>
+                    <div class="col-span-2 p-sm rounded bg-surface-container-lowest/50 border border-outline-variant/10 truncate"><span class="text-tertiary font-bold">Active Model:</span> ${res.model_path}</div>
+                </div>
+            `;
+            setTimeout(() => { if(btn) btn.innerText = "▶ Run System Diagnostics"; }, 3000);
+        });
+    }
+
+    function verifyWatermarks() {
+        const box = document.getElementById('wm-results');
+        const btn = document.getElementById('run-wm-btn');
+        if(!box || !window.pywebview || !window.pywebview.api) return;
+        if(btn) btn.innerText = "⏳ Auditing Integrity...";
+        pywebview.api.verify_watermarks().then(res => {
+            if(btn) btn.innerText = "✓ Audit Complete";
+            box.classList.remove('hidden');
+            let items = res.files.map(f => `
+                <div class="flex justify-between items-center py-xs border-b border-outline-variant/10 last:border-none">
+                    <span class="font-mono text-xs">${f.file}</span>
+                    <span class="text-xs px-sm py-0.5 rounded ${f.status === 'Passed' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-red-500/20 text-red-300 border border-red-500/30'}">${f.status}</span>
+                </div>
+            `).join('');
+            box.innerHTML = `
+                <div class="p-sm rounded bg-surface-container-lowest/50 border border-outline-variant/10 text-xs font-mono space-y-xs">
+                    <div class="font-bold text-sm ${res.all_passed ? 'text-emerald-400' : 'text-red-400'} mb-sm">${res.all_passed ? '✓ 100% Watermark Integrity Confirmed' : '⚠ Audit Warning Found'}</div>
+                    ${items}
+                </div>
+            `;
+            setTimeout(() => { if(btn) btn.innerText = "🛡 Verify Watermark Integrity"; }, 3000);
+        });
+    }
+
+    function clearCache() {
+        if(!confirm("Are you sure you want to clear the active conversation memory?")) return;
+        if(window.pywebview && window.pywebview.api) {
+            pywebview.api.clear_all_history().then(res => {
+                if(res.success) {
+                    alert("✓ Conversation memory cache cleared successfully.");
+                } else {
+                    alert("Error clearing cache: " + res.error);
+                }
+            });
+        }
+    }
+
+    function openWorkspace() {
+        if(window.pywebview && window.pywebview.api) {
+            pywebview.api.open_workspace_in_explorer().then(res => {
+                if(!res.success) alert("Could not open workspace: " + res.error);
+            });
+        }
+    }
+</script>
+
+</body></html>
