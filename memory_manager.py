@@ -130,91 +130,77 @@ class MemoryManager:
                 "history": []
             }
             
-            temp_path = self.get_context_file(conv_id) + ".tmp"
-            try:
-                with open(temp_path, "w", encoding="utf-8") as f:
-                    json.dump(conv_data, f, indent=2)
-                if os.path.exists(temp_path):
-                    os.replace(temp_path, self.get_context_file(conv_id))
-            except Exception:
-                pass
+            with open(self.get_context_file(conv_id), "w", encoding="utf-8") as f:
+                json.dump(conv_data, f, indent=2)
                 
             # Also create legacy directory structure for double backward-compatibility
             c_dir = os.path.join(self.context_dir, conv_id)
             os.makedirs(c_dir, exist_ok=True)
             try:
-                t_meta = os.path.join(c_dir, "metadata.json.tmp")
-                with open(t_meta, "w", encoding="utf-8") as f:
+                with open(os.path.join(c_dir, "metadata.json"), "w", encoding="utf-8") as f:
                     json.dump({"id": conv_id, "name": name}, f)
-                if os.path.exists(t_meta):
-                    os.replace(t_meta, os.path.join(c_dir, "metadata.json"))
-                t_hist = os.path.join(c_dir, "history.json.tmp")
-                with open(t_hist, "w", encoding="utf-8") as f:
+                with open(os.path.join(c_dir, "history.json"), "w", encoding="utf-8") as f:
                     json.dump([], f)
-                if os.path.exists(t_hist):
-                    os.replace(t_hist, os.path.join(c_dir, "history.json"))
             except Exception:
                 pass
                 
             return conv_id
 
     def list_conversations(self) -> list:
-        with self._lock:
-            conversations = []
-            seen_ids = set()
-            if not os.path.exists(self.context_dir):
-                return conversations
-                
-            for item in os.listdir(self.context_dir):
-                item_path = os.path.join(self.context_dir, item)
-                if item.endswith(".json"):
+        conversations = []
+        seen_ids = set()
+        if not os.path.exists(self.context_dir):
+            return conversations
+            
+        for item in os.listdir(self.context_dir):
+            item_path = os.path.join(self.context_dir, item)
+            if item.endswith(".json"):
+                try:
+                    with open(item_path, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                        if "id" in data and data["id"] not in seen_ids:
+                            seen_ids.add(data["id"])
+                            conversations.append({
+                                "id": data["id"],
+                                "name": data.get("name", "Untitled Conversation")
+                            })
+                except Exception:
+                    pass
+            elif os.path.isdir(item_path):
+                meta_path = os.path.join(item_path, "metadata.json")
+                if os.path.exists(meta_path):
                     try:
-                        with open(item_path, "r", encoding="utf-8") as f:
-                            data = json.load(f)
-                            if "id" in data and data["id"] not in seen_ids:
-                                seen_ids.add(data["id"])
+                        with open(meta_path, "r", encoding="utf-8") as f:
+                            meta = json.load(f)
+                            if "id" in meta and meta["id"] not in seen_ids:
+                                seen_ids.add(meta["id"])
                                 conversations.append({
-                                    "id": data["id"],
-                                    "name": data.get("name", "Untitled Conversation")
+                                    "id": meta["id"],
+                                    "name": meta.get("name", "Untitled Conversation")
                                 })
                     except Exception:
                         pass
-                elif os.path.isdir(item_path):
-                    meta_path = os.path.join(item_path, "metadata.json")
-                    if os.path.exists(meta_path):
-                        try:
-                            with open(meta_path, "r", encoding="utf-8") as f:
-                                meta = json.load(f)
-                                if "id" in meta and meta["id"] not in seen_ids:
-                                    seen_ids.add(meta["id"])
-                                    conversations.append({
-                                        "id": meta["id"],
-                                        "name": meta.get("name", "Untitled Conversation")
-                                    })
-                        except Exception:
-                            pass
-            return conversations
+        return conversations
 
     def get_history(self, conv_id: str) -> list:
         if not conv_id:
             return []
-        with self._lock:
-            file_path = self.get_context_file(conv_id)
-            if os.path.exists(file_path):
-                try:
-                    with open(file_path, "r", encoding="utf-8") as f:
-                        data = json.load(f)
-                        return data.get("history", [])
-                except Exception:
-                    pass
-            hist_path = os.path.join(self.context_dir, conv_id, "history.json")
-            if os.path.exists(hist_path):
-                try:
-                    with open(hist_path, "r", encoding="utf-8") as f:
-                        return json.load(f)
-                except Exception:
-                    pass
-            return []
+        file_path = self.get_context_file(conv_id)
+        if os.path.exists(file_path):
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    return data.get("history", [])
+            except Exception:
+                pass
+        hist_path = os.path.join(self.context_dir, conv_id, "history.json")
+        if os.path.exists(hist_path):
+            try:
+                with open(hist_path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                pass
+        return []
 
     def save_history(self, conv_id: str, history: list):
         if not conv_id:
@@ -231,11 +217,8 @@ class MemoryManager:
                 data = {"id": conv_id, "name": "DarkMaxxer Session", "history": []}
             data["history"] = history
             try:
-                temp_path = file_path + ".tmp"
-                with open(temp_path, "w", encoding="utf-8") as f:
+                with open(file_path, "w", encoding="utf-8") as f:
                     json.dump(data, f, indent=2)
-                if os.path.exists(temp_path):
-                    os.replace(temp_path, file_path)
             except Exception:
                 pass
 
@@ -243,11 +226,8 @@ class MemoryManager:
             c_dir = os.path.join(self.context_dir, conv_id)
             os.makedirs(c_dir, exist_ok=True)
             try:
-                t_legacy = os.path.join(c_dir, "history.json.tmp")
-                with open(t_legacy, "w", encoding="utf-8") as f:
+                with open(os.path.join(c_dir, "history.json"), "w", encoding="utf-8") as f:
                     json.dump(history, f, indent=2)
-                if os.path.exists(t_legacy):
-                    os.replace(t_legacy, os.path.join(c_dir, "history.json"))
             except Exception:
                 pass
 
@@ -255,21 +235,17 @@ class MemoryManager:
         self.save_history(conv_id, [])
 
     def delete_conversation(self, conv_id: str):
-        with self._lock:
-            file_path = self.get_context_file(conv_id)
-            if os.path.exists(file_path):
-                try:
-                    os.remove(file_path)
-                except Exception:
-                    pass
-                
-            c_dir = os.path.join(self.context_dir, conv_id)
-            if os.path.exists(c_dir):
-                shutil.rmtree(c_dir, ignore_errors=True)
-                
-            ws_dir = self.get_workspace_dir(conv_id)
-            if os.path.exists(ws_dir):
-                shutil.rmtree(ws_dir, ignore_errors=True)
+        file_path = self.get_context_file(conv_id)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            
+        c_dir = os.path.join(self.context_dir, conv_id)
+        if os.path.exists(c_dir):
+            shutil.rmtree(c_dir, ignore_errors=True)
+            
+        ws_dir = self.get_workspace_dir(conv_id)
+        if os.path.exists(ws_dir):
+            shutil.rmtree(ws_dir, ignore_errors=True)
 
 
 class ConfigManager:

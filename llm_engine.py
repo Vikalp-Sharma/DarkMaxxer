@@ -5,9 +5,7 @@ def _ensure_local_site_packages():
     _cands = [
         os.path.join(_here, "venv", "Lib", "site-packages"),
         os.path.join(_here, "..", "venv", "Lib", "site-packages"),
-        r"S:\DarkMaxxer\venv\Lib\site-packages",
         os.path.join(os.path.expanduser("~"), "DarkMaxxer", "venv", "Lib", "site-packages"),
-        os.path.join("C:\\DarkMaxxer", "venv", "Lib", "site-packages"),
         os.path.join(os.getenv("LOCALAPPDATA", ""), "Low", "DarkMaxxer", "venv", "Lib", "site-packages"),
         os.path.join(os.getenv("APPDATA", ""), "DarkMaxxer", "venv", "Lib", "site-packages"),
     ]
@@ -34,10 +32,14 @@ import threading
 class LLMEngine:
     def __init__(self):
         self.model = None
-        self.tokenizer = None
-        self.model_path = None
+        self._cached_tokenizer = None
         self.current_model_id = None
+        self.model_path = None
         self._lock = threading.Lock()
+        self._cancel_requested = False
+
+    def cancel(self):
+        self._cancel_requested = True
 
     def check_compatibility(self, model_id: str) -> bool:
         """
@@ -268,6 +270,10 @@ class LLMEngine:
                 err_msg += f"\n- Transformers Fallback: {trans_err}"
             raise RuntimeError(err_msg)
 
+    def cancel(self):
+        """Immediately aborts any ongoing generation."""
+        self._cancel_requested = True
+
     def generate(self, prompt: str, max_new_tokens: int = 512, use_gpu: bool = True) -> str:
         """
         Generate text from the loaded model object (AirLLM, GGUF, Transformers, or PyTorch custom object).
@@ -276,13 +282,14 @@ class LLMEngine:
             raise ValueError("No model loaded.")
             
         with self._lock:
+            self._cancel_requested = False
             # Resolve tokenizer offline
-            tokenizer = None
-            if hasattr(self.model, "tokenizer") and self.model.tokenizer is not None:
+            tokenizer = self._cached_tokenizer
+            if tokenizer is None and hasattr(self.model, "tokenizer") and self.model.tokenizer is not None:
                 tokenizer = self.model.tokenizer
-            elif hasattr(self.model, "get_tokenizer") and callable(self.model.get_tokenizer):
+            elif tokenizer is None and hasattr(self.model, "get_tokenizer") and callable(self.model.get_tokenizer):
                 tokenizer = self.model.get_tokenizer()
-            else:
+            elif tokenizer is None:
                 # Attempt to find tokenizer from parent folder, GGUF file, or gpt2 fallback strictly offline
                 import os
                 from transformers import AutoTokenizer
@@ -308,6 +315,7 @@ class LLMEngine:
                         pass
                 
                 if tokenizer is not None:
+                    self._cached_tokenizer = tokenizer
                     try:
                         self.model.tokenizer = tokenizer
                     except Exception:
@@ -338,30 +346,22 @@ class LLMEngine:
                 prompt_str = str(prompt)
 
             input_tokens = tokenizer(prompt_str, return_tensors="pt")
-            input_ids = input_tokens.input_ids
-            attention_mask = input_tokens.get("attention_mask", None)
             
-            # Check GPU and ensure input tensors match model device precisely
+            # Check GPU availability
             if use_gpu and torch is not None and torch.cuda.is_available():
+                input_ids = input_tokens.input_ids.cuda()
                 if hasattr(self.model, "to") and not hasattr(self.model, "is_airllm"):
                     try:
                         self.model.to("cuda")
                     except Exception:
                         pass
-                target_device = getattr(self.model, "device", None)
-                if target_device is None and hasattr(self.model, "parameters"):
+            else:
+                input_ids = input_tokens.input_ids
+                if hasattr(self.model, "to") and not hasattr(self.model, "is_airllm"):
                     try:
-                        target_device = next(self.model.parameters()).device
+                        self.model.to("cpu")
                     except Exception:
-                        target_device = "cuda" if not hasattr(self.model, "is_airllm") else "cpu"
-                if target_device is None:
-                    target_device = "cuda" if not hasattr(self.model, "is_airllm") else "cpu"
-                try:
-                    input_ids = input_ids.to(target_device)
-                    if attention_mask is not None:
-                        attention_mask = attention_mask.to(target_device)
-                except Exception:
-                    pass
+                        pass
             
             # Generate response tokens
             if hasattr(self.model, "generate"):
@@ -375,11 +375,20 @@ class LLMEngine:
                     "temperature": 0.7,
                     "top_p": 0.9,
                 }
-                if attention_mask is not None:
-                    gen_kwargs["attention_mask"] = attention_mask
                 if hasattr(tokenizer, "eos_token_id") and tokenizer.eos_token_id is not None:
                     gen_kwargs["eos_token_id"] = tokenizer.eos_token_id
                     gen_kwargs["pad_token_id"] = getattr(tokenizer, "pad_token_id", None) or tokenizer.eos_token_id
+                
+                try:
+                    from transformers import StoppingCriteria, StoppingCriteriaList
+                    class CancelGuard(StoppingCriteria):
+                        def __init__(self, engine):
+                            self.engine = engine
+                        def __call__(self, input_ids_tensor, scores, **kwargs):
+                            return getattr(self.engine, '_cancel_requested', False)
+                    gen_kwargs["stopping_criteria"] = StoppingCriteriaList([CancelGuard(self)])
+                except Exception:
+                    pass
                 
                 try:
                     generation_output = self.model.generate(**gen_kwargs)
@@ -453,31 +462,4 @@ class LLMEngine:
                 output_text = " ".join(cleaned_words)
                 
             return output_text.strip()
-
-    def unload_model(self):
-        """Unload any active model and free up CPU/CUDA memory safely."""
-        with self._lock:
-            self.model = None
-            self.tokenizer = None
-            self.model_path = None
-            self.current_model_id = None
-            if torch is not None:
-                try:
-                    if torch.cuda.is_available():
-                        torch.cuda.empty_cache()
-                except Exception:
-                    pass
-            import gc
-            gc.collect()
-            return {"success": True}
-
-    def _tokenize_prompt(self, prompt: str) -> list:
-        """Tokenize prompt using loaded tokenizer or fallback whitespace tokenizer."""
-        if self.tokenizer is not None:
-            try:
-                res = self.tokenizer(prompt)
-                return res.get("input_ids", res) if isinstance(res, dict) else res
-            except Exception:
-                pass
-        return prompt.split()
 

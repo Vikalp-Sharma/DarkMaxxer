@@ -8,9 +8,7 @@ def _ensure_local_site_packages():
     _cands = [
         os.path.join(_here, "venv", "Lib", "site-packages"),
         os.path.join(_here, "..", "venv", "Lib", "site-packages"),
-        r"S:\DarkMaxxer\venv\Lib\site-packages",
         os.path.join(os.path.expanduser("~"), "DarkMaxxer", "venv", "Lib", "site-packages"),
-        os.path.join("C:\\DarkMaxxer", "venv", "Lib", "site-packages"),
         os.path.join(os.getenv("LOCALAPPDATA", ""), "Low", "DarkMaxxer", "venv", "Lib", "site-packages"),
         os.path.join(os.getenv("APPDATA", ""), "DarkMaxxer", "venv", "Lib", "site-packages"),
     ]
@@ -47,8 +45,11 @@ class Api:
         self.active_conv_id = None
         self.is_generating = False
         self._cancel_requested = False
+        self._gen_counter = 0
+        self._current_gen_id = 0
         self._window = None
         self.terminal_logs = []
+        self.subagents = []
 
         # Restore active session if available
         conf = self.config.get_config()
@@ -64,12 +65,6 @@ class Api:
             ws_dir = self.memory.get_workspace_dir(active_id)
             if os.path.exists(ws_dir):
                 self.file_ops = FileOpsServer(ws_dir)
-        if self.file_ops is None:
-            default_ws = os.path.join(self.memory.base_dir, "DefaultWorkspace")
-            os.makedirs(default_ws, exist_ok=True)
-            self.file_ops = FileOpsServer(default_ws)
-            if not self.active_conv_id:
-                self.active_conv_id = "DefaultWorkspace"
 
     def set_window(self, window):
         self._window = window
@@ -139,8 +134,9 @@ class Api:
                 self._log_terminal(f"AirLLM: {msg}")
 
         try:
-            if not os.path.exists(model_id):
-                return {"success": False, "error": f"Local model path not found on disk: '{model_id}'. Remote downloading is disabled per offline security policy."}
+            settings = self.config.get_settings()
+            if settings.get("local_inference", True) and not os.path.exists(model_id):
+                return {"success": False, "error": f"Local model path not found on disk: '{model_id}'. Remote downloading is disabled per Local Inference security setting."}
             self.llm.load_model(model_id, hf_token=hf_token, callback=_callback)
             self.config.update_config("ai_path", model_id)
             return {"success": True}
@@ -255,6 +251,10 @@ class Api:
 
         self.is_generating = True
         self._cancel_requested = False
+        self._gen_counter += 1
+        gen_id = self._gen_counter
+        self._current_gen_id = gen_id
+
         if not self.active_conv_id:
             self.active_conv_id = self.memory.create_conversation("DarkMaxxer Session")
             self._init_file_ops(self.active_conv_id)
@@ -267,7 +267,7 @@ class Api:
         history.append({"role": "user", "content": prompt})
         self.memory.save_history(self.active_conv_id, history)
 
-        t = threading.Thread(target=self._generate_worker, args=(prompt, self.active_conv_id, history))
+        t = threading.Thread(target=self._generate_worker, args=(prompt, self.active_conv_id, history, gen_id))
         t.daemon = True
         t.start()
         return {"success": True, "status": "generating"}
@@ -275,13 +275,32 @@ class Api:
     def cancel_generation(self):
         """Cancel/pause the current generation so user can type a new prompt."""
         self._cancel_requested = True
+        self._gen_counter += 1
+        self._current_gen_id = self._gen_counter
         self.is_generating = False
+        if hasattr(self.llm, 'cancel'):
+            try:
+                self.llm.cancel()
+            except Exception:
+                pass
+        
+        if self.active_conv_id:
+            try:
+                hist = self.memory.get_history(self.active_conv_id)
+                # Purge pending incomplete user prompts & paused tags from history!
+                while hist and hist[-1].get("role") == "user":
+                    hist.pop()
+                while hist and hist[-1].get("role") == "assistant" and "[Generation paused" in str(hist[-1].get("content", "")):
+                    hist.pop()
+                self.memory.save_history(self.active_conv_id, hist)
+            except Exception:
+                pass
         self._log_terminal("Generation paused by user.")
         return {"success": True}
 
-    def _generate_worker(self, prompt, conv_id, history):
+    def _generate_worker(self, prompt, conv_id, history, gen_id=0):
         try:
-            if self._cancel_requested:
+            if self._cancel_requested or self._current_gen_id != gen_id:
                 self._log_terminal("Generation cancelled before start.")
                 return
 
@@ -315,7 +334,7 @@ class Api:
             else:
                 context_files = "\n[No active workspace folder]\n"
 
-            if self._cancel_requested:
+            if self._cancel_requested or self._current_gen_id != gen_id:
                 self._log_terminal("Generation cancelled during context build.")
                 return
 
@@ -356,30 +375,27 @@ class Api:
             )
             messages.append({"role": "system", "content": sys_msg})
             if use_memory:
-                for msg in history:
-                    messages.append({"role": msg["role"], "content": msg["content"]})
+                # Keep last 12 history turns and truncate long older outputs to optimize token generation speed
+                trimmed_history = history[-12:] if len(history) > 12 else history
+                for msg in trimmed_history:
+                    content_str = str(msg.get("content", ""))
+                    if msg != trimmed_history[-1] and len(content_str) > 1500:
+                        content_str = content_str[:1500] + "... [truncated for speed]"
+                    messages.append({"role": msg.get("role", "user"), "content": content_str})
             else:
                 messages.append({"role": "user", "content": prompt})
 
             engine_name = "AirLLM" if (getattr(self.llm.model, 'is_airllm', False) or 'airllm' in str(type(self.llm.model).__module__).lower()) else type(self.llm.model).__name__
-            self.running_subagents = [
-                {"name": "Model Router", "status": "RUNNING", "task": f"Routing user prompt through {engine_name}..."},
-                {"name": "Context Engine", "status": "RUNNING", "task": f"Building memory context ({len(messages)} messages)..."}
-            ]
             self._log_terminal("=== ROUTING CHECK ===")
             self._log_terminal(f"1. Prompt received from User (Length: {len(prompt)} chars)")
             self._log_terminal(f"2. Routing through active LLM engine: {engine_name}")
             self._log_terminal(f"3. Executing {engine_name}.generate()...")
             response = self.llm.generate(messages, use_gpu=use_gpu)
 
-            if self._cancel_requested:
+            if self._cancel_requested or self._current_gen_id != gen_id:
                 self._log_terminal("Generation cancelled after LLM returned (discarding response).")
                 return
 
-            self.running_subagents = [
-                {"name": "Model Router", "status": "COMPLETED", "task": f"Inference complete ({len(response)} chars generated)"},
-                {"name": "Tool Sandbox", "status": "RUNNING", "task": "Inspecting response for tool calls & file operations..."}
-            ]
             self._log_terminal(f"4. Output returned from {engine_name} (Length: {len(response)} chars)")
             self._log_terminal("5. Delivering response back to User UI.")
 
@@ -392,27 +408,31 @@ class Api:
             # Process tool calls
             response = self._process_tools(response, user_prompt=prompt)
 
-            history.append({"role": "assistant", "content": response})
-            self.memory.save_history(conv_id, history)
+            if self._cancel_requested or self._current_gen_id != gen_id:
+                self._log_terminal("Generation cancelled right before saving history (discarding response).")
+                return
+
+            try:
+                latest_history = self.memory.get_history(conv_id)
+            except Exception:
+                latest_history = history
+            latest_history.append({"role": "assistant", "content": response})
+            self.memory.save_history(conv_id, latest_history)
         except Exception as e:
-            if self._cancel_requested:
+            if self._cancel_requested or self._current_gen_id != gen_id:
                 self._log_terminal("Generation was cancelled.")
                 return
             self._log_terminal(f"Generation error: {str(e)}")
-            history.append({"role": "assistant", "content": f"[Error generating response: {str(e)}]"})
-            self.memory.save_history(conv_id, history)
+            try:
+                latest_history = self.memory.get_history(conv_id)
+            except Exception:
+                latest_history = history
+            latest_history.append({"role": "assistant", "content": f"[Error generating response: {str(e)}]"})
+            self.memory.save_history(conv_id, latest_history)
         finally:
-            self.is_generating = False
-            self._cancel_requested = False
-            if hasattr(self, "running_subagents") and self.running_subagents:
-                for sa in self.running_subagents:
-                    sa["status"] = "COMPLETED"
-                import threading
-                def _clear_subagents():
-                    import time
-                    time.sleep(3.5)
-                    self.running_subagents = []
-                threading.Thread(target=_clear_subagents, daemon=True).start()
+            if self._current_gen_id == gen_id:
+                self.is_generating = False
+                self._cancel_requested = False
 
     def _process_tools(self, response_text, user_prompt=None):
         if not self.file_ops:
@@ -463,8 +483,6 @@ class Api:
                 res = self.file_ops.create_file(path, content)
                 self._log_terminal(f"Created file: {path}")
                 tools_executed = True
-                if hasattr(self, "running_subagents"):
-                    self.running_subagents.append({"name": "File Engine", "status": "RUNNING", "task": f"Created file: {path}"})
                 return f"\n✅ {res}\n"
             except Exception as e:
                 self._log_terminal(f"Error creating {path}: {e}")
@@ -477,8 +495,6 @@ class Api:
                 res = self.file_ops.edit_file(path, content)
                 self._log_terminal(f"Edited file: {path}")
                 tools_executed = True
-                if hasattr(self, "running_subagents"):
-                    self.running_subagents.append({"name": "File Engine", "status": "RUNNING", "task": f"Edited file: {path}"})
                 return f"\n✅ {res}\n"
             except Exception as e:
                 self._log_terminal(f"Error editing {path}: {e}")
@@ -491,8 +507,6 @@ class Api:
                 res = self.file_ops.delete_file(path)
                 self._log_terminal(f"Deleted file: {path}")
                 tools_executed = True
-                if hasattr(self, "running_subagents"):
-                    self.running_subagents.append({"name": "File Engine", "status": "RUNNING", "task": f"Deleted file: {path}"})
                 return f"\n✅ {res}\n"
             except Exception as e:
                 self._log_terminal(f"Error deleting {path}: {e}")
@@ -546,25 +560,18 @@ class Api:
                 self._log_terminal(f"Error listing directory {path}: {e}")
                 return f"\n❌ List directory failed: {str(e)}\n"
 
-        _BLOCKED_PREFIXES = ('powershell', 'cmd /c', 'cmd.exe', 'format ', 'del /s', 'rd /s', 'rmdir /s', 'reg ', 'net ', 'netsh', 'takeown', 'icacls', 'schtasks', 'wmic', 'sc ', 'bcdedit', 'shutdown', 'taskkill')
-
         def cmd_repl(match):
             nonlocal tools_executed
             cmd_str = _clean_content(match.group(1))
-            if any(cmd_str.lower().strip().startswith(bp) for bp in _BLOCKED_PREFIXES):
-                self._log_terminal(f"Security: Blocked dangerous command: {cmd_str}")
-                return f"\n❌ Command blocked by security policy: {cmd_str}\n"
             try:
                 self._log_terminal(f"Running command: {cmd_str}")
-                if hasattr(self, "running_subagents"):
-                    self.running_subagents.append({"name": "Terminal Subagent", "status": "RUNNING", "task": f"Command: {cmd_str[:35]}"})
                 cwd = self.file_ops.base_dir if self.file_ops and os.path.exists(self.file_ops.base_dir) else None
-                out = subprocess.check_output(cmd_str, shell=True, cwd=cwd, stderr=subprocess.STDOUT, text=True, errors='replace', timeout=60)
+                out = subprocess.check_output(cmd_str, shell=True, cwd=cwd, stderr=subprocess.STDOUT, text=True, timeout=60)
                 self._log_terminal(f"Command output:\n{out[:1000]}")
                 tools_executed = True
                 return f"\n💻 **Command Executed:** `{cmd_str}`\n**Output:**\n```\n{out[:2000]}\n```\n"
             except Exception as e:
-                err_msg = getattr(e, 'output', None) or str(e)
+                err_msg = e.output if hasattr(e, 'output') and e.output else str(e)
                 self._log_terminal(f"Command failed: {err_msg}")
                 return f"\n❌ Command failed `{cmd_str}`:\n```\n{err_msg}\n```\n"
 
@@ -578,8 +585,6 @@ class Api:
                 return f"\n❌ Build blocked by security policy: {path}\n"
             try:
                 self._log_terminal(f"Building/Executing target: {path}")
-                if hasattr(self, "running_subagents"):
-                    self.running_subagents.append({"name": "Build Subagent", "status": "RUNNING", "task": f"Building: {path}"})
                 cwd = self.file_ops.base_dir if self.file_ops and os.path.exists(self.file_ops.base_dir) else None
                 if path.endswith(".py"):
                     cmd = ["python", path]
@@ -588,14 +593,14 @@ class Api:
                 else:
                     cmd = path if not any(dc in path for dc in _DANGEROUS_CHARS) else []
                 if isinstance(cmd, list):
-                    out = subprocess.check_output(cmd, shell=False, cwd=cwd, stderr=subprocess.STDOUT, text=True, errors='replace', timeout=120)
+                    out = subprocess.check_output(cmd, shell=False, cwd=cwd, stderr=subprocess.STDOUT, text=True, timeout=120)
                 else:
-                    out = subprocess.check_output(cmd, shell=True, cwd=cwd, stderr=subprocess.STDOUT, text=True, errors='replace', timeout=120)
+                    out = subprocess.check_output(cmd, shell=True, cwd=cwd, stderr=subprocess.STDOUT, text=True, timeout=120)
                 self._log_terminal(f"Build output:\n{out[:1000]}")
                 tools_executed = True
                 return f"\nBuild/Execution Success: {path}\nOutput:\n{out[:2000]}\n"
             except Exception as e:
-                err_msg = getattr(e, 'output', None) or str(e)
+                err_msg = e.output if hasattr(e, 'output') and e.output else str(e)
                 self._log_terminal(f"Build error: {err_msg}")
                 return f"\nBuild Failed: {path}\nError:\n{err_msg}\n"
 
@@ -808,8 +813,8 @@ class Api:
                 r'(?i)^\s*sc\s',    # service control
             ]
             if any(_re.search(pat, cmd) for pat in _DANGEROUS_PATTERNS):
-                self._log_terminal(f"Security Alert: Command blocked by security policy: {cmd}")
-                return {"success": False, "error": f"Command blocked by security policy: {cmd}"}
+                self._log_terminal("Security Alert: Command denied. Directory traversal and external navigation are restricted. Nothing can escape the workspace folder.")
+                return {"success": False, "error": "Command denied by sandbox security policy: directory traversal restricted."}
             result = subprocess.run(
                 cmd, shell=True, capture_output=True, text=True,
                 cwd=self.file_ops.base_dir, timeout=30
@@ -823,6 +828,35 @@ class Api:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
+    def list_subagents(self):
+        return {"success": True, "subagents": getattr(self, "subagents", [])}
+
+    def add_subagent(self, name, task, status="running"):
+        if not hasattr(self, "subagents"):
+            self.subagents = []
+        for sa in self.subagents:
+            if sa.get("name") == name:
+                sa["task"] = task
+                sa["status"] = status
+                return {"success": True, "subagents": self.subagents}
+        self.subagents.append({"name": name, "task": task, "status": status})
+        return {"success": True, "subagents": self.subagents}
+
+    def update_subagent(self, name, status, result=None):
+        if not hasattr(self, "subagents"):
+            self.subagents = []
+        for sa in self.subagents:
+            if sa.get("name") == name:
+                sa["status"] = status
+                if result is not None:
+                    sa["result"] = result
+                break
+        return {"success": True, "subagents": self.subagents}
+
+    def clear_subagents(self):
+        self.subagents = []
+        return {"success": True, "subagents": []}
+
     def get_active_state(self):
         conf = self.config.get_config()
         state = {
@@ -833,10 +867,10 @@ class Api:
             "conv_id": None,
             "history": [],
             "terminal_logs": getattr(self, "terminal_logs", []),
-            "subagents": getattr(self, "running_subagents", []),
             "workspace_path": self.file_ops.base_dir if self.file_ops else None,
             "workspace_name": os.path.basename(self.file_ops.base_dir) if self.file_ops else None,
-            "active_sidebar_tab": conf.get("active_sidebar_tab", "chats")
+            "active_sidebar_tab": conf.get("active_sidebar_tab", "chats"),
+            "subagents": getattr(self, "subagents", [])
         }
         active_id = self.active_conv_id or conf.get("active_conv_id")
         if active_id:
@@ -914,124 +948,13 @@ class Api:
                 return {"success": False, "error": str(e)}
         return {"success": False, "error": "No workspace active"}
 
-def start_http_server(api, port=8080):
-    import http.server
-    import socketserver
-    class DarkMaxxerHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
-        def log_message(self, format, *args):
-            pass
-
-        def do_GET(self):
-            path = self.path.split('?')[0]
-            if path == '/' or path == '':
-                path = '/index.html'
-            
-            gui_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'gui')
-            file_path = os.path.join(gui_dir, path.lstrip('/\\'))
-            if not os.path.exists(file_path):
-                self.send_response(404)
-                self.end_headers()
-                self.wfile.write(b"404 Not Found")
-                return
-
-            ext = os.path.splitext(file_path)[1].lower()
-            content_types = {
-                '.html': 'text/html; charset=utf-8',
-                '.css': 'text/css; charset=utf-8',
-                '.js': 'application/javascript; charset=utf-8',
-                '.json': 'application/json; charset=utf-8',
-                '.png': 'image/png',
-                '.jpg': 'image/jpeg',
-                '.svg': 'image/svg+xml',
-                '.ico': 'image/x-icon'
-            }
-            ct = content_types.get(ext, 'application/octet-stream')
-            try:
-                with open(file_path, 'rb') as f:
-                    data = f.read()
-                self.send_response(200)
-                self.send_header('Content-Type', ct)
-                self.send_header('Access-Control-Allow-Origin', '*')
-                self.end_headers()
-                self.wfile.write(data)
-            except Exception as e:
-                self.send_response(500)
-                self.end_headers()
-                self.wfile.write(str(e).encode('utf-8'))
-
-        def do_POST(self):
-            if self.path.startswith('/api/'):
-                method_name = self.path[5:].split('?')[0]
-                try:
-                    content_length = int(self.headers.get('Content-Length', 0))
-                    body = self.rfile.read(content_length).decode('utf-8', errors='replace') if content_length > 0 else '{}'
-                    data = _json.loads(body) if body.strip() else {}
-                    args = data.get('args', [])
-                    kwargs = data.get('kwargs', {})
-                    
-                    if not hasattr(self.server.api, method_name):
-                        self.send_response(404)
-                        self.send_header('Content-Type', 'application/json')
-                        self.send_header('Access-Control-Allow-Origin', '*')
-                        self.end_headers()
-                        self.wfile.write(_json.dumps({"error": f"Method {method_name} not found"}).encode('utf-8'))
-                        return
-
-                    func = getattr(self.server.api, method_name)
-                    if isinstance(args, list):
-                        result = func(*args, **kwargs)
-                    else:
-                        result = func()
-
-                    self.send_response(200)
-                    self.send_header('Content-Type', 'application/json')
-                    self.send_header('Access-Control-Allow-Origin', '*')
-                    self.end_headers()
-                    self.wfile.write(_json.dumps({"result": result}).encode('utf-8'))
-                except Exception as e:
-                    self.send_response(500)
-                    self.send_header('Content-Type', 'application/json')
-                    self.send_header('Access-Control-Allow-Origin', '*')
-                    self.end_headers()
-                    self.wfile.write(_json.dumps({"error": str(e)}).encode('utf-8'))
-            else:
-                self.send_response(404)
-                self.end_headers()
-
-    class ThreadedHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
-        daemon_threads = True
-
-    try:
-        server = ThreadedHTTPServer(("0.0.0.0", port), DarkMaxxerHTTPRequestHandler)
-        server.api = api
-        t = threading.Thread(target=server.serve_forever, daemon=True)
-        t.start()
-        print(f"DarkMaxxer Web & API Server active on http://localhost:{port} (Ready for zrok2 share public http://localhost:{port})")
-        return server
-    except Exception as e:
-        print(f"Note: Could not start HTTP server on port {port}: {e}")
-        return None
-
-def main_entry():
+if __name__ == '__main__':
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
     if script_dir not in sys.path:
         sys.path.insert(0, script_dir)
 
     try:
-        gui_dir = os.path.join(script_dir, 'gui')
-        os.makedirs(gui_dir, exist_ok=True)
-
-        api = Api()
-        start_http_server(api, port=8080)
-
-        if any(arg.lower() in ('startserver', '--server', '-s', 'server') for arg in sys.argv[1:]):
-            print("DarkMaxxer running in Headless Web Server mode on http://localhost:8080. Press Ctrl+C to exit.")
-            import time
-            while True:
-                time.sleep(1)
-            return
-
         if webview is None:
             err_msg = "pywebview is not installed or failed to import. Please run DarkMaxxerSetup.exe or 'pip install pywebview webview'."
             print(f"ERROR: {err_msg}")
@@ -1047,6 +970,11 @@ def main_entry():
             except Exception:
                 pass
             sys.exit(1)
+
+        gui_dir = os.path.join(script_dir, 'gui')
+        os.makedirs(gui_dir, exist_ok=True)
+
+        api = Api()
 
         conf = api.config.get_config()
         ai_path = conf.get("ai_path")
@@ -1095,6 +1023,3 @@ def main_entry():
         except Exception:
             pass
         sys.exit(1)
-
-if __name__ == '__main__':
-    main_entry()
