@@ -10,12 +10,14 @@ class FileOpsServer:
 
     def _get_safe_path(self, relative_path: str) -> str:
         """Ensure the path is strictly within the base_dir to prevent directory traversal or symlink escape."""
-        clean_rel = relative_path.lstrip('/\\') if relative_path else "."
-        if not clean_rel:
-            clean_rel = "."
+        if not relative_path:
+            relative_path = "."
+        clean_rel = relative_path.lstrip('/\\') if not os.path.isabs(relative_path) else relative_path
         full_path = os.path.realpath(os.path.abspath(os.path.join(self.base_dir, clean_rel)))
+        norm_base = os.path.normcase(os.path.realpath(os.path.abspath(self.base_dir)))
+        norm_full = os.path.normcase(full_path)
         try:
-            if os.path.commonpath([self.base_dir, full_path]) != self.base_dir:
+            if os.path.commonpath([norm_base, norm_full]) != norm_base:
                 raise ValueError(f"Security Alert: Path traversal denied. '{relative_path}' is outside workspace folder '{self.base_dir}'. Nothing can escape the workspace folder.")
         except ValueError as e:
             if "Security Alert" in str(e):
@@ -88,4 +90,34 @@ class FileOpsServer:
                 if len(folders) >= 2000:
                     return sorted(folders)
         return sorted(folders)
+
+    def rename_file(self, old_path: str, new_path: str) -> str:
+        """Rename or move a file within the workspace, or change its file extension."""
+        src_path = self._get_safe_path(old_path)
+        dst_path = self._get_safe_path(new_path)
+        if not os.path.exists(src_path):
+            raise FileNotFoundError(f"Source file {old_path} does not exist.")
+        os.makedirs(os.path.dirname(dst_path), exist_ok=True)
+        import shutil
+        shutil.move(src_path, dst_path)
+        return f"Successfully renamed/changed {old_path} -> {new_path}"
+
+    def append_file(self, relative_path: str, content: str) -> str:
+        """Append content to an existing file without overwriting."""
+        full_path = self._get_safe_path(relative_path)
+        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+        with open(full_path, "a", encoding="utf-8") as f:
+            f.write(content)
+        return f"Successfully appended to {relative_path}"
+
+    def list_directory(self, relative_path: str = ".") -> dict:
+        """List immediate files and subdirectories inside a specific folder."""
+        full_path = self._get_safe_path(relative_path)
+        if not os.path.exists(full_path):
+            raise FileNotFoundError(f"Directory {relative_path} does not exist.")
+        entries = os.listdir(full_path)
+        files = sorted([e for e in entries if os.path.isfile(os.path.join(full_path, e))])
+        folders = sorted([e for e in entries if os.path.isdir(os.path.join(full_path, e)) and e not in ('.git', '__pycache__', 'node_modules', '.gemini')])
+        return {"files": files, "folders": folders, "path": relative_path}
+
 

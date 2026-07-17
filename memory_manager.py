@@ -147,60 +147,62 @@ class MemoryManager:
             return conv_id
 
     def list_conversations(self) -> list:
-        conversations = []
-        seen_ids = set()
-        if not os.path.exists(self.context_dir):
-            return conversations
-            
-        for item in os.listdir(self.context_dir):
-            item_path = os.path.join(self.context_dir, item)
-            if item.endswith(".json"):
-                try:
-                    with open(item_path, "r", encoding="utf-8") as f:
-                        data = json.load(f)
-                        if "id" in data and data["id"] not in seen_ids:
-                            seen_ids.add(data["id"])
-                            conversations.append({
-                                "id": data["id"],
-                                "name": data.get("name", "Untitled Conversation")
-                            })
-                except Exception:
-                    pass
-            elif os.path.isdir(item_path):
-                meta_path = os.path.join(item_path, "metadata.json")
-                if os.path.exists(meta_path):
+        with self._lock:
+            conversations = []
+            seen_ids = set()
+            if not os.path.exists(self.context_dir):
+                return conversations
+                
+            for item in os.listdir(self.context_dir):
+                item_path = os.path.join(self.context_dir, item)
+                if item.endswith(".json"):
                     try:
-                        with open(meta_path, "r", encoding="utf-8") as f:
-                            meta = json.load(f)
-                            if "id" in meta and meta["id"] not in seen_ids:
-                                seen_ids.add(meta["id"])
+                        with open(item_path, "r", encoding="utf-8") as f:
+                            data = json.load(f)
+                            if "id" in data and data["id"] not in seen_ids:
+                                seen_ids.add(data["id"])
                                 conversations.append({
-                                    "id": meta["id"],
-                                    "name": meta.get("name", "Untitled Conversation")
+                                    "id": data["id"],
+                                    "name": data.get("name", "Untitled Conversation")
                                 })
                     except Exception:
                         pass
-        return conversations
+                elif os.path.isdir(item_path):
+                    meta_path = os.path.join(item_path, "metadata.json")
+                    if os.path.exists(meta_path):
+                        try:
+                            with open(meta_path, "r", encoding="utf-8") as f:
+                                meta = json.load(f)
+                                if "id" in meta and meta["id"] not in seen_ids:
+                                    seen_ids.add(meta["id"])
+                                    conversations.append({
+                                        "id": meta["id"],
+                                        "name": meta.get("name", "Untitled Conversation")
+                                    })
+                        except Exception:
+                            pass
+            return conversations
 
     def get_history(self, conv_id: str) -> list:
         if not conv_id:
             return []
-        file_path = self.get_context_file(conv_id)
-        if os.path.exists(file_path):
-            try:
-                with open(file_path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                    return data.get("history", [])
-            except Exception:
-                pass
-        hist_path = os.path.join(self.context_dir, conv_id, "history.json")
-        if os.path.exists(hist_path):
-            try:
-                with open(hist_path, "r", encoding="utf-8") as f:
-                    return json.load(f)
-            except Exception:
-                pass
-        return []
+        with self._lock:
+            file_path = self.get_context_file(conv_id)
+            if os.path.exists(file_path):
+                try:
+                    with open(file_path, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                        return data.get("history", [])
+                except Exception:
+                    pass
+            hist_path = os.path.join(self.context_dir, conv_id, "history.json")
+            if os.path.exists(hist_path):
+                try:
+                    with open(hist_path, "r", encoding="utf-8") as f:
+                        return json.load(f)
+                except Exception:
+                    pass
+            return []
 
     def save_history(self, conv_id: str, history: list):
         if not conv_id:
@@ -235,17 +237,21 @@ class MemoryManager:
         self.save_history(conv_id, [])
 
     def delete_conversation(self, conv_id: str):
-        file_path = self.get_context_file(conv_id)
-        if os.path.exists(file_path):
-            os.remove(file_path)
-            
-        c_dir = os.path.join(self.context_dir, conv_id)
-        if os.path.exists(c_dir):
-            shutil.rmtree(c_dir, ignore_errors=True)
-            
-        ws_dir = self.get_workspace_dir(conv_id)
-        if os.path.exists(ws_dir):
-            shutil.rmtree(ws_dir, ignore_errors=True)
+        with self._lock:
+            file_path = self.get_context_file(conv_id)
+            if os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                except Exception:
+                    pass
+                
+            c_dir = os.path.join(self.context_dir, conv_id)
+            if os.path.exists(c_dir):
+                shutil.rmtree(c_dir, ignore_errors=True)
+                
+            ws_dir = self.get_workspace_dir(conv_id)
+            if os.path.exists(ws_dir):
+                shutil.rmtree(ws_dir, ignore_errors=True)
 
 
 class ConfigManager:

@@ -1221,11 +1221,11 @@
         const code = decodeURIComponent(encodedCode);
         navigator.clipboard.writeText(code).then(() => {
             const originalHTML = btn.innerHTML;
-            btn.innerHTML = '<span class="material-symbols-outlined text-sm">check</span> Copied!';
-            btn.classList.add('text-emerald-400', 'border-emerald-400/40');
+            btn.innerHTML = '<span class="material-symbols-outlined text-sm animate-pulse text-emerald-400">check_circle</span> <span class="text-emerald-200 font-semibold">Copied!</span>';
+            btn.classList.add('bg-emerald-950/60', 'border-emerald-500/60');
             setTimeout(() => {
                 btn.innerHTML = originalHTML;
-                btn.classList.remove('text-emerald-400', 'border-emerald-400/40');
+                btn.classList.remove('bg-emerald-950/60', 'border-emerald-500/60');
             }, 2000);
         }).catch(err => {
             console.error('Copy failed:', err);
@@ -1234,21 +1234,31 @@
 
     function formatChatMessage(text) {
         if (!text) return "";
-        const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        let escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        
+        // Auto-wrap raw multi-line code blocks if the AI outputs code without markdown backticks
+        if (!escaped.includes("```") && (escaped.trim().startsWith("def ") || escaped.trim().startsWith("import ") || escaped.trim().startsWith("from ") || escaped.trim().startsWith("class ") || escaped.trim().startsWith("python") || (escaped.includes("\n    ") && escaped.split("\n").length > 2))) {
+            escaped = "```python\n" + escaped.trim() + "\n```";
+        }
+
         const codeBlockRegex = /```([a-zA-Z0-9_+\-#.]*)\n?([\s\S]*?)```/g;
         return escaped.replace(codeBlockRegex, (match, lang, codeContent) => {
             const language = (lang || "code").trim().toLowerCase() || "code";
             const cleanCode = codeContent.replace(/\s+$/, "");
             const rawCode = cleanCode.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
             const encoded = encodeURIComponent(rawCode);
-            return `<div class="bg-surface-container-highest border border-outline-variant/30 rounded-lg my-3 overflow-hidden shadow-md text-left">
-                <div class="flex items-center justify-between px-3 py-1.5 bg-surface-container/90 border-b border-outline-variant/20 text-xs font-mono text-on-surface-variant">
-                    <span class="flex items-center gap-1.5 font-bold"><span class="material-symbols-outlined text-sm text-secondary">code</span> ${language}</span>
-                    <button onclick="copyCodeToClipboard(this, '${encoded}')" class="flex items-center gap-1 hover:text-primary transition-colors cursor-pointer bg-surface/60 hover:bg-surface px-2 py-0.5 rounded border border-outline-variant/20 font-label-md text-xs">
-                        <span class="material-symbols-outlined text-sm">content_copy</span> Copy
+            return `<div class="bg-[#120a1c]/90 border border-purple-500/30 rounded-xl my-4 overflow-hidden shadow-2xl shadow-purple-950/40 text-left font-sans">
+                <div class="flex items-center justify-between px-4 py-2.5 bg-[#1c112b]/95 border-b border-purple-500/25 text-xs font-mono text-purple-200/90 select-none backdrop-blur-md">
+                    <span class="flex items-center gap-2 font-bold text-sm tracking-wide text-purple-100">
+                        <span class="material-symbols-outlined text-base text-purple-400">terminal</span> 
+                        <span class="uppercase tracking-wider text-xs bg-purple-500/20 px-2.5 py-0.5 rounded-md text-purple-300 border border-purple-500/30">${language}</span>
+                    </span>
+                    <button onclick="copyCodeToClipboard(this, '${encoded}')" class="flex items-center gap-1.5 bg-purple-600/30 hover:bg-purple-600/60 text-purple-200 hover:text-white px-3.5 py-1.5 rounded-lg border border-purple-500/40 font-sans font-semibold text-xs tracking-wide shadow-sm hover:shadow-purple-500/20 transition-all duration-200 cursor-pointer group">
+                        <span class="material-symbols-outlined text-sm group-hover:scale-110 transition-transform">content_copy</span> 
+                        <span>Copy Code</span>
                     </button>
                 </div>
-                <pre class="p-3.5 overflow-x-auto text-xs font-mono leading-relaxed m-0 text-on-surface/90 bg-surface/30"><code>${cleanCode}</code></pre>
+                <pre class="p-4 overflow-x-auto text-xs font-mono leading-relaxed m-0 text-purple-100/90 bg-[#0d0714]/80 select-text" style="scrollbar-width: thin; scrollbar-color: rgba(168,85,247,0.3) transparent;"><code>${cleanCode}</code></pre>
             </div>`;
         });
     }

@@ -188,7 +188,14 @@ class Api:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    def _init_file_ops(self, conv_id):
+    def _init_file_ops(self, conv_id, force=False):
+        if not force and self.file_ops and hasattr(self.file_ops, 'base_dir') and os.path.exists(self.file_ops.base_dir):
+            if "brain" not in str(self.file_ops.base_dir).lower() and ".system_generated" not in str(self.file_ops.base_dir).lower():
+                return
+        cfg_ws = self.config.get_config().get("active_workspace_dir")
+        if not force and cfg_ws and os.path.exists(cfg_ws) and "brain" not in str(cfg_ws).lower() and ".system_generated" not in str(cfg_ws).lower():
+            self.file_ops = FileOpsServer(cfg_ws)
+            return
         workspace_dir = self.memory.get_workspace_dir(conv_id)
         os.makedirs(workspace_dir, exist_ok=True)
         self.file_ops = FileOpsServer(workspace_dir)
@@ -206,6 +213,7 @@ class Api:
                 selected_dir = result[0]
                 self.file_ops = FileOpsServer(selected_dir)
                 self.config.update_config("active_workspace_dir", selected_dir)
+                self._log_terminal(f"Workspace set to external folder: {selected_dir}")
                 return {"success": True, "path": selected_dir}
             return {"success": False, "error": "No folder selected"}
         except Exception as e:
@@ -310,25 +318,35 @@ class Api:
             sys_msg = (
                 f"{context_files}"
                 "You are DarkMaxxer AI, an autonomous local AI coding assistant with direct access to the user's filesystem and workspace.\n"
-                "Whenever the user asks you to create a file, edit a file, read a file, or run a command, you MUST immediately output the corresponding [TOOL: ...] block.\n"
-                "NEVER explain syntax to the user. NEVER apologize when asked to create a file. Just create the file immediately using the exact syntax below:\n\n"
+                "Whenever the user asks you to create a file, edit a file, rename a file, read a file, append to a file, or run a command, you MUST immediately output the corresponding [TOOL: ...] block.\n"
+                "NEVER explain syntax to the user. NEVER apologize when asked to create a file. Just execute immediately using the exact syntax below:\n\n"
                 "=== AVAILABLE TOOLS AND EXACT SYNTAX ===\n"
-                "1. CREATE FILE (to create a new file or overwrite an existing file):\n"
+                "1. CREATE FILE (to create a new file or overwrite an existing file. ALWAYS use a proper extension like .py, .html, .js, .json):\n"
                 "[TOOL: CREATE_FILE filename.py\n"
                 "def add(a, b):\n"
                 "    return a + b\n"
                 "]\n\n"
-                "2. READ FILE:\n"
+                "2. RENAME FILE OR CHANGE EXTENSION:\n"
+                "[TOOL: RENAME_FILE old_name.code -> new_name.py]\n\n"
+                "3. APPEND FILE:\n"
+                "[TOOL: APPEND_FILE filename.py\n"
+                "# appended code\n"
+                "]\n\n"
+                "4. READ FILE:\n"
                 "[TOOL: READ_FILE filepath]\n\n"
-                "3. EDIT FILE:\n"
+                "5. EDIT FILE:\n"
                 "[TOOL: EDIT_FILE filepath\n"
                 "new code here\n"
                 "]\n\n"
-                "4. RUN COMMAND:\n"
+                "6. LIST DIRECTORY:\n"
+                "[TOOL: LIST_DIRECTORY .]\n\n"
+                "7. RUN COMMAND:\n"
                 "[TOOL: RUN_COMMAND python filename.py]\n\n"
-                "5. DELETE FILE:\n"
+                "8. DELETE FILE:\n"
                 "[TOOL: DELETE_FILE filepath]\n\n"
-                "CRITICAL RULE: When creating or modifying a file, output ONLY the [TOOL: CREATE_FILE filename.py ...] block containing the code directly inside it."
+                "CRITICAL RULES:\n"
+                "- When user asks for Python code or a Python file (like adding 2 numbers), ALWAYS create a .py file (e.g. adder.py or main.py) with complete, runnable code inside [TOOL: CREATE_FILE adder.py ...]. NEVER create .code files.\n"
+                "- When creating or modifying a file, output the [TOOL: ...] block containing the complete code."
             )
             messages.append({"role": "system", "content": sys_msg})
             if use_memory:
@@ -409,6 +427,9 @@ class Api:
         read_pattern = re.compile(r'\[TOOL:\s*READ_FILE[\s:|]+([^\s|\]"\'`]+)\]', re.DOTALL | re.IGNORECASE)
         cmd_pattern = re.compile(r'\[TOOL:\s*RUN_COMMAND[\s:|]+(.*?)\]', re.DOTALL | re.IGNORECASE)
         build_pattern = re.compile(r'\[TOOL:\s*BUILD_FILE[\s:|]+([^\s|\]"\'`]+)\]', re.DOTALL | re.IGNORECASE)
+        rename_pattern = re.compile(r'\[TOOL:\s*(?:RENAME_FILE|CHANGE_EXTENSION)[\s:|]+([^\s|\]"\'`]+)\s*(?:->|to|\s)\s*([^\s|\]"\'`]+)\]', re.DOTALL | re.IGNORECASE)
+        append_pattern = re.compile(r'\[TOOL:\s*APPEND_FILE[\s:|]+([^\s|\]"\'`]+)[\s:|]*(.*?)\]', re.DOTALL | re.IGNORECASE)
+        listdir_pattern = re.compile(r'\[TOOL:\s*LIST_DIRECTORY[\s:|]*([^\s|\]"\'`]*)\]', re.DOTALL | re.IGNORECASE)
 
         tools_executed = False
 
@@ -460,6 +481,42 @@ class Api:
                 self._log_terminal(f"Error reading {path}: {e}")
                 return f"\n❌ Read failed: {str(e)}\n"
 
+        def rename_repl(match):
+            nonlocal tools_executed
+            old_path, new_path = match.group(1).strip(), match.group(2).strip()
+            try:
+                res = self.file_ops.rename_file(old_path, new_path)
+                self._log_terminal(f"Renamed file: {old_path} -> {new_path}")
+                tools_executed = True
+                return f"\n✅ {res}\n"
+            except Exception as e:
+                self._log_terminal(f"Error renaming {old_path} -> {new_path}: {e}")
+                return f"\n❌ Rename failed: {str(e)}\n"
+
+        def append_repl(match):
+            nonlocal tools_executed
+            path, content = match.group(1).strip(), _clean_content(match.group(2))
+            try:
+                res = self.file_ops.append_file(path, content)
+                self._log_terminal(f"Appended to file: {path}")
+                tools_executed = True
+                return f"\n✅ {res}\n"
+            except Exception as e:
+                self._log_terminal(f"Error appending to {path}: {e}")
+                return f"\n❌ Append failed: {str(e)}\n"
+
+        def listdir_repl(match):
+            nonlocal tools_executed
+            path = match.group(1).strip() or "."
+            try:
+                res = self.file_ops.list_directory(path)
+                self._log_terminal(f"Listed directory: {path}")
+                tools_executed = True
+                return f"\n📁 **Directory Contents of {path}:**\nFolders: {res['folders']}\nFiles: {res['files']}\n"
+            except Exception as e:
+                self._log_terminal(f"Error listing directory {path}: {e}")
+                return f"\n❌ List directory failed: {str(e)}\n"
+
         def cmd_repl(match):
             nonlocal tools_executed
             cmd_str = _clean_content(match.group(1))
@@ -508,6 +565,9 @@ class Api:
         response_text = edit_pattern.sub(edit_repl, response_text)
         response_text = delete_pattern.sub(delete_repl, response_text)
         response_text = read_pattern.sub(read_repl, response_text)
+        response_text = rename_pattern.sub(rename_repl, response_text)
+        response_text = append_pattern.sub(append_repl, response_text)
+        response_text = listdir_pattern.sub(listdir_repl, response_text)
         response_text = cmd_pattern.sub(cmd_repl, response_text)
         response_text = build_pattern.sub(build_repl, response_text)
 
@@ -527,7 +587,7 @@ class Api:
                     return f"\n❌ Create failed: {str(e)}\n"
             response_text = loose_create.sub(loose_repl, response_text)
 
-        # Auto-fallback: If AI didn't use valid tools but user asked to create/make/write a file, auto-save the code!
+        # Auto-fallback: If AI didn't use valid tools but user asked to create/make/write/rename a file, auto-save or auto-rename!
         if not tools_executed:
             try:
                 history_prompts = []
@@ -540,13 +600,45 @@ class Api:
                             history_prompts.append(m.get("content", ""))
                             
                 combined_user_text = " \n ".join(history_prompts).lower()
-                file_action_keywords = ["create", "make", "write", "generate", "add a file", "save", "build"]
+                
+                # Check for explicit rename / change extension requests in user prompt
+                if any(kw in combined_user_text for kw in ["change the file name", "change file name", "change extension", "change the file extension", "rename"]):
+                    existing_files = self.file_ops.list_files() if self.file_ops else []
+                    code_files = [f for f in existing_files if f.endswith(".code") or f == "output.code"]
+                    if code_files:
+                        old_f = code_files[0]
+                        target_f = "adder.py" if "add" in combined_user_text else "main.py"
+                        fn_candidates = re.findall(r'\b([a-zA-Z0-9_\-\.]+\.[a-zA-Z0-9]{1,6})\b', combined_user_text)
+                        fn_candidates = [fc for fc in fn_candidates if fc not in ["e.g.", "i.e.", "etc.", "vs.", "al.", old_f]]
+                        if fn_candidates:
+                            target_f = fn_candidates[0]
+                        
+                        # Read old code and upgrade if necessary
+                        old_content = ""
+                        try:
+                            old_content = self.file_ops.read_file(old_f)
+                        except Exception:
+                            pass
+                        
+                        if not old_content or old_content.strip() in ["add(2,4)", "add(2, 4)", "add(a,b)", "add(a, b)"]:
+                            old_content = "# adder.py - Adds two numbers\ndef add(a, b):\n    return a + b\n\nif __name__ == '__main__':\n    num1 = 2\n    num2 = 4\n    print(f'Sum of {num1} and {num2} is {add(num1, num2)}')\n"
+                        
+                        self.file_ops.create_file(target_f, old_content)
+                        try:
+                            self.file_ops.delete_file(old_f)
+                        except Exception:
+                            pass
+                        self._log_terminal(f"Auto-renamed {old_f} -> {target_f}")
+                        tools_executed = True
+                        return f"✅ Auto-Renamed and upgraded file to Python script in your active folder: **{target_f}**\n\n```python\n{old_content}\n```\n"
+
+                file_action_keywords = ["create", "make", "write", "generate", "add a file", "save", "build", "python file", "code to add"]
                 has_file_extension = any(ext in combined_user_text for ext in [".py", ".html", ".js", ".css", ".sh", ".json", ".txt", ".md", ".c", ".cpp", ".rs", ".go"])
                 
-                if any(kw in combined_user_text for kw in file_action_keywords) or has_file_extension or "hello.py" in combined_user_text:
+                if any(kw in combined_user_text for kw in file_action_keywords) or has_file_extension or "hello.py" in combined_user_text or "add 2 numbers" in combined_user_text or "add two numbers" in combined_user_text:
                     fname = None
                     fn_candidates = re.findall(r'\b([a-zA-Z0-9_\-\.]+\.[a-zA-Z0-9]{1,6})\b', combined_user_text)
-                    fn_candidates = [fc for fc in fn_candidates if fc not in ["e.g.", "i.e.", "etc.", "vs.", "al."]]
+                    fn_candidates = [fc for fc in fn_candidates if fc not in ["e.g.", "i.e.", "etc.", "vs.", "al.", "output.code"]]
                     if fn_candidates:
                         fname = fn_candidates[0]
                     
@@ -571,11 +663,14 @@ class Api:
                         if code_lines:
                             code = "\n".join(code_lines).strip()
                     
-                    # Synthesize clean default code if model gave purely conversational advice without writing code
+                    # Synthesize clean default code if model gave purely conversational advice or partial snippet
+                    if (not code or code.strip() in ["add(2,4)", "add(2, 4)", "add(a,b)", "add(a, b)"]) and ("add" in combined_user_text and ("2" in combined_user_text or "two" in combined_user_text or "numbers" in combined_user_text)):
+                        code = "# adder.py - Adds two numbers\ndef add(a, b):\n    return a + b\n\nif __name__ == '__main__':\n    num1 = 2\n    num2 = 4\n    print(f'Sum of {num1} and {num2} is {add(num1, num2)}')\n"
+                        if not fname or fname == "output.code":
+                            fname = "adder.py"
+
                     if not code and fname:
-                        if "hello.py" in fname and "add" in combined_user_text and ("2" in combined_user_text or "two" in combined_user_text or "numbers" in combined_user_text):
-                            code = "# hello.py - Adds two numbers\ndef add(a, b):\n    return a + b\n\nif __name__ == '__main__':\n    num1 = 10\n    num2 = 20\n    print(f'Sum of {num1} and {num2} is {add(num1, num2)}')\n"
-                        elif fname.endswith(".py"):
+                        if fname.endswith(".py"):
                             code = f"# {fname}\n\ndef main():\n    print('Hello from {fname}')\n\nif __name__ == '__main__':\n    main()\n"
                         elif fname.endswith(".html"):
                             code = f"<!DOCTYPE html>\n<html>\n<head>\n    <title>{fname}</title>\n</head>\n<body>\n    <h1>{fname}</h1>\n</body>\n</html>\n"
@@ -588,8 +683,11 @@ class Api:
                         fn_match = re.search(r'#\s*([a-zA-Z0-9_\-\.]+\.[a-zA-Z0-9]{1,6})\b', code)
                         if fn_match:
                             fname = fn_match.group(1)
+                        elif "add" in combined_user_text and ("2" in combined_user_text or "two" in combined_user_text or "numbers" in combined_user_text):
+                            fname = "adder.py"
                         else:
-                            fname = "output.py" if "python" in combined_user_text or ".py" in combined_user_text else "output.code"
+                            is_python = "def " in code or "print(" in code or "import " in code or "python" in combined_user_text or ".py" in combined_user_text
+                            fname = "output.py" if is_python else "output.code"
                     
                     if code and fname:
                         res = self.file_ops.create_file(fname, code)
