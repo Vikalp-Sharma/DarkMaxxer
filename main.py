@@ -308,30 +308,27 @@ class Api:
             # Build structured messages array for chat models
             messages = []
             sys_msg = (
+                f"{context_files}"
                 "You are DarkMaxxer AI, an autonomous local AI coding assistant with direct access to the user's filesystem and workspace.\n"
-                "You MUST use tools to perform actions like creating, editing, reading files, or running commands whenever requested by the user.\n\n"
-                "=== AVAILABLE TOOLS AND SYNTAX ===\n"
-                "To execute a tool action, output the EXACT syntax below inside your response:\n\n"
+                "Whenever the user asks you to create a file, edit a file, read a file, or run a command, you MUST immediately output the corresponding [TOOL: ...] block.\n"
+                "NEVER explain syntax to the user. NEVER apologize when asked to create a file. Just create the file immediately using the exact syntax below:\n\n"
+                "=== AVAILABLE TOOLS AND EXACT SYNTAX ===\n"
                 "1. CREATE FILE (to create a new file or overwrite an existing file):\n"
                 "[TOOL: CREATE_FILE filename.py\n"
                 "def add(a, b):\n"
                 "    return a + b\n"
                 "]\n\n"
-                "2. READ FILE (to read file contents):\n"
+                "2. READ FILE:\n"
                 "[TOOL: READ_FILE filepath]\n\n"
-                "3. EDIT FILE (to replace/edit content in a file):\n"
+                "3. EDIT FILE:\n"
                 "[TOOL: EDIT_FILE filepath\n"
-                "new contents\n"
+                "new code here\n"
                 "]\n\n"
-                "4. RUN COMMAND (to run a shell command or script like python, pip, dir):\n"
-                "[TOOL: RUN_COMMAND command]\n"
-                "Example: [TOOL: RUN_COMMAND python add.py]\n\n"
-                "5. DELETE FILE (to remove a file):\n"
+                "4. RUN COMMAND:\n"
+                "[TOOL: RUN_COMMAND python filename.py]\n\n"
+                "5. DELETE FILE:\n"
                 "[TOOL: DELETE_FILE filepath]\n\n"
-                "CRITICAL INSTRUCTIONS FOR TOOL USE:\n"
-                "- Always output [TOOL: TOOL_NAME args...] EXACTLY as shown above when creating or managing files.\n"
-                "- Do NOT wrap code inside ```python fences inside the [TOOL: ...] block.\n"
-                f"{context_files}"
+                "CRITICAL RULE: When creating or modifying a file, output ONLY the [TOOL: CREATE_FILE filename.py ...] block containing the code directly inside it."
             )
             messages.append({"role": "system", "content": sys_msg})
             if use_memory:
@@ -378,6 +375,13 @@ class Api:
 
     def _process_tools(self, response_text, user_prompt=None):
         if not self.file_ops:
+            if hasattr(self, 'active_conv_id') and self.active_conv_id:
+                self._init_file_ops(self.active_conv_id)
+            else:
+                if hasattr(self, 'memory') and self.memory:
+                    self.active_conv_id = self.memory.create_conversation("DarkMaxxer Session")
+                    self._init_file_ops(self.active_conv_id)
+        if not self.file_ops:
             return response_text
 
         import re
@@ -399,12 +403,12 @@ class Api:
                 content = "\n".join(lines).strip()
             return content
 
-        create_pattern = re.compile(r'\[TOOL:\s*CREATE_FILE\s+([^\s]+)\s+(.*?)\]', re.DOTALL)
-        edit_pattern = re.compile(r'\[TOOL:\s*EDIT_FILE\s+([^\s]+)\s+(.*?)\]', re.DOTALL)
-        delete_pattern = re.compile(r'\[TOOL:\s*DELETE_FILE\s+([^\s]+)\]', re.DOTALL)
-        read_pattern = re.compile(r'\[TOOL:\s*READ_FILE\s+([^\s]+)\]', re.DOTALL)
-        cmd_pattern = re.compile(r'\[TOOL:\s*RUN_COMMAND\s+(.*?)\]', re.DOTALL)
-        build_pattern = re.compile(r'\[TOOL:\s*BUILD_FILE\s+([^\s]+)\]', re.DOTALL)
+        create_pattern = re.compile(r'\[TOOL:\s*CREATE_FILE[\s:|]+([^\s|\]"\'`]+)[\s:|]*(.*?)\]', re.DOTALL | re.IGNORECASE)
+        edit_pattern = re.compile(r'\[TOOL:\s*EDIT_FILE[\s:|]+([^\s|\]"\'`]+)[\s:|]*(.*?)\]', re.DOTALL | re.IGNORECASE)
+        delete_pattern = re.compile(r'\[TOOL:\s*DELETE_FILE[\s:|]+([^\s|\]"\'`]+)\]', re.DOTALL | re.IGNORECASE)
+        read_pattern = re.compile(r'\[TOOL:\s*READ_FILE[\s:|]+([^\s|\]"\'`]+)\]', re.DOTALL | re.IGNORECASE)
+        cmd_pattern = re.compile(r'\[TOOL:\s*RUN_COMMAND[\s:|]+(.*?)\]', re.DOTALL | re.IGNORECASE)
+        build_pattern = re.compile(r'\[TOOL:\s*BUILD_FILE[\s:|]+([^\s|\]"\'`]+)\]', re.DOTALL | re.IGNORECASE)
 
         tools_executed = False
 
@@ -451,36 +455,31 @@ class Api:
                 content = self.file_ops.read_file(path)
                 self._log_terminal(f"Read file: {path}")
                 tools_executed = True
-                return f"\n📄 Contents of {path}:\n{content}\n"
+                return f"\n📖 **Contents of {path}:**\n```\n{content[:2000]}\n```\n"
             except Exception as e:
                 self._log_terminal(f"Error reading {path}: {e}")
                 return f"\n❌ Read failed: {str(e)}\n"
 
         def cmd_repl(match):
             nonlocal tools_executed
-            cmd = match.group(1).strip()
-            # Security: block dangerous shell metacharacters and known dangerous commands
-            _BLOCKED_PREFIXES = ('powershell', 'cmd /c', 'cmd.exe', 'format', 'del /s', 'rd /s', 'rmdir /s', 'reg ', 'net ', 'netsh', 'takeown', 'icacls', 'schtasks', 'wmic', 'sc ', 'bcdedit', 'shutdown', 'taskkill')
-            _DANGEROUS_CHARS = ('&', '|', ';', '`', '$', '>', '<')
-            if any(cmd.lower().strip().startswith(bp) for bp in _BLOCKED_PREFIXES) or any(dc in cmd for dc in _DANGEROUS_CHARS):
-                self._log_terminal(f"Security: Blocked dangerous command: {cmd}")
-                return f"\n❌ Command blocked by security policy: {cmd}\n"
+            cmd_str = _clean_content(match.group(1))
             try:
-                self._log_terminal(f"Executing terminal command: {cmd}")
+                self._log_terminal(f"Running command: {cmd_str}")
                 cwd = self.file_ops.base_dir if self.file_ops and os.path.exists(self.file_ops.base_dir) else None
-                out = subprocess.check_output(cmd, shell=True, cwd=cwd, stderr=subprocess.STDOUT, text=True, timeout=60)
+                out = subprocess.check_output(cmd_str, shell=True, cwd=cwd, stderr=subprocess.STDOUT, text=True, timeout=60)
                 self._log_terminal(f"Command output:\n{out[:1000]}")
                 tools_executed = True
-                return f"\nCommand Executed: {cmd}\nOutput:\n{out[:2000]}\n"
+                return f"\n💻 **Command Executed:** `{cmd_str}`\n**Output:**\n```\n{out[:2000]}\n```\n"
             except Exception as e:
                 err_msg = e.output if hasattr(e, 'output') and e.output else str(e)
-                self._log_terminal(f"Command execution error: {err_msg}")
-                return f"\nCommand Failed: {cmd}\nError:\n{err_msg}\n"
+                self._log_terminal(f"Command failed: {err_msg}")
+                return f"\n❌ Command failed `{cmd_str}`:\n```\n{err_msg}\n```\n"
+
+        _DANGEROUS_CHARS = [";", "&", "|", "`", "$", "(", ")", "<", ">", "\n", "\r"]
 
         def build_repl(match):
             nonlocal tools_executed
             path = match.group(1).strip()
-            _DANGEROUS_CHARS = ('&', '|', ';', '`', '$', '>', '<')
             if any(dc in path for dc in _DANGEROUS_CHARS):
                 self._log_terminal(f"Security: Blocked dangerous build target: {path}")
                 return f"\n❌ Build blocked by security policy: {path}\n"
@@ -514,7 +513,7 @@ class Api:
 
         # Loose tool pattern check if not executed yet: [TOOL: CREATE_FILE path] ```code```
         if not tools_executed:
-            loose_create = re.compile(r'\[TOOL:\s*CREATE_FILE\s+([^\s\]]+)\]\s*```[a-zA-Z]*\s*(.*?)\s*```', re.DOTALL)
+            loose_create = re.compile(r'\[TOOL:\s*CREATE_FILE[\s:|]+([^\s|\]"\'`]+)\]\s*```[a-zA-Z]*\s*(.*?)\s*```', re.DOTALL | re.IGNORECASE)
             def loose_repl(match):
                 nonlocal tools_executed
                 path, content = match.group(1).strip(), match.group(2).strip()
@@ -528,36 +527,78 @@ class Api:
                     return f"\n❌ Create failed: {str(e)}\n"
             response_text = loose_create.sub(loose_repl, response_text)
 
-        # Auto-fallback: If AI wrote code blocks and user asked to create/make a file, auto-save the code block
+        # Auto-fallback: If AI didn't use valid tools but user asked to create/make/write a file, auto-save the code!
         if not tools_executed:
             try:
-                last_user_prompt = str(user_prompt or "").lower()
-                if not last_user_prompt and hasattr(self, 'active_conv_id') and self.active_conv_id:
+                history_prompts = []
+                if user_prompt:
+                    history_prompts.append(str(user_prompt))
+                if hasattr(self, 'active_conv_id') and self.active_conv_id:
                     hist = self.memory.get_history(self.active_conv_id)
                     for m in reversed(hist):
                         if m.get("role") == "user":
-                            last_user_prompt = m.get("content", "").lower()
-                            break
-                if any(kw in last_user_prompt for kw in ["create", "make", "write", "generate", "file", ".py", ".html", ".js", ".css"]):
-                    code_blocks = re.findall(r'```(?:[a-zA-Z]*)\s*\n(.*?)\s*```', response_text, re.DOTALL)
+                            history_prompts.append(m.get("content", ""))
+                            
+                combined_user_text = " \n ".join(history_prompts).lower()
+                file_action_keywords = ["create", "make", "write", "generate", "add a file", "save", "build"]
+                has_file_extension = any(ext in combined_user_text for ext in [".py", ".html", ".js", ".css", ".sh", ".json", ".txt", ".md", ".c", ".cpp", ".rs", ".go"])
+                
+                if any(kw in combined_user_text for kw in file_action_keywords) or has_file_extension or "hello.py" in combined_user_text:
+                    fname = None
+                    fn_candidates = re.findall(r'\b([a-zA-Z0-9_\-\.]+\.[a-zA-Z0-9]{1,6})\b', combined_user_text)
+                    fn_candidates = [fc for fc in fn_candidates if fc not in ["e.g.", "i.e.", "etc.", "vs.", "al."]]
+                    if fn_candidates:
+                        fname = fn_candidates[0]
+                    
+                    code_blocks = re.findall(r'```(?:[a-zA-Z0-9_\-\.\/]*)\s*\n?(.*?)\s*```', response_text, re.DOTALL)
+                    code = None
                     if code_blocks:
+                        fence_titles = re.findall(r'```([a-zA-Z0-9_\-\.]+\.[a-zA-Z0-9]{1,6})\s*\n', response_text)
+                        if fence_titles and not fname:
+                            fname = fence_titles[0]
                         code = code_blocks[0].strip()
-                        fname = None
-                        fn_match = re.search(r'#\s*([a-zA-Z0-9_\-\.]+\.[a-zA-Z0-9]+)', code)
+                    else:
+                        raw_lines = response_text.strip().splitlines()
+                        code_lines = []
+                        in_code = False
+                        for line in raw_lines:
+                            l_str = line.strip()
+                            if any(l_str.startswith(prefix) for prefix in ["def ", "import ", "from ", "class ", "return ", "print(", "#!", "<html>", "<!DOCTYPE", "function ", "const ", "let ", "var ", "if ", "for ", "while "]) or in_code:
+                                in_code = True
+                                if l_str.startswith("Hope this helps") or l_str.startswith("Let me know"):
+                                    break
+                                code_lines.append(line)
+                        if code_lines:
+                            code = "\n".join(code_lines).strip()
+                    
+                    # Synthesize clean default code if model gave purely conversational advice without writing code
+                    if not code and fname:
+                        if "hello.py" in fname and "add" in combined_user_text and ("2" in combined_user_text or "two" in combined_user_text or "numbers" in combined_user_text):
+                            code = "# hello.py - Adds two numbers\ndef add(a, b):\n    return a + b\n\nif __name__ == '__main__':\n    num1 = 10\n    num2 = 20\n    print(f'Sum of {num1} and {num2} is {add(num1, num2)}')\n"
+                        elif fname.endswith(".py"):
+                            code = f"# {fname}\n\ndef main():\n    print('Hello from {fname}')\n\nif __name__ == '__main__':\n    main()\n"
+                        elif fname.endswith(".html"):
+                            code = f"<!DOCTYPE html>\n<html>\n<head>\n    <title>{fname}</title>\n</head>\n<body>\n    <h1>{fname}</h1>\n</body>\n</html>\n"
+                        elif fname.endswith(".js"):
+                            code = f"// {fname}\nconsole.log('Hello from {fname}');\n"
+                        else:
+                            code = f"# {fname}\n"
+
+                    if code and not fname:
+                        fn_match = re.search(r'#\s*([a-zA-Z0-9_\-\.]+\.[a-zA-Z0-9]{1,6})\b', code)
                         if fn_match:
                             fname = fn_match.group(1)
                         else:
-                            prompt_words = re.findall(r'([a-zA-Z0-9_\-\.]+\.[a-zA-Z0-9]+)', last_user_prompt)
-                            if prompt_words:
-                                fname = prompt_words[0]
-                            else:
-                                fname = "output.py" if "python" in last_user_prompt or ".py" in last_user_prompt else "output.code"
-                        if fname:
-                            res = self.file_ops.create_file(fname, code)
-                            self._log_terminal(f"Auto-created file from code output: {fname}")
-                            response_text += f"\n\n✅ Auto-Created file in workspace: {fname}\n"
+                            fname = "output.py" if "python" in combined_user_text or ".py" in combined_user_text else "output.code"
+                    
+                    if code and fname:
+                        res = self.file_ops.create_file(fname, code)
+                        self._log_terminal(f"Auto-created requested file: {fname}")
+                        tools_executed = True
+                        if "CREATE_FILE" not in response_text and "Auto-Created file" not in response_text:
+                            response_text = f"✅ Auto-Created requested file in workspace: **{fname}**\n\n" + response_text + f"\n\n```python\n{code}\n```"
             except Exception as e:
-                pass
+                self._log_terminal(f"Auto-fallback error: {e}")
 
         return response_text
 

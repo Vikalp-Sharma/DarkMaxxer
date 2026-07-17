@@ -24,25 +24,20 @@ class FileOpsServer:
         return full_path
 
     def create_file(self, relative_path: str, content: str) -> str:
-        """Create a new file with the given content."""
+        """Create a new file or overwrite an existing file with the given content."""
         full_path = self._get_safe_path(relative_path)
-        if os.path.exists(full_path):
-            raise FileExistsError(f"File {relative_path} already exists.")
-        
         os.makedirs(os.path.dirname(full_path), exist_ok=True)
         with open(full_path, "w", encoding="utf-8") as f:
             f.write(content)
-        return f"Successfully created {relative_path}"
+        return f"Successfully created/overwritten {relative_path}"
 
     def edit_file(self, relative_path: str, content: str) -> str:
-        """Edit an existing file, replacing its content."""
+        """Edit an existing file or create it if missing, replacing its content."""
         full_path = self._get_safe_path(relative_path)
-        if not os.path.exists(full_path):
-            raise FileNotFoundError(f"File {relative_path} does not exist.")
-            
+        os.makedirs(os.path.dirname(full_path), exist_ok=True)
         with open(full_path, "w", encoding="utf-8") as f:
             f.write(content)
-        return f"Successfully edited {relative_path}"
+        return f"Successfully edited/created {relative_path}"
 
     def delete_file(self, relative_path: str) -> str:
         """Delete a file."""
