@@ -130,17 +130,29 @@ class MemoryManager:
                 "history": []
             }
             
-            with open(self.get_context_file(conv_id), "w", encoding="utf-8") as f:
-                json.dump(conv_data, f, indent=2)
+            temp_path = self.get_context_file(conv_id) + ".tmp"
+            try:
+                with open(temp_path, "w", encoding="utf-8") as f:
+                    json.dump(conv_data, f, indent=2)
+                if os.path.exists(temp_path):
+                    os.replace(temp_path, self.get_context_file(conv_id))
+            except Exception:
+                pass
                 
             # Also create legacy directory structure for double backward-compatibility
             c_dir = os.path.join(self.context_dir, conv_id)
             os.makedirs(c_dir, exist_ok=True)
             try:
-                with open(os.path.join(c_dir, "metadata.json"), "w", encoding="utf-8") as f:
+                t_meta = os.path.join(c_dir, "metadata.json.tmp")
+                with open(t_meta, "w", encoding="utf-8") as f:
                     json.dump({"id": conv_id, "name": name}, f)
-                with open(os.path.join(c_dir, "history.json"), "w", encoding="utf-8") as f:
+                if os.path.exists(t_meta):
+                    os.replace(t_meta, os.path.join(c_dir, "metadata.json"))
+                t_hist = os.path.join(c_dir, "history.json.tmp")
+                with open(t_hist, "w", encoding="utf-8") as f:
                     json.dump([], f)
+                if os.path.exists(t_hist):
+                    os.replace(t_hist, os.path.join(c_dir, "history.json"))
             except Exception:
                 pass
                 
@@ -219,8 +231,11 @@ class MemoryManager:
                 data = {"id": conv_id, "name": "DarkMaxxer Session", "history": []}
             data["history"] = history
             try:
-                with open(file_path, "w", encoding="utf-8") as f:
+                temp_path = file_path + ".tmp"
+                with open(temp_path, "w", encoding="utf-8") as f:
                     json.dump(data, f, indent=2)
+                if os.path.exists(temp_path):
+                    os.replace(temp_path, file_path)
             except Exception:
                 pass
 
@@ -228,8 +243,11 @@ class MemoryManager:
             c_dir = os.path.join(self.context_dir, conv_id)
             os.makedirs(c_dir, exist_ok=True)
             try:
-                with open(os.path.join(c_dir, "history.json"), "w", encoding="utf-8") as f:
+                t_legacy = os.path.join(c_dir, "history.json.tmp")
+                with open(t_legacy, "w", encoding="utf-8") as f:
                     json.dump(history, f, indent=2)
+                if os.path.exists(t_legacy):
+                    os.replace(t_legacy, os.path.join(c_dir, "history.json"))
             except Exception:
                 pass
 

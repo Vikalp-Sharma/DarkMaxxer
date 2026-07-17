@@ -1,11 +1,14 @@
 # [Vikalp Sharma] - Proprietary / Anti-Theft Watermark
 import os
 
+import threading
+
 # Vikalp Sharma
 # Proprietary License - Do not redistribute without permission.
 
 class FileOpsServer:
     def __init__(self, base_dir: str):
+        self._lock = threading.Lock()
         self.base_dir = os.path.realpath(os.path.abspath(base_dir))
 
     def _get_safe_path(self, relative_path: str) -> str:
@@ -26,29 +29,38 @@ class FileOpsServer:
         return full_path
 
     def create_file(self, relative_path: str, content: str) -> str:
-        """Create a new file or overwrite an existing file with the given content."""
-        full_path = self._get_safe_path(relative_path)
-        os.makedirs(os.path.dirname(full_path), exist_ok=True)
-        with open(full_path, "w", encoding="utf-8") as f:
-            f.write(content)
-        return f"Successfully created/overwritten {relative_path}"
+        """Create a new file or overwrite an existing file with the given content safely and atomically."""
+        with self._lock:
+            full_path = self._get_safe_path(relative_path)
+            os.makedirs(os.path.dirname(full_path), exist_ok=True)
+            temp_path = full_path + ".tmp"
+            with open(temp_path, "w", encoding="utf-8") as f:
+                f.write(content)
+            if os.path.exists(temp_path):
+                os.replace(temp_path, full_path)
+            return f"Successfully created/overwritten {relative_path}"
 
     def edit_file(self, relative_path: str, content: str) -> str:
-        """Edit an existing file or create it if missing, replacing its content."""
-        full_path = self._get_safe_path(relative_path)
-        os.makedirs(os.path.dirname(full_path), exist_ok=True)
-        with open(full_path, "w", encoding="utf-8") as f:
-            f.write(content)
-        return f"Successfully edited/created {relative_path}"
+        """Edit an existing file or create it if missing, replacing its content safely and atomically."""
+        with self._lock:
+            full_path = self._get_safe_path(relative_path)
+            os.makedirs(os.path.dirname(full_path), exist_ok=True)
+            temp_path = full_path + ".tmp"
+            with open(temp_path, "w", encoding="utf-8") as f:
+                f.write(content)
+            if os.path.exists(temp_path):
+                os.replace(temp_path, full_path)
+            return f"Successfully edited/created {relative_path}"
 
     def delete_file(self, relative_path: str) -> str:
         """Delete a file."""
-        full_path = self._get_safe_path(relative_path)
-        if not os.path.exists(full_path):
-            raise FileNotFoundError(f"File {relative_path} does not exist.")
-            
-        os.remove(full_path)
-        return f"Successfully deleted {relative_path}"
+        with self._lock:
+            full_path = self._get_safe_path(relative_path)
+            if not os.path.exists(full_path):
+                raise FileNotFoundError(f"File {relative_path} does not exist.")
+                
+            os.remove(full_path)
+            return f"Successfully deleted {relative_path}"
 
     def read_file(self, relative_path: str) -> str:
         """Read a file's content."""
@@ -56,7 +68,7 @@ class FileOpsServer:
         if not os.path.exists(full_path):
             raise FileNotFoundError(f"File {relative_path} does not exist.")
             
-        with open(full_path, "r", encoding="utf-8") as f:
+        with open(full_path, "r", encoding="utf-8", errors="replace") as f:
             return f.read()
 
     def list_files(self, relative_path: str = ".") -> list:
@@ -93,22 +105,24 @@ class FileOpsServer:
 
     def rename_file(self, old_path: str, new_path: str) -> str:
         """Rename or move a file within the workspace, or change its file extension."""
-        src_path = self._get_safe_path(old_path)
-        dst_path = self._get_safe_path(new_path)
-        if not os.path.exists(src_path):
-            raise FileNotFoundError(f"Source file {old_path} does not exist.")
-        os.makedirs(os.path.dirname(dst_path), exist_ok=True)
-        import shutil
-        shutil.move(src_path, dst_path)
-        return f"Successfully renamed/changed {old_path} -> {new_path}"
+        with self._lock:
+            src_path = self._get_safe_path(old_path)
+            dst_path = self._get_safe_path(new_path)
+            if not os.path.exists(src_path):
+                raise FileNotFoundError(f"Source file {old_path} does not exist.")
+            os.makedirs(os.path.dirname(dst_path), exist_ok=True)
+            import shutil
+            shutil.move(src_path, dst_path)
+            return f"Successfully renamed/changed {old_path} -> {new_path}"
 
     def append_file(self, relative_path: str, content: str) -> str:
         """Append content to an existing file without overwriting."""
-        full_path = self._get_safe_path(relative_path)
-        os.makedirs(os.path.dirname(full_path), exist_ok=True)
-        with open(full_path, "a", encoding="utf-8") as f:
-            f.write(content)
-        return f"Successfully appended to {relative_path}"
+        with self._lock:
+            full_path = self._get_safe_path(relative_path)
+            os.makedirs(os.path.dirname(full_path), exist_ok=True)
+            with open(full_path, "a", encoding="utf-8") as f:
+                f.write(content)
+            return f"Successfully appended to {relative_path}"
 
     def list_directory(self, relative_path: str = ".") -> dict:
         """List immediate files and subdirectories inside a specific folder."""

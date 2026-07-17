@@ -34,6 +34,7 @@ import threading
 class LLMEngine:
     def __init__(self):
         self.model = None
+        self.tokenizer = None
         self.model_path = None
         self.current_model_id = None
         self._lock = threading.Lock()
@@ -337,17 +338,30 @@ class LLMEngine:
                 prompt_str = str(prompt)
 
             input_tokens = tokenizer(prompt_str, return_tensors="pt")
+            input_ids = input_tokens.input_ids
+            attention_mask = input_tokens.get("attention_mask", None)
             
-            # Check GPU availability
+            # Check GPU and ensure input tensors match model device precisely
             if use_gpu and torch is not None and torch.cuda.is_available():
-                input_ids = input_tokens.input_ids.cuda()
                 if hasattr(self.model, "to") and not hasattr(self.model, "is_airllm"):
                     try:
                         self.model.to("cuda")
                     except Exception:
                         pass
-            else:
-                input_ids = input_tokens.input_ids
+                target_device = getattr(self.model, "device", None)
+                if target_device is None and hasattr(self.model, "parameters"):
+                    try:
+                        target_device = next(self.model.parameters()).device
+                    except Exception:
+                        target_device = "cuda" if not hasattr(self.model, "is_airllm") else "cpu"
+                if target_device is None:
+                    target_device = "cuda" if not hasattr(self.model, "is_airllm") else "cpu"
+                try:
+                    input_ids = input_ids.to(target_device)
+                    if attention_mask is not None:
+                        attention_mask = attention_mask.to(target_device)
+                except Exception:
+                    pass
             
             # Generate response tokens
             if hasattr(self.model, "generate"):
@@ -361,6 +375,8 @@ class LLMEngine:
                     "temperature": 0.7,
                     "top_p": 0.9,
                 }
+                if attention_mask is not None:
+                    gen_kwargs["attention_mask"] = attention_mask
                 if hasattr(tokenizer, "eos_token_id") and tokenizer.eos_token_id is not None:
                     gen_kwargs["eos_token_id"] = tokenizer.eos_token_id
                     gen_kwargs["pad_token_id"] = getattr(tokenizer, "pad_token_id", None) or tokenizer.eos_token_id
@@ -437,4 +453,31 @@ class LLMEngine:
                 output_text = " ".join(cleaned_words)
                 
             return output_text.strip()
+
+    def unload_model(self):
+        """Unload any active model and free up CPU/CUDA memory safely."""
+        with self._lock:
+            self.model = None
+            self.tokenizer = None
+            self.model_path = None
+            self.current_model_id = None
+            if torch is not None:
+                try:
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+                except Exception:
+                    pass
+            import gc
+            gc.collect()
+            return {"success": True}
+
+    def _tokenize_prompt(self, prompt: str) -> list:
+        """Tokenize prompt using loaded tokenizer or fallback whitespace tokenizer."""
+        if self.tokenizer is not None:
+            try:
+                res = self.tokenizer(prompt)
+                return res.get("input_ids", res) if isinstance(res, dict) else res
+            except Exception:
+                pass
+        return prompt.split()
 

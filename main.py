@@ -64,6 +64,12 @@ class Api:
             ws_dir = self.memory.get_workspace_dir(active_id)
             if os.path.exists(ws_dir):
                 self.file_ops = FileOpsServer(ws_dir)
+        if self.file_ops is None:
+            default_ws = os.path.join(self.memory.base_dir, "DefaultWorkspace")
+            os.makedirs(default_ws, exist_ok=True)
+            self.file_ops = FileOpsServer(default_ws)
+            if not self.active_conv_id:
+                self.active_conv_id = "DefaultWorkspace"
 
     def set_window(self, window):
         self._window = window
@@ -356,6 +362,10 @@ class Api:
                 messages.append({"role": "user", "content": prompt})
 
             engine_name = "AirLLM" if (getattr(self.llm.model, 'is_airllm', False) or 'airllm' in str(type(self.llm.model).__module__).lower()) else type(self.llm.model).__name__
+            self.running_subagents = [
+                {"name": "Model Router", "status": "RUNNING", "task": f"Routing user prompt through {engine_name}..."},
+                {"name": "Context Engine", "status": "RUNNING", "task": f"Building memory context ({len(messages)} messages)..."}
+            ]
             self._log_terminal("=== ROUTING CHECK ===")
             self._log_terminal(f"1. Prompt received from User (Length: {len(prompt)} chars)")
             self._log_terminal(f"2. Routing through active LLM engine: {engine_name}")
@@ -366,6 +376,10 @@ class Api:
                 self._log_terminal("Generation cancelled after LLM returned (discarding response).")
                 return
 
+            self.running_subagents = [
+                {"name": "Model Router", "status": "COMPLETED", "task": f"Inference complete ({len(response)} chars generated)"},
+                {"name": "Tool Sandbox", "status": "RUNNING", "task": "Inspecting response for tool calls & file operations..."}
+            ]
             self._log_terminal(f"4. Output returned from {engine_name} (Length: {len(response)} chars)")
             self._log_terminal("5. Delivering response back to User UI.")
 
@@ -390,6 +404,15 @@ class Api:
         finally:
             self.is_generating = False
             self._cancel_requested = False
+            if hasattr(self, "running_subagents") and self.running_subagents:
+                for sa in self.running_subagents:
+                    sa["status"] = "COMPLETED"
+                import threading
+                def _clear_subagents():
+                    import time
+                    time.sleep(3.5)
+                    self.running_subagents = []
+                threading.Thread(target=_clear_subagents, daemon=True).start()
 
     def _process_tools(self, response_text, user_prompt=None):
         if not self.file_ops:
@@ -440,6 +463,8 @@ class Api:
                 res = self.file_ops.create_file(path, content)
                 self._log_terminal(f"Created file: {path}")
                 tools_executed = True
+                if hasattr(self, "running_subagents"):
+                    self.running_subagents.append({"name": "File Engine", "status": "RUNNING", "task": f"Created file: {path}"})
                 return f"\n✅ {res}\n"
             except Exception as e:
                 self._log_terminal(f"Error creating {path}: {e}")
@@ -452,6 +477,8 @@ class Api:
                 res = self.file_ops.edit_file(path, content)
                 self._log_terminal(f"Edited file: {path}")
                 tools_executed = True
+                if hasattr(self, "running_subagents"):
+                    self.running_subagents.append({"name": "File Engine", "status": "RUNNING", "task": f"Edited file: {path}"})
                 return f"\n✅ {res}\n"
             except Exception as e:
                 self._log_terminal(f"Error editing {path}: {e}")
@@ -464,6 +491,8 @@ class Api:
                 res = self.file_ops.delete_file(path)
                 self._log_terminal(f"Deleted file: {path}")
                 tools_executed = True
+                if hasattr(self, "running_subagents"):
+                    self.running_subagents.append({"name": "File Engine", "status": "RUNNING", "task": f"Deleted file: {path}"})
                 return f"\n✅ {res}\n"
             except Exception as e:
                 self._log_terminal(f"Error deleting {path}: {e}")
@@ -517,18 +546,25 @@ class Api:
                 self._log_terminal(f"Error listing directory {path}: {e}")
                 return f"\n❌ List directory failed: {str(e)}\n"
 
+        _BLOCKED_PREFIXES = ('powershell', 'cmd /c', 'cmd.exe', 'format ', 'del /s', 'rd /s', 'rmdir /s', 'reg ', 'net ', 'netsh', 'takeown', 'icacls', 'schtasks', 'wmic', 'sc ', 'bcdedit', 'shutdown', 'taskkill')
+
         def cmd_repl(match):
             nonlocal tools_executed
             cmd_str = _clean_content(match.group(1))
+            if any(cmd_str.lower().strip().startswith(bp) for bp in _BLOCKED_PREFIXES):
+                self._log_terminal(f"Security: Blocked dangerous command: {cmd_str}")
+                return f"\n❌ Command blocked by security policy: {cmd_str}\n"
             try:
                 self._log_terminal(f"Running command: {cmd_str}")
+                if hasattr(self, "running_subagents"):
+                    self.running_subagents.append({"name": "Terminal Subagent", "status": "RUNNING", "task": f"Command: {cmd_str[:35]}"})
                 cwd = self.file_ops.base_dir if self.file_ops and os.path.exists(self.file_ops.base_dir) else None
-                out = subprocess.check_output(cmd_str, shell=True, cwd=cwd, stderr=subprocess.STDOUT, text=True, timeout=60)
+                out = subprocess.check_output(cmd_str, shell=True, cwd=cwd, stderr=subprocess.STDOUT, text=True, errors='replace', timeout=60)
                 self._log_terminal(f"Command output:\n{out[:1000]}")
                 tools_executed = True
                 return f"\n💻 **Command Executed:** `{cmd_str}`\n**Output:**\n```\n{out[:2000]}\n```\n"
             except Exception as e:
-                err_msg = e.output if hasattr(e, 'output') and e.output else str(e)
+                err_msg = getattr(e, 'output', None) or str(e)
                 self._log_terminal(f"Command failed: {err_msg}")
                 return f"\n❌ Command failed `{cmd_str}`:\n```\n{err_msg}\n```\n"
 
@@ -542,6 +578,8 @@ class Api:
                 return f"\n❌ Build blocked by security policy: {path}\n"
             try:
                 self._log_terminal(f"Building/Executing target: {path}")
+                if hasattr(self, "running_subagents"):
+                    self.running_subagents.append({"name": "Build Subagent", "status": "RUNNING", "task": f"Building: {path}"})
                 cwd = self.file_ops.base_dir if self.file_ops and os.path.exists(self.file_ops.base_dir) else None
                 if path.endswith(".py"):
                     cmd = ["python", path]
@@ -550,14 +588,14 @@ class Api:
                 else:
                     cmd = path if not any(dc in path for dc in _DANGEROUS_CHARS) else []
                 if isinstance(cmd, list):
-                    out = subprocess.check_output(cmd, shell=False, cwd=cwd, stderr=subprocess.STDOUT, text=True, timeout=120)
+                    out = subprocess.check_output(cmd, shell=False, cwd=cwd, stderr=subprocess.STDOUT, text=True, errors='replace', timeout=120)
                 else:
-                    out = subprocess.check_output(cmd, shell=True, cwd=cwd, stderr=subprocess.STDOUT, text=True, timeout=120)
+                    out = subprocess.check_output(cmd, shell=True, cwd=cwd, stderr=subprocess.STDOUT, text=True, errors='replace', timeout=120)
                 self._log_terminal(f"Build output:\n{out[:1000]}")
                 tools_executed = True
                 return f"\nBuild/Execution Success: {path}\nOutput:\n{out[:2000]}\n"
             except Exception as e:
-                err_msg = e.output if hasattr(e, 'output') and e.output else str(e)
+                err_msg = getattr(e, 'output', None) or str(e)
                 self._log_terminal(f"Build error: {err_msg}")
                 return f"\nBuild Failed: {path}\nError:\n{err_msg}\n"
 
@@ -770,8 +808,8 @@ class Api:
                 r'(?i)^\s*sc\s',    # service control
             ]
             if any(_re.search(pat, cmd) for pat in _DANGEROUS_PATTERNS):
-                self._log_terminal("Security Alert: Command denied. Directory traversal and external navigation are restricted. Nothing can escape the workspace folder.")
-                return {"success": False, "error": "Command denied by sandbox security policy: directory traversal restricted."}
+                self._log_terminal(f"Security Alert: Command blocked by security policy: {cmd}")
+                return {"success": False, "error": f"Command blocked by security policy: {cmd}"}
             result = subprocess.run(
                 cmd, shell=True, capture_output=True, text=True,
                 cwd=self.file_ops.base_dir, timeout=30
@@ -795,6 +833,7 @@ class Api:
             "conv_id": None,
             "history": [],
             "terminal_logs": getattr(self, "terminal_logs", []),
+            "subagents": getattr(self, "running_subagents", []),
             "workspace_path": self.file_ops.base_dir if self.file_ops else None,
             "workspace_name": os.path.basename(self.file_ops.base_dir) if self.file_ops else None,
             "active_sidebar_tab": conf.get("active_sidebar_tab", "chats")
@@ -875,13 +914,124 @@ class Api:
                 return {"success": False, "error": str(e)}
         return {"success": False, "error": "No workspace active"}
 
-if __name__ == '__main__':
+def start_http_server(api, port=8080):
+    import http.server
+    import socketserver
+    class DarkMaxxerHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
+        def log_message(self, format, *args):
+            pass
+
+        def do_GET(self):
+            path = self.path.split('?')[0]
+            if path == '/' or path == '':
+                path = '/index.html'
+            
+            gui_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'gui')
+            file_path = os.path.join(gui_dir, path.lstrip('/\\'))
+            if not os.path.exists(file_path):
+                self.send_response(404)
+                self.end_headers()
+                self.wfile.write(b"404 Not Found")
+                return
+
+            ext = os.path.splitext(file_path)[1].lower()
+            content_types = {
+                '.html': 'text/html; charset=utf-8',
+                '.css': 'text/css; charset=utf-8',
+                '.js': 'application/javascript; charset=utf-8',
+                '.json': 'application/json; charset=utf-8',
+                '.png': 'image/png',
+                '.jpg': 'image/jpeg',
+                '.svg': 'image/svg+xml',
+                '.ico': 'image/x-icon'
+            }
+            ct = content_types.get(ext, 'application/octet-stream')
+            try:
+                with open(file_path, 'rb') as f:
+                    data = f.read()
+                self.send_response(200)
+                self.send_header('Content-Type', ct)
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(data)
+            except Exception as e:
+                self.send_response(500)
+                self.end_headers()
+                self.wfile.write(str(e).encode('utf-8'))
+
+        def do_POST(self):
+            if self.path.startswith('/api/'):
+                method_name = self.path[5:].split('?')[0]
+                try:
+                    content_length = int(self.headers.get('Content-Length', 0))
+                    body = self.rfile.read(content_length).decode('utf-8', errors='replace') if content_length > 0 else '{}'
+                    data = _json.loads(body) if body.strip() else {}
+                    args = data.get('args', [])
+                    kwargs = data.get('kwargs', {})
+                    
+                    if not hasattr(self.server.api, method_name):
+                        self.send_response(404)
+                        self.send_header('Content-Type', 'application/json')
+                        self.send_header('Access-Control-Allow-Origin', '*')
+                        self.end_headers()
+                        self.wfile.write(_json.dumps({"error": f"Method {method_name} not found"}).encode('utf-8'))
+                        return
+
+                    func = getattr(self.server.api, method_name)
+                    if isinstance(args, list):
+                        result = func(*args, **kwargs)
+                    else:
+                        result = func()
+
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/json')
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.end_headers()
+                    self.wfile.write(_json.dumps({"result": result}).encode('utf-8'))
+                except Exception as e:
+                    self.send_response(500)
+                    self.send_header('Content-Type', 'application/json')
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.end_headers()
+                    self.wfile.write(_json.dumps({"error": str(e)}).encode('utf-8'))
+            else:
+                self.send_response(404)
+                self.end_headers()
+
+    class ThreadedHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
+        daemon_threads = True
+
+    try:
+        server = ThreadedHTTPServer(("0.0.0.0", port), DarkMaxxerHTTPRequestHandler)
+        server.api = api
+        t = threading.Thread(target=server.serve_forever, daemon=True)
+        t.start()
+        print(f"DarkMaxxer Web & API Server active on http://localhost:{port} (Ready for zrok2 share public http://localhost:{port})")
+        return server
+    except Exception as e:
+        print(f"Note: Could not start HTTP server on port {port}: {e}")
+        return None
+
+def main_entry():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
     if script_dir not in sys.path:
         sys.path.insert(0, script_dir)
 
     try:
+        gui_dir = os.path.join(script_dir, 'gui')
+        os.makedirs(gui_dir, exist_ok=True)
+
+        api = Api()
+        start_http_server(api, port=8080)
+
+        if any(arg.lower() in ('startserver', '--server', '-s', 'server') for arg in sys.argv[1:]):
+            print("DarkMaxxer running in Headless Web Server mode on http://localhost:8080. Press Ctrl+C to exit.")
+            import time
+            while True:
+                time.sleep(1)
+            return
+
         if webview is None:
             err_msg = "pywebview is not installed or failed to import. Please run DarkMaxxerSetup.exe or 'pip install pywebview webview'."
             print(f"ERROR: {err_msg}")
@@ -897,11 +1047,6 @@ if __name__ == '__main__':
             except Exception:
                 pass
             sys.exit(1)
-
-        gui_dir = os.path.join(script_dir, 'gui')
-        os.makedirs(gui_dir, exist_ok=True)
-
-        api = Api()
 
         conf = api.config.get_config()
         ai_path = conf.get("ai_path")
@@ -950,3 +1095,6 @@ if __name__ == '__main__':
         except Exception:
             pass
         sys.exit(1)
+
+if __name__ == '__main__':
+    main_entry()
