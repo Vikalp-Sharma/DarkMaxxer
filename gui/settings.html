@@ -202,7 +202,7 @@
 <p class="font-body-md text-body-md text-on-surface-variant text-sm mt-1">Run models locally on your hardware.</p>
 </div>
 <div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
-<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-surface border-2 border-outline-variant appearance-none cursor-pointer z-10 transition-transform duration-200 ease-in-out" id="toggle_local" name="toggle_local" type="checkbox">
+<input checked="" onchange="saveSettings()" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-surface border-2 border-outline-variant appearance-none cursor-pointer z-10 transition-transform duration-200 ease-in-out" id="toggle_local" name="toggle_local" type="checkbox">
 <label class="toggle-label block overflow-hidden h-6 rounded-full bg-surface-container-high border-2 border-outline-variant cursor-pointer transition-colors duration-200 ease-in-out" for="toggle_local"></label>
 </div>
 </div>
@@ -214,7 +214,7 @@
 <p class="font-body-md text-body-md text-on-surface-variant text-sm mt-1">Utilize dedicated graphics for heavy processing.</p>
 </div>
 <div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
-<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-surface border-2 border-outline-variant appearance-none cursor-pointer z-10 transition-transform duration-200 ease-in-out" id="toggle_gpu" name="toggle_gpu" type="checkbox">
+<input checked="" onchange="saveSettings()" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-surface border-2 border-outline-variant appearance-none cursor-pointer z-10 transition-transform duration-200 ease-in-out" id="toggle_gpu" name="toggle_gpu" type="checkbox">
 <label class="toggle-label block overflow-hidden h-6 rounded-full bg-surface-container-high border-2 border-outline-variant cursor-pointer transition-colors duration-200 ease-in-out" for="toggle_gpu"></label>
 </div>
 </div>
@@ -226,9 +226,19 @@
 <p class="font-body-md text-body-md text-on-surface-variant text-sm mt-1">Retain chat history for contextual awareness.</p>
 </div>
 <div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
-<input class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-surface border-2 border-outline-variant appearance-none cursor-pointer z-10 transition-transform duration-200 ease-in-out" id="toggle_memory" name="toggle_memory" type="checkbox">
+<input onchange="saveSettings()" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-surface border-2 border-outline-variant appearance-none cursor-pointer z-10 transition-transform duration-200 ease-in-out" id="toggle_memory" name="toggle_memory" type="checkbox">
 <label class="toggle-label block overflow-hidden h-6 rounded-full bg-surface-container-high border-2 border-outline-variant cursor-pointer transition-colors duration-200 ease-in-out" for="toggle_memory"></label>
 </div>
+</div>
+
+<div class="h-px w-full bg-outline-variant/10"></div>
+<div class="flex items-center justify-end gap-md pt-sm">
+    <button onclick="resetSettings()" class="px-md py-sm bg-surface-variant/30 hover:bg-surface-variant/60 border border-outline-variant/30 rounded-lg text-on-surface-variant hover:text-on-surface font-label-sm font-bold transition-all">
+        Reset to Defaults
+    </button>
+    <button onclick="saveSettings()" class="px-lg py-sm bg-secondary/20 hover:bg-secondary/40 border border-secondary/40 rounded-lg text-secondary-fixed font-label-sm font-bold flex items-center gap-xs transition-all shadow-[0_0_15px_rgba(189,140,255,0.15)]">
+        <span class="material-symbols-outlined text-sm">save</span> Save Preferences
+    </button>
 </div>
 
 </div>
