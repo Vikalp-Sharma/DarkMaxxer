@@ -1257,7 +1257,7 @@
             const language = (lang || "code").trim().toLowerCase() || "code";
             const cleanCode = codeContent.replace(/\s+$/, "");
             const rawCode = cleanCode.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
-            const encoded = encodeURIComponent(rawCode).replace(/'/g, "%27");
+            const encoded = encodeURIComponent(rawCode);
             return `<div class="bg-[#120a1c]/90 border border-purple-500/30 rounded-xl my-4 overflow-hidden shadow-2xl shadow-purple-950/40 text-left font-sans">
                 <div class="flex items-center justify-between px-4 py-2.5 bg-[#1c112b]/95 border-b border-purple-500/25 text-xs font-mono text-purple-200/90 select-none backdrop-blur-md">
                     <span class="flex items-center gap-2 font-bold text-sm tracking-wide text-purple-100">
