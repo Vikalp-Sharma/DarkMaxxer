@@ -387,6 +387,15 @@
     </div>
 </div>
 
+<!-- Subagents Status Tray -->
+<div id="subagents-tray" class="hidden absolute bottom-20 left-4 right-4 z-20 flex flex-wrap items-center gap-sm p-sm bg-surface-container/95 border border-secondary/40 rounded-xl shadow-[0_0_25px_rgba(168,85,247,0.3)] backdrop-blur-md transition-all duration-300">
+    <div class="flex items-center gap-xs px-sm py-xs bg-secondary/20 border border-secondary/40 rounded-lg text-secondary-fixed font-label-sm">
+        <span class="material-symbols-outlined text-sm animate-spin">device_hub</span>
+        <span>Active Subagents (<span id="subagents-count">0</span>):</span>
+    </div>
+    <div id="subagents-list" class="flex flex-wrap items-center gap-xs flex-1"></div>
+</div>
+
 <!-- Chat Input Bar -->
 <div id="chat-input-bar" class="hidden absolute bottom-0 left-0 right-0 z-20 p-sm" style="background: linear-gradient(to top, rgba(16,20,21,0.95), rgba(16,20,21,0.7), transparent);">
     <div class="flex items-center gap-sm bg-surface-container border border-outline-variant/30 rounded-xl px-md py-sm shadow-[0_0_20px_rgba(0,0,0,0.5)] focus-within:border-secondary transition-colors">
@@ -602,6 +611,8 @@
                 const sendBtn = document.getElementById('send-btn');
                 const chatBox = document.getElementById('chat-history');
                 const pauseBtn = document.getElementById('pause-btn');
+
+                if (typeof renderSubagents === 'function') renderSubagents(state.subagents);
 
                 if (state.is_generating) {
                     window._isGenerating = true;
@@ -1263,6 +1274,67 @@
         });
     }
 
+    // --- Subagents Status ---
+    window._knownSubagents = window._knownSubagents || new Set();
+
+    function showSubagentPopup(sa) {
+        const popup = document.createElement('div');
+        popup.className = "fixed top-4 right-4 z-[200] bg-secondary-container/90 border border-secondary text-secondary-fixed p-md rounded-xl shadow-[0_0_30px_rgba(168,85,247,0.4)] backdrop-blur-xl flex items-start gap-md transform translate-x-full transition-transform duration-500";
+        popup.innerHTML = `
+            <div class="w-10 h-10 rounded-full bg-secondary-fixed/20 flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined animate-spin">device_hub</span>
+            </div>
+            <div class="flex-1">
+                <div class="font-headline-md text-sm mb-xs">Subagent Spawned</div>
+                <div class="font-body-md text-xs opacity-80">${sa.name || sa.role || 'Assistant'} is now running...</div>
+            </div>
+            <button class="p-xs hover:bg-secondary/20 rounded-md transition-colors" onclick="this.parentElement.style.transform='translateX(120%)'; setTimeout(()=>this.parentElement.remove(), 500);">
+                <span class="material-symbols-outlined text-sm">close</span>
+            </button>
+        `;
+        document.body.appendChild(popup);
+        requestAnimationFrame(() => popup.style.transform = "translateX(0)");
+    }
+
+    function renderSubagents(subagents) {
+        const tray = document.getElementById('subagents-tray');
+        const list = document.getElementById('subagents-list');
+        const count = document.getElementById('subagents-count');
+        if (!tray || !list) return;
+
+        if (!subagents || !Array.isArray(subagents)) {
+            tray.classList.add('hidden');
+            return;
+        }
+
+        const activeSubagents = subagents.filter(sa => sa.status !== 'completed' && sa.status !== 'done' && sa.status !== 'error' && sa.status !== 'killed' && sa.status !== 'failed');
+
+        if (activeSubagents.length === 0) {
+            tray.classList.add('hidden');
+            return;
+        }
+
+        tray.classList.remove('hidden');
+        if (count) count.innerText = activeSubagents.length;
+        list.innerHTML = "";
+
+        activeSubagents.forEach(sa => {
+            const saKey = sa.id || sa.name || sa.role || 'subagent';
+            if (!window._knownSubagents.has(saKey)) {
+                window._knownSubagents.add(saKey);
+                showSubagentPopup(sa);
+            }
+
+            const el = document.createElement('div');
+            const statusColor = 'text-secondary-fixed border-secondary/30 bg-secondary/10';
+            const icon = 'sync';
+            const spin = 'animate-spin';
+            el.className = `flex items-center gap-xs px-sm py-xs rounded-lg border text-xs font-label-sm ${statusColor} shadow-sm`;
+            el.innerHTML = `<span class="material-symbols-outlined text-[14px] ${spin}">${icon}</span><span class="font-bold">${sa.name || sa.role || 'Subagent'}</span><span class="opacity-80">${sa.task || sa.status || 'running'}</span>`;
+            list.appendChild(el);
+        });
+    }
+
     // --- Chat ---
     function renderChat(history) {
         const chatBox = document.getElementById('chat-history');
@@ -1274,12 +1346,19 @@
         }
         history.forEach(msg => {
             const isUser = msg.role === 'user';
+            const isSubagent = msg.role === 'subagent' || msg.subagent;
             const el = document.createElement('div');
-            el.className = 'p-md rounded-lg mb-sm ' + (isUser ? 'bg-surface-container border border-outline-variant/20 ml-12' : 'bg-surface-variant/30 border border-secondary/20 mr-12');
+            el.className = 'p-md rounded-lg mb-sm ' + (isUser ? 'bg-surface-container border border-outline-variant/20 ml-12' : (isSubagent ? 'bg-secondary-container/20 border border-secondary/40 mx-6 shadow-[0_0_15px_rgba(168,85,247,0.15)]' : 'bg-surface-variant/30 border border-secondary/20 mr-12'));
 
             const header = document.createElement('div');
-            header.className = 'font-label-sm mb-xs ' + (isUser ? 'text-primary' : 'text-secondary');
-            header.innerText = isUser ? 'You' : 'DarkMaxxer AI';
+            header.className = 'font-label-sm mb-xs flex items-center gap-xs ' + (isUser ? 'text-primary' : (isSubagent ? 'text-secondary-fixed font-bold' : 'text-secondary'));
+            if (isUser) {
+                header.innerText = 'You';
+            } else if (isSubagent) {
+                header.innerHTML = `<span class="material-symbols-outlined text-sm">device_hub</span> <span>Subagent: ${msg.subagent || msg.name || 'Assistant Task'}</span>`;
+            } else {
+                header.innerText = 'DarkMaxxer AI';
+            }
 
             const content = document.createElement('div');
             content.className = "whitespace-pre-wrap font-body-md text-on-surface leading-relaxed";
@@ -1334,6 +1413,9 @@
                 chatBox.scrollTop = chatBox.scrollHeight;
             }
 
+            window._isGenerating = true;
+            window._lastHistoryLen = (window._lastHistoryLen || 0) + 1;
+
             pywebview.api.send_prompt(prompt).then(res => {
                 // send_prompt returns immediately (async generation)
                 // The polling loop will handle UI updates when generation is done
@@ -1374,6 +1456,7 @@
                     if (parent) parent.remove();
                 });
             }
+            if (typeof restoreState === 'function') restoreState();
             appendTerminal('Generation paused. You can now type a new prompt.');
         }).catch(err => {
             appendTerminal('Error pausing generation: ' + err);
