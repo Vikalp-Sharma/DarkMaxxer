@@ -1,8 +1,8 @@
 {
-  "active_conv_id": "d693d749-8aa4-4d84-a812-2c124490a523",
-  "active_workspace_dir": "C:\\Users\\minec.TOKYO\\Downloads\\MyTester",
-  "ai_path": "C:\\Users\\minec.TOKYO\\.ollama\\models\\manifests\\hf.co\\QuantFactory\\Pocket-Tiger-Gemma-2B-v1g-GGUF\\Q8_0",
-  "active_sidebar_tab": "explorer",
+  "active_conv_id": null,
+  "active_workspace_dir": "C:\\Users\\minec.TOKYO\\AppData\\LocalLow\\DarkMaxxer\\Chat\\test_conv",
+  "ai_path": null,
+  "active_sidebar_tab": "chats",
   "settings": {
     "local_inference": true,
     "gpu_acceleration": true,
