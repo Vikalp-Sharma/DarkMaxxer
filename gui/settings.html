@@ -184,6 +184,10 @@
 <span class="material-symbols-outlined text-lg">info</span>
 <span class="">About</span>
 </button>
+<button id="tab-mcp" onclick="showSettingsPanel('panel-mcp')" class="w-full text-left px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-variant/20 hover:text-on-surface font-label-md text-label-md transition-all flex items-center space-x-sm border-l-2 border-transparent">
+<span class="material-symbols-outlined text-lg">power</span>
+<span class="">MCP Servers</span>
+</button>
 <button id="tab-license" onclick="showSettingsPanel('panel-license')" class="w-full text-left px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-variant/20 hover:text-on-surface font-label-md text-label-md transition-all flex items-center space-x-sm border-l-2 border-transparent">
 <span class="material-symbols-outlined text-lg">gavel</span>
 <span class="">License</span>
@@ -257,6 +261,47 @@
         </button>
     </div>
 </div>
+
+<!-- MCP Servers Section -->
+<section id="panel-mcp" class="hidden space-y-lg">
+    <div class="flex items-center justify-between">
+        <h2 class="font-headline-md text-headline-md text-on-surface">External MCP Servers</h2>
+        <button onclick="document.getElementById('add-mcp-form').classList.toggle('hidden')" class="px-md py-sm bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 rounded-lg font-label-sm font-bold flex items-center gap-xs transition-colors">
+            <span class="material-symbols-outlined text-sm">add</span> Add Server
+        </button>
+    </div>
+
+    <!-- Add Server Form -->
+    <div id="add-mcp-form" class="hidden p-md rounded-lg bg-surface-container border border-outline-variant/30 space-y-md">
+        <div class="grid grid-cols-2 gap-sm">
+            <div>
+                <label class="block text-xs font-label-sm text-on-surface-variant mb-1">Server Name</label>
+                <input type="text" id="mcp-name" placeholder="e.g. github-mcp" class="w-full bg-surface-variant/30 text-on-surface text-sm p-2 rounded border border-outline-variant/20 focus:border-primary/50 focus:outline-none">
+            </div>
+            <div>
+                <label class="block text-xs font-label-sm text-on-surface-variant mb-1">Command</label>
+                <input type="text" id="mcp-cmd" placeholder="e.g. npx" class="w-full bg-surface-variant/30 text-on-surface text-sm p-2 rounded border border-outline-variant/20 focus:border-primary/50 focus:outline-none">
+            </div>
+            <div class="col-span-2">
+                <label class="block text-xs font-label-sm text-on-surface-variant mb-1">Arguments (space separated)</label>
+                <input type="text" id="mcp-args" placeholder="e.g. -y @modelcontextprotocol/server-github" class="w-full bg-surface-variant/30 text-on-surface text-sm p-2 rounded border border-outline-variant/20 focus:border-primary/50 focus:outline-none">
+            </div>
+            <div class="col-span-2">
+                <label class="block text-xs font-label-sm text-on-surface-variant mb-1">Environment Variables (comma separated key=value)</label>
+                <input type="text" id="mcp-env" placeholder="e.g. GITHUB_TOKEN=ghp_123, OTHER_VAR=value" class="w-full bg-surface-variant/30 text-on-surface text-sm p-2 rounded border border-outline-variant/20 focus:border-primary/50 focus:outline-none">
+            </div>
+        </div>
+        <div class="flex justify-end gap-sm">
+            <button onclick="document.getElementById('add-mcp-form').classList.add('hidden')" class="px-4 py-1.5 text-on-surface-variant text-sm hover:text-on-surface">Cancel</button>
+            <button onclick="addMcpServer()" class="px-4 py-1.5 bg-primary hover:bg-primary/90 text-on-primary rounded text-sm font-semibold">Save & Connect</button>
+        </div>
+    </div>
+
+    <!-- Servers List -->
+    <div id="mcp-list" class="space-y-sm">
+        <!-- Rendered via JS -->
+    </div>
+</section>
 
 <!-- About Section -->
 <section id="panel-about" class="hidden space-y-lg">
@@ -1224,14 +1269,14 @@
 
     // --- Settings ---
     function showSettingsPanel(panelId) {
-        ['panel-preferences', 'panel-about', 'panel-license'].forEach(id => {
+        ['panel-preferences', 'panel-about', 'panel-license', 'panel-mcp'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.classList.add('hidden');
         });
         const target = document.getElementById(panelId);
         if (target) target.classList.remove('hidden');
 
-        ['tab-preferences', 'tab-about', 'tab-license'].forEach(id => {
+        ['tab-preferences', 'tab-about', 'tab-license', 'tab-mcp'].forEach(id => {
             const btn = document.getElementById(id);
             if (!btn) return;
             if (('panel-' + id.replace('tab-', '')) === panelId) {
@@ -1257,6 +1302,95 @@
                     if (el) el.checked = val;
                 });
             }
+        });
+        loadMCPServers();
+    }
+
+    // --- MCP Management ---
+    function loadMCPServers() {
+        if(!window.pywebview || !window.pywebview.api) return;
+        pywebview.api.get_mcp_servers().then(servers => {
+            const listEl = document.getElementById('mcp-list');
+            if(!listEl) return;
+            if(!servers || servers.length === 0) {
+                listEl.innerHTML = '<div class="text-on-surface-variant text-sm text-center py-lg bg-surface-variant/10 rounded border border-outline-variant/10">No external MCP servers configured.</div>';
+                return;
+            }
+            let html = '';
+            servers.forEach(srv => {
+                const statusColor = srv.connected ? 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20' : 'text-red-400 bg-red-400/10 border-red-400/20';
+                const statusText = srv.connected ? 'Connected' : 'Disconnected';
+                const toolsText = srv.connected ? `${srv.tool_count} tools available` : '';
+                
+                html += `
+                <div class="p-4 rounded-lg bg-surface-container border border-outline-variant/20 flex flex-col gap-2">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <h3 class="font-bold text-on-surface text-md">${srv.name}</h3>
+                            <span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold border ${statusColor}">${statusText}</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="reconnectMcp('${srv.name}')" class="p-1 text-on-surface-variant hover:text-primary transition-colors" title="Reconnect">
+                                <span class="material-symbols-outlined text-sm">refresh</span>
+                            </button>
+                            <button onclick="removeMcp('${srv.name}')" class="p-1 text-on-surface-variant hover:text-red-400 transition-colors" title="Remove">
+                                <span class="material-symbols-outlined text-sm">delete</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="text-xs text-on-surface-variant font-mono">
+                        ${srv.command} ${srv.args.join(' ')}
+                    </div>
+                    ${toolsText ? `<div class="text-xs text-primary/80 mt-1">🧰 ${toolsText}</div>` : ''}
+                </div>`;
+            });
+            listEl.innerHTML = html;
+        });
+    }
+
+    function addMcpServer() {
+        const name = document.getElementById('mcp-name').value.trim();
+        const cmd = document.getElementById('mcp-cmd').value.trim();
+        const args = document.getElementById('mcp-args').value.trim();
+        const env = document.getElementById('mcp-env').value.trim();
+
+        if(!name || !cmd) {
+            alert("Name and Command are required.");
+            return;
+        }
+
+        if(window.pywebview && window.pywebview.api) {
+            pywebview.api.add_mcp_server(name, cmd, args, env).then(res => {
+                if(res.success) {
+                    document.getElementById('mcp-name').value = '';
+                    document.getElementById('mcp-cmd').value = '';
+                    document.getElementById('mcp-args').value = '';
+                    document.getElementById('mcp-env').value = '';
+                    document.getElementById('add-mcp-form').classList.add('hidden');
+                    loadMCPServers();
+                    if(!res.connected) {
+                        alert("Server added but failed to connect: " + (res.error || "Unknown error"));
+                    }
+                } else {
+                    alert("Failed to add server: " + res.error);
+                }
+            });
+        }
+    }
+
+    function removeMcp(name) {
+        if(confirm(`Remove MCP server '${name}'?`)) {
+            pywebview.api.remove_mcp_server(name).then(res => {
+                if(res.success) loadMCPServers();
+                else alert("Failed to remove: " + res.error);
+            });
+        }
+    }
+
+    function reconnectMcp(name) {
+        pywebview.api.reconnect_mcp_server(name).then(res => {
+            loadMCPServers();
+            if(!res.success) alert("Failed to reconnect: " + res.error);
         });
     }
 
