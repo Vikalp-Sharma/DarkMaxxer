@@ -31,7 +31,7 @@ except Exception:
     webview = None
 from memory_manager import MemoryManager, ConfigManager
 from llm_engine import LLMEngine
-from mcp_integration import FileOpsServer
+from mcp_integration import FileOpsServer, MCPClient
 
 # Vikalp Sharma
 # Proprietary License - Do not redistribute without permission.
@@ -50,6 +50,8 @@ class Api:
         self._window = None
         self.terminal_logs = []
         self.subagents = []
+        self.mcp_clients = {}  # name -> MCPClient
+        self._init_mcp_servers()
 
         # Restore active session if available
         conf = self.config.get_config()
@@ -65,6 +67,23 @@ class Api:
             ws_dir = self.memory.get_workspace_dir(active_id)
             if os.path.exists(ws_dir):
                 self.file_ops = FileOpsServer(ws_dir)
+
+    def _init_mcp_servers(self):
+        """Connect to configured MCP servers on startup."""
+        try:
+            servers = self.config.get_config().get("mcp_servers", [])
+            for srv in servers:
+                if not srv.get("enabled", True):
+                    continue
+                name = srv.get("name", "unknown")
+                try:
+                    client = MCPClient(name, srv["command"], srv.get("args", []), srv.get("env", {}))
+                    if client.connect(timeout=8):
+                        self.mcp_clients[name] = client
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
     def set_window(self, window):
         self._window = window
@@ -338,55 +357,105 @@ class Api:
                 self._log_terminal("Generation cancelled during context build.")
                 return
 
+            skill_content = ""
+            skill_found = False
+            if self.file_ops and os.path.exists(self.file_ops.base_dir):
+                for root, dirs, files in os.walk(self.file_ops.base_dir):
+                    if "SKILL.md" in files:
+                        try:
+                            with open(os.path.join(root, "SKILL.md"), "r", encoding="utf-8") as f:
+                                skill_content = f.read()
+                                skill_found = True
+                        except Exception:
+                            pass
+                        break
+
             # Build structured messages array for chat models
             messages = []
+            skill_injection = f"\n<SKILLS>\n{skill_content}\n</SKILLS>\n" if skill_found else ""
+            
+            # Build MCP tools injection
+            mcp_injection = ""
+            if self.mcp_clients:
+                mcp_parts = []
+                for name, client in self.mcp_clients.items():
+                    if client.is_connected:
+                        desc = client.get_tool_descriptions()
+                        if desc:
+                            mcp_parts.append(desc)
+                if mcp_parts:
+                    mcp_injection = (
+                        "\n\n=== EXTERNAL MCP TOOLS ===\n"
+                        "You have access to external MCP (Model Context Protocol) servers. "
+                        "To call an MCP tool, use this syntax:\n"
+                        "[TOOL: MCP_CALL server=ServerName tool=tool_name args={\"param\": \"value\"}]\n\n"
+                        "Available MCP servers and their tools:\n"
+                        + "\n".join(mcp_parts) + "\n"
+                        "=== END MCP TOOLS ===\n"
+                    )
+
             sys_msg = (
                 f"{context_files}"
-                "You are DarkMaxxer AI, an autonomous local AI coding assistant with direct access to the user's filesystem and workspace.\n"
-                "Whenever the user asks you to create a file, edit a file, rename a file, read a file, append to a file, or run a command, you MUST immediately output the corresponding [TOOL: ...] block.\n"
-                "NEVER explain syntax to the user. NEVER apologize when asked to create a file. Just execute immediately using the exact syntax below:\n\n"
-                "=== AVAILABLE TOOLS AND EXACT SYNTAX ===\n"
-                "1. CREATE FILE (to create a new file or overwrite an existing file. ALWAYS use a proper extension like .py, .html, .js, .json):\n"
-                "[TOOL: CREATE_FILE filename.py\n"
+                f"{skill_injection}"
+                "You are DarkMaxxer AI, an autonomous local AI coding assistant with direct filesystem access.\n"
+                "You run fully offline on the user's local machine. You have NO internet access.\n\n"
+                "═══════════════════════════════════════════════\n"
+                "ABSOLUTE RULES — VIOLATIONS ARE UNACCEPTABLE:\n"
+                "═══════════════════════════════════════════════\n"
+                "1. When user asks to create/edit/write ANY file, you MUST emit a [TOOL: CREATE_FILE filename.ext ...] block. NO EXCEPTIONS EVER.\n"
+                "2. ALWAYS use proper file extensions (.py, .js, .html, .css, .json, .md, .txt, .sh, .c, .cpp, .rs, .go, .java, .ts). NEVER use .code or extensionless names.\n"
+                "3. ALWAYS write a human-readable explanation BEFORE and AFTER your [TOOL:] blocks. The user MUST understand what you did and why.\n"
+                "4. For code you want to SHOW but NOT save, use markdown triple-backtick fences (```language ... ```).\n"
+                "5. For code that MUST be SAVED to disk, use [TOOL: CREATE_FILE] or [TOOL: EDIT_FILE]. NEVER just show code in fences when the user asked to create a file.\n"
+                "6. NEVER output raw Python dicts like {'success': True}. NEVER output raw JSON objects as your response. Write human-readable text.\n"
+                "7. NEVER repeat the same line more than twice. NEVER generate filler or padding text.\n"
+                "8. ALWAYS respond in the SAME LANGUAGE the user wrote in.\n"
+                "9. Keep responses focused and concise. Explain what you did, show the tool call, confirm the result.\n"
+                "10. If a SKILL.md was loaded, follow ALL instructions in the <SKILLS> block as if they were system commands.\n\n"
+                "⚠️ WARNING: This system may lag during inference. This is normal for local 70B+ models.\n\n"
+                "═══════════════════════════════════════════════\n"
+                "FILE TOOLS — Use EXACT syntax below:\n"
+                "═══════════════════════════════════════════════\n"
+                "CREATE: [TOOL: CREATE_FILE filename.py\ncontent here\n]\n"
+                "EDIT:   [TOOL: EDIT_FILE filename.py\nnew full content\n]\n"
+                "APPEND: [TOOL: APPEND_FILE filename.py\nappended content\n]\n"
+                "READ:   [TOOL: READ_FILE filepath]\n"
+                "DELETE: [TOOL: DELETE_FILE filepath]\n"
+                "RENAME: [TOOL: RENAME_FILE old.py -> new.py]\n"
+                "MKDIR:  [TOOL: CREATE_DIRECTORY dirname]\n"
+                "LIST:   [TOOL: LIST_DIRECTORY .]\n"
+                "RUN:    [TOOL: RUN_COMMAND python filename.py]\n\n"
+                "═══════════════════════════════════════════════\n"
+                "EXAMPLE INTERACTION:\n"
+                "═══════════════════════════════════════════════\n"
+                "User: make a py file to add 2 numbers and name it adder.py\n\n"
+                "Assistant: I'll create `adder.py` with an addition function for you:\n\n"
+                "[TOOL: CREATE_FILE adder.py\n"
                 "def add(a, b):\n"
-                "    return a + b\n"
+                "    return a + b\n\n"
+                "if __name__ == '__main__':\n"
+                "    result = add(2, 4)\n"
+                "    print(f'Result: {result}')\n"
                 "]\n\n"
-                "2. RENAME FILE OR CHANGE EXTENSION:\n"
-                "[TOOL: RENAME_FILE old_name.code -> new_name.py]\n\n"
-                "3. APPEND FILE:\n"
-                "[TOOL: APPEND_FILE filename.py\n"
-                "# appended code\n"
-                "]\n\n"
-                "4. READ FILE:\n"
-                "[TOOL: READ_FILE filepath]\n\n"
-                "5. EDIT FILE:\n"
-                "[TOOL: EDIT_FILE filepath\n"
-                "new code here\n"
-                "]\n\n"
-                "6. LIST DIRECTORY:\n"
-                "[TOOL: LIST_DIRECTORY .]\n\n"
-                "7. RUN COMMAND:\n"
-                "[TOOL: RUN_COMMAND python filename.py]\n\n"
-                "8. DELETE FILE:\n"
-                "[TOOL: DELETE_FILE filepath]\n\n"
-                "CRITICAL RULES:\n"
-                "- When user asks for Python code or a Python file (like adding 2 numbers), ALWAYS create a .py file (e.g. adder.py or main.py) with complete, runnable code inside [TOOL: CREATE_FILE adder.py ...]. NEVER create .code files.\n"
-                "- When creating or modifying a file, output the [TOOL: ...] block containing the complete code."
+                "Done! Created **adder.py** — it defines an `add(a, b)` function and prints `add(2, 4)` when run directly.\n"
+                + mcp_injection
             )
             messages.append({"role": "system", "content": sys_msg})
             if use_memory:
-                # Keep last 12 history turns and truncate long older outputs to optimize token generation speed
-                trimmed_history = history[-12:] if len(history) > 12 else history
+                # Keep last 8 history turns and truncate long older outputs to optimize token generation speed
+                trimmed_history = history[-8:] if len(history) > 8 else history
                 for msg in trimmed_history:
                     content_str = str(msg.get("content", ""))
-                    if msg != trimmed_history[-1] and len(content_str) > 1500:
-                        content_str = content_str[:1500] + "... [truncated for speed]"
+                    if msg != trimmed_history[-1] and len(content_str) > 800:
+                        content_str = content_str[:800] + "... [truncated for speed]"
                     messages.append({"role": msg.get("role", "user"), "content": content_str})
             else:
                 messages.append({"role": "user", "content": prompt})
 
             engine_name = "AirLLM" if (getattr(self.llm.model, 'is_airllm', False) or 'airllm' in str(type(self.llm.model).__module__).lower()) else type(self.llm.model).__name__
             self._log_terminal("=== ROUTING CHECK ===")
+            if skill_found:
+                self._log_terminal("⚡ SKILL DETECTED: Injected SKILL.md context directly into AI mind.")
             self._log_terminal(f"1. Prompt received from User (Length: {len(prompt)} chars)")
             self._log_terminal(f"2. Routing through active LLM engine: {engine_name}")
             self._log_terminal(f"3. Executing {engine_name}.generate()...")
@@ -418,6 +487,15 @@ class Api:
                 latest_history = history
             latest_history.append({"role": "assistant", "content": response})
             self.memory.save_history(conv_id, latest_history)
+
+            # Memory cleanup after generation
+            try:
+                import gc
+                gc.collect()
+                if torch is not None and torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+            except Exception:
+                pass
         except Exception as e:
             if self._cancel_requested or self._current_gen_id != gen_id:
                 self._log_terminal("Generation was cancelled.")
@@ -473,6 +551,7 @@ class Api:
         rename_pattern = re.compile(r'\[TOOL:\s*(?:RENAME_FILE|CHANGE_EXTENSION)[\s:|]+([^\s|\]"\'`]+)\s*(?:->|to|\s)\s*([^\s|\]"\'`]+)\]', re.DOTALL | re.IGNORECASE)
         append_pattern = re.compile(r'\[TOOL:\s*APPEND_FILE[\s:|]+([^\s|\]"\'`]+)[\s:|]*(.*?)\]', re.DOTALL | re.IGNORECASE)
         listdir_pattern = re.compile(r'\[TOOL:\s*LIST_DIRECTORY[\s:|]*([^\s|\]"\'`]*)\]', re.DOTALL | re.IGNORECASE)
+        mkdir_pattern = re.compile(r'\[TOOL:\s*CREATE_DIRECTORY[\s:|]+([^\s|\]"\'`]+)\]', re.DOTALL | re.IGNORECASE)
 
         tools_executed = False
 
@@ -483,7 +562,7 @@ class Api:
                 res = self.file_ops.create_file(path, content)
                 self._log_terminal(f"Created file: {path}")
                 tools_executed = True
-                return f"\n✅ {res}\n"
+                return f"\n✅ Created: **{path}**\n"
             except Exception as e:
                 self._log_terminal(f"Error creating {path}: {e}")
                 return f"\n❌ Create failed: {str(e)}\n"
@@ -495,7 +574,7 @@ class Api:
                 res = self.file_ops.edit_file(path, content)
                 self._log_terminal(f"Edited file: {path}")
                 tools_executed = True
-                return f"\n✅ {res}\n"
+                return f"\n✅ Edited: **{path}**\n"
             except Exception as e:
                 self._log_terminal(f"Error editing {path}: {e}")
                 return f"\n❌ Edit failed: {str(e)}\n"
@@ -507,7 +586,7 @@ class Api:
                 res = self.file_ops.delete_file(path)
                 self._log_terminal(f"Deleted file: {path}")
                 tools_executed = True
-                return f"\n✅ {res}\n"
+                return f"\n✅ Deleted: **{path}**\n"
             except Exception as e:
                 self._log_terminal(f"Error deleting {path}: {e}")
                 return f"\n❌ Delete failed: {str(e)}\n"
@@ -531,7 +610,7 @@ class Api:
                 res = self.file_ops.rename_file(old_path, new_path)
                 self._log_terminal(f"Renamed file: {old_path} -> {new_path}")
                 tools_executed = True
-                return f"\n✅ {res}\n"
+                return f"\n✅ Renamed: **{old_path}** → **{new_path}**\n"
             except Exception as e:
                 self._log_terminal(f"Error renaming {old_path} -> {new_path}: {e}")
                 return f"\n❌ Rename failed: {str(e)}\n"
@@ -543,7 +622,7 @@ class Api:
                 res = self.file_ops.append_file(path, content)
                 self._log_terminal(f"Appended to file: {path}")
                 tools_executed = True
-                return f"\n✅ {res}\n"
+                return f"\n✅ Appended to: **{path}**\n"
             except Exception as e:
                 self._log_terminal(f"Error appending to {path}: {e}")
                 return f"\n❌ Append failed: {str(e)}\n"
@@ -559,6 +638,18 @@ class Api:
             except Exception as e:
                 self._log_terminal(f"Error listing directory {path}: {e}")
                 return f"\n❌ List directory failed: {str(e)}\n"
+
+        def mkdir_repl(match):
+            nonlocal tools_executed
+            path = match.group(1).strip()
+            try:
+                res = self.file_ops.create_directory(path)
+                self._log_terminal(f"Created directory: {path}")
+                tools_executed = True
+                return f"\n✅ Created directory: **{path}**\n"
+            except Exception as e:
+                self._log_terminal(f"Error creating directory {path}: {e}")
+                return f"\n❌ Create directory failed: {str(e)}\n"
 
         def cmd_repl(match):
             nonlocal tools_executed
@@ -611,8 +702,33 @@ class Api:
         response_text = rename_pattern.sub(rename_repl, response_text)
         response_text = append_pattern.sub(append_repl, response_text)
         response_text = listdir_pattern.sub(listdir_repl, response_text)
+        response_text = mkdir_pattern.sub(mkdir_repl, response_text)
         response_text = cmd_pattern.sub(cmd_repl, response_text)
         response_text = build_pattern.sub(build_repl, response_text)
+
+        # MCP_CALL pattern: [TOOL: MCP_CALL server=Name tool=tool_name args={...}]
+        mcp_pattern = re.compile(r'\[TOOL:\s*MCP_CALL\s+server=([\w\-]+)\s+tool=([\w\-\.]+)\s*(?:args=)?({.*?})?\]', re.DOTALL | re.IGNORECASE)
+        def mcp_repl(match):
+            nonlocal tools_executed
+            server_name = match.group(1).strip()
+            tool_name = match.group(2).strip()
+            args_str = (match.group(3) or '{}').strip()
+            try:
+                import json as _json
+                args = _json.loads(args_str)
+            except Exception:
+                args = {}
+            client = self.mcp_clients.get(server_name)
+            if not client or not client.is_connected:
+                self._log_terminal(f"MCP server '{server_name}' not connected")
+                return f"\n❌ MCP server **{server_name}** is not connected. Add it in Settings > MCP Servers.\n"
+            self._log_terminal(f"MCP call: {server_name}.{tool_name}({args})")
+            result = client.call_tool(tool_name, args)
+            tools_executed = True
+            if "error" in result:
+                return f"\n❌ MCP {server_name}.{tool_name} failed: {result['error']}\n"
+            return f"\n🔌 **MCP {server_name}.{tool_name}** result:\n{result.get('result', 'OK')}\n"
+        response_text = mcp_pattern.sub(mcp_repl, response_text)
 
         # Loose tool pattern check if not executed yet: [TOOL: CREATE_FILE path] ```code```
         if not tools_executed:
@@ -624,122 +740,31 @@ class Api:
                     res = self.file_ops.create_file(path, content)
                     self._log_terminal(f"Created file: {path}")
                     tools_executed = True
-                    return f"\n✅ {res}\n"
+                    return f"\n✅ Created: **{path}**\n"
                 except Exception as e:
                     self._log_terminal(f"Error creating {path}: {e}")
                     return f"\n❌ Create failed: {str(e)}\n"
             response_text = loose_create.sub(loose_repl, response_text)
 
-        # Auto-fallback: If AI didn't use valid tools but user asked to create/make/write/rename a file, auto-save or auto-rename!
-        if not tools_executed:
-            try:
-                history_prompts = []
-                if user_prompt:
-                    history_prompts.append(str(user_prompt))
-                if hasattr(self, 'active_conv_id') and self.active_conv_id:
-                    hist = self.memory.get_history(self.active_conv_id)
-                    for m in reversed(hist):
-                        if m.get("role") == "user":
-                            history_prompts.append(m.get("content", ""))
-                            
-                combined_user_text = " \n ".join(history_prompts).lower()
-                
-                # Check for explicit rename / change extension requests in user prompt
-                if any(kw in combined_user_text for kw in ["change the file name", "change file name", "change extension", "change the file extension", "rename"]):
-                    existing_files = self.file_ops.list_files() if self.file_ops else []
-                    code_files = [f for f in existing_files if f.endswith(".code") or f == "output.code"]
-                    if code_files:
-                        old_f = code_files[0]
-                        target_f = "adder.py" if "add" in combined_user_text else "main.py"
-                        fn_candidates = re.findall(r'\b([a-zA-Z0-9_\-\.]+\.[a-zA-Z0-9]{1,6})\b', combined_user_text)
-                        fn_candidates = [fc for fc in fn_candidates if fc not in ["e.g.", "i.e.", "etc.", "vs.", "al.", old_f]]
-                        if fn_candidates:
-                            target_f = fn_candidates[0]
-                        
-                        # Read old code and upgrade if necessary
-                        old_content = ""
+        # Smart extraction: If AI returned code in markdown fences but forgot [TOOL:], and user explicitly named a file
+        if not tools_executed and user_prompt:
+            import re as _re
+            # Only trigger if user explicitly named a file with extension
+            user_fn_match = _re.search(r'\b([a-zA-Z0-9_][a-zA-Z0-9_\-]*\.(?:py|js|html|css|json|txt|md|sh|c|cpp|rs|go|java|ts|tsx|jsx))\b', str(user_prompt), _re.IGNORECASE)
+            if user_fn_match:
+                target_fname = user_fn_match.group(1)
+                # Extract code ONLY from actual markdown fences the AI wrote — never fabricate
+                code_fences = _re.findall(r'```[a-zA-Z]*\n(.*?)```', response_text, _re.DOTALL)
+                if code_fences:
+                    best_code = max(code_fences, key=len).strip()
+                    if len(best_code) > 5:  # Must be real code, not empty
                         try:
-                            old_content = self.file_ops.read_file(old_f)
-                        except Exception:
-                            pass
-                        
-                        if not old_content or old_content.strip() in ["add(2,4)", "add(2, 4)", "add(a,b)", "add(a, b)"]:
-                            old_content = "# adder.py - Adds two numbers\ndef add(a, b):\n    return a + b\n\nif __name__ == '__main__':\n    num1 = 2\n    num2 = 4\n    print(f'Sum of {num1} and {num2} is {add(num1, num2)}')\n"
-                        
-                        self.file_ops.create_file(target_f, old_content)
-                        try:
-                            self.file_ops.delete_file(old_f)
-                        except Exception:
-                            pass
-                        self._log_terminal(f"Auto-renamed {old_f} -> {target_f}")
-                        tools_executed = True
-                        return f"✅ Auto-Renamed and upgraded file to Python script in your active folder: **{target_f}**\n\n```python\n{old_content}\n```\n"
-
-                file_action_keywords = ["create", "make", "write", "generate", "add a file", "save", "build", "python file", "code to add"]
-                has_file_extension = any(ext in combined_user_text for ext in [".py", ".html", ".js", ".css", ".sh", ".json", ".txt", ".md", ".c", ".cpp", ".rs", ".go"])
-                
-                if any(kw in combined_user_text for kw in file_action_keywords) or has_file_extension or "hello.py" in combined_user_text or "add 2 numbers" in combined_user_text or "add two numbers" in combined_user_text:
-                    fname = None
-                    fn_candidates = re.findall(r'\b([a-zA-Z0-9_\-\.]+\.[a-zA-Z0-9]{1,6})\b', combined_user_text)
-                    fn_candidates = [fc for fc in fn_candidates if fc not in ["e.g.", "i.e.", "etc.", "vs.", "al.", "output.code"]]
-                    if fn_candidates:
-                        fname = fn_candidates[0]
-                    
-                    code_blocks = re.findall(r'```(?:[a-zA-Z0-9_\-\.\/]*)\s*\n?(.*?)\s*```', response_text, re.DOTALL)
-                    code = None
-                    if code_blocks:
-                        fence_titles = re.findall(r'```([a-zA-Z0-9_\-\.]+\.[a-zA-Z0-9]{1,6})\s*\n', response_text)
-                        if fence_titles and not fname:
-                            fname = fence_titles[0]
-                        code = code_blocks[0].strip()
-                    else:
-                        raw_lines = response_text.strip().splitlines()
-                        code_lines = []
-                        in_code = False
-                        for line in raw_lines:
-                            l_str = line.strip()
-                            if any(l_str.startswith(prefix) for prefix in ["def ", "import ", "from ", "class ", "return ", "print(", "#!", "<html>", "<!DOCTYPE", "function ", "const ", "let ", "var ", "if ", "for ", "while "]) or in_code:
-                                in_code = True
-                                if l_str.startswith("Hope this helps") or l_str.startswith("Let me know"):
-                                    break
-                                code_lines.append(line)
-                        if code_lines:
-                            code = "\n".join(code_lines).strip()
-                    
-                    # Synthesize clean default code if model gave purely conversational advice or partial snippet
-                    if (not code or code.strip() in ["add(2,4)", "add(2, 4)", "add(a,b)", "add(a, b)"]) and ("add" in combined_user_text and ("2" in combined_user_text or "two" in combined_user_text or "numbers" in combined_user_text)):
-                        code = "# adder.py - Adds two numbers\ndef add(a, b):\n    return a + b\n\nif __name__ == '__main__':\n    num1 = 2\n    num2 = 4\n    print(f'Sum of {num1} and {num2} is {add(num1, num2)}')\n"
-                        if not fname or fname == "output.code":
-                            fname = "adder.py"
-
-                    if not code and fname:
-                        if fname.endswith(".py"):
-                            code = f"# {fname}\n\ndef main():\n    print('Hello from {fname}')\n\nif __name__ == '__main__':\n    main()\n"
-                        elif fname.endswith(".html"):
-                            code = f"<!DOCTYPE html>\n<html>\n<head>\n    <title>{fname}</title>\n</head>\n<body>\n    <h1>{fname}</h1>\n</body>\n</html>\n"
-                        elif fname.endswith(".js"):
-                            code = f"// {fname}\nconsole.log('Hello from {fname}');\n"
-                        else:
-                            code = f"# {fname}\n"
-
-                    if code and not fname:
-                        fn_match = re.search(r'#\s*([a-zA-Z0-9_\-\.]+\.[a-zA-Z0-9]{1,6})\b', code)
-                        if fn_match:
-                            fname = fn_match.group(1)
-                        elif "add" in combined_user_text and ("2" in combined_user_text or "two" in combined_user_text or "numbers" in combined_user_text):
-                            fname = "adder.py"
-                        else:
-                            is_python = "def " in code or "print(" in code or "import " in code or "python" in combined_user_text or ".py" in combined_user_text
-                            fname = "output.py" if is_python else "output.code"
-                    
-                    if code and fname:
-                        res = self.file_ops.create_file(fname, code)
-                        self._log_terminal(f"Auto-created requested file: {fname}")
-                        tools_executed = True
-                        if "CREATE_FILE" not in response_text and "Auto-Created file" not in response_text:
-                            response_text = f"✅ Auto-Created requested file in workspace: **{fname}**\n\n" + response_text + f"\n\n```python\n{code}\n```"
-            except Exception as e:
-                self._log_terminal(f"Auto-fallback error: {e}")
+                            res = self.file_ops.create_file(target_fname, best_code)
+                            self._log_terminal(f"Smart extraction: Created {target_fname} from AI code block")
+                            tools_executed = True
+                            response_text = f"\n✅ Created: **{target_fname}**\n\n" + response_text
+                        except Exception as e:
+                            self._log_terminal(f"Smart extraction failed for {target_fname}: {e}")
 
         return response_text
 
@@ -752,7 +777,7 @@ class Api:
         if not hasattr(self, "terminal_logs") or self.terminal_logs is None:
             self.terminal_logs = []
         self.terminal_logs.append(entry)
-        if len(self.terminal_logs) > 500:
+        if len(self.terminal_logs) > 200:
             self.terminal_logs.pop(0)
 
         if self._window:
@@ -767,15 +792,98 @@ class Api:
         self.terminal_logs = []
         return {"success": True}
 
+    # --- MCP Server Management ---
+
+    def get_mcp_servers(self):
+        """Return list of configured MCP servers and their connection status."""
+        servers = self.config.get_config().get("mcp_servers", [])
+        result = []
+        for srv in servers:
+            name = srv.get("name", "unknown")
+            client = self.mcp_clients.get(name)
+            connected = client.is_connected if client else False
+            tool_count = len(client.tools) if client else 0
+            result.append({
+                "name": name,
+                "command": srv.get("command", ""),
+                "args": srv.get("args", []),
+                "enabled": srv.get("enabled", True),
+                "connected": connected,
+                "tool_count": tool_count,
+                "tools": [t.get("name", "") for t in (client.tools if client else [])]
+            })
+        return result
+
+    def add_mcp_server(self, name, command, args_str="", env_str=""):
+        """Add and connect to a new MCP server."""
+        try:
+            args = [a.strip() for a in args_str.split() if a.strip()] if args_str else []
+            env = {}
+            if env_str:
+                for pair in env_str.split(","):
+                    if "=" in pair:
+                        k, v = pair.split("=", 1)
+                        env[k.strip()] = v.strip()
+            srv_config = {"name": name, "command": command, "args": args, "env": env, "enabled": True}
+            servers = self.config.get_config().get("mcp_servers", [])
+            # Remove existing with same name
+            servers = [s for s in servers if s.get("name") != name]
+            servers.append(srv_config)
+            self.config.update_config("mcp_servers", servers)
+            # Try to connect
+            client = MCPClient(name, command, args, env)
+            if client.connect(timeout=10):
+                self.mcp_clients[name] = client
+                self._log_terminal(f"MCP server '{name}' connected with {len(client.tools)} tools")
+                return {"success": True, "connected": True, "tools": [t.get("name", "") for t in client.tools]}
+            else:
+                self._log_terminal(f"MCP server '{name}' added but failed to connect")
+                return {"success": True, "connected": False, "error": "Server added but connection failed"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def remove_mcp_server(self, name):
+        """Remove an MCP server and disconnect it."""
+        try:
+            client = self.mcp_clients.pop(name, None)
+            if client:
+                client.disconnect()
+            servers = self.config.get_config().get("mcp_servers", [])
+            servers = [s for s in servers if s.get("name") != name]
+            self.config.update_config("mcp_servers", servers)
+            self._log_terminal(f"MCP server '{name}' removed")
+            return {"success": True}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def reconnect_mcp_server(self, name):
+        """Reconnect to a specific MCP server."""
+        try:
+            servers = self.config.get_config().get("mcp_servers", [])
+            srv = next((s for s in servers if s.get("name") == name), None)
+            if not srv:
+                return {"success": False, "error": f"Server '{name}' not found in config"}
+            old_client = self.mcp_clients.pop(name, None)
+            if old_client:
+                old_client.disconnect()
+            client = MCPClient(name, srv["command"], srv.get("args", []), srv.get("env", {}))
+            if client.connect(timeout=10):
+                self.mcp_clients[name] = client
+                return {"success": True, "connected": True, "tools": [t.get("name", "") for t in client.tools]}
+            return {"success": False, "error": "Connection failed"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
     # --- File System ---
 
     def get_file_tree(self):
         if self.file_ops:
             try:
+                tree = self.file_ops.list_tree_recursive()
                 return {
                     "active": True,
-                    "files": self.file_ops.list_files(),
-                    "folders": self.file_ops.list_folders()
+                    "files": tree["files"],
+                    "folders": tree["folders"]
                 }
             except Exception:
                 return {"active": True, "files": [], "folders": []}
@@ -788,6 +896,19 @@ class Api:
         try:
             content = self.file_ops.read_file(path)
             return {"success": True, "content": content}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def save_file(self, path, content):
+        """Save/write content to a file in the active workspace."""
+        if not self.file_ops:
+            return {"success": False, "error": "No workspace active"}
+        try:
+            full = self.file_ops._safe_path(path)
+            os.makedirs(os.path.dirname(full), exist_ok=True)
+            with open(full, "w", encoding="utf-8") as f:
+                f.write(content)
+            return {"success": True, "path": path}
         except Exception as e:
             return {"success": False, "error": str(e)}
 
@@ -949,7 +1070,12 @@ class Api:
         return {"success": False, "error": "No workspace active"}
 
 if __name__ == '__main__':
-    script_dir = os.path.dirname(os.path.abspath(__file__))
+    # Resolve script_dir correctly for both normal Python and PyInstaller frozen exe
+    if getattr(sys, 'frozen', False):
+        # Frozen exe: use the directory containing the exe, not _MEIPASS temp dir
+        script_dir = os.path.dirname(os.path.abspath(sys.executable))
+    else:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
     if script_dir not in sys.path:
         sys.path.insert(0, script_dir)
@@ -991,21 +1117,112 @@ if __name__ == '__main__':
 
         start_html_url = f"file:///{os.path.abspath(start_html).replace('\\', '/')}"
 
+        # Generate splash screen with dark background and spinning logo
+        _splash_path = os.path.join(gui_dir, 'splash.html')
+        _logo_file = os.path.join(gui_dir, 'logo.png')
+        _logo_url = ''
+        if os.path.exists(_logo_file):
+            _logo_url = 'file:///' + os.path.abspath(_logo_file).replace(os.sep, '/')
+        _splash_html = (
+            '<!DOCTYPE html><html><head><meta charset="utf-8"><style>'
+            '*{margin:0;padding:0;box-sizing:border-box}'
+            'html,body{width:100%;height:100%;overflow:hidden;'
+            'background:#0a0a0f;background-image:radial-gradient(circle at 50% 45%,rgba(105,30,166,0.12) 0%,rgba(10,10,15,1) 70%);'
+            'display:flex;align-items:center;justify-content:center}'
+            '.c{display:flex;flex-direction:column;align-items:center;animation:containerIn .6s ease-out}'
+            '.logo-wrap{position:relative;width:130px;height:130px;display:flex;align-items:center;justify-content:center}'
+            '.glow-ring{position:absolute;inset:-8px;border-radius:50%;'
+            'border:2px solid rgba(168,85,247,0.3);'
+            'animation:spinCW 2s linear infinite;'
+            'box-shadow:0 0 30px rgba(168,85,247,0.2),inset 0 0 20px rgba(168,85,247,0.05)}'
+            '.glow-ring::after{content:"";position:absolute;top:-3px;left:50%;width:6px;height:6px;'
+            'background:#a855f7;border-radius:50%;transform:translateX(-50%);'
+            'box-shadow:0 0 12px 3px rgba(168,85,247,0.8)}'
+            '.logo{width:100px;height:100px;border-radius:50%;'
+            'animation:spinCW 2s linear infinite;'
+            'filter:drop-shadow(0 0 15px rgba(168,85,247,0.4))}'
+            '.t{color:#e0e3e5;font-family:Segoe UI,sans-serif;font-size:20px;font-weight:600;'
+            'margin-top:22px;letter-spacing:3px;text-transform:uppercase;'
+            'animation:fadeIn 1s ease-out .3s both}'
+            '.dots{display:flex;gap:6px;margin-top:16px;animation:fadeIn 1s ease-out .6s both}'
+            '.dot{width:6px;height:6px;border-radius:50%;background:rgba(168,85,247,0.6);'
+            'animation:bounce .6s ease-in-out infinite alternate}'
+            '.dot:nth-child(2){animation-delay:.15s}'
+            '.dot:nth-child(3){animation-delay:.3s}'
+            '@keyframes spinCW{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}'
+            '@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}'
+            '@keyframes bounce{from{opacity:.3;transform:scale(.7)}to{opacity:1;transform:scale(1.2)}}'
+            '@keyframes containerIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}'
+            '</style></head><body>'
+            '<div class="c">'
+            '<div class="logo-wrap"><div class="glow-ring"></div>'
+            '<img class="logo" src="' + _logo_url + '" alt=""></div>'
+            '<div class="t">DarkMaxxer</div>'
+            '<div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>'
+            '</div></body></html>'
+        )
+        with open(_splash_path, 'w', encoding='utf-8') as _sf:
+            _sf.write(_splash_html)
+        _splash_url = 'file:///' + os.path.abspath(_splash_path).replace(os.sep, '/')
+
+        splash_win = webview.create_window(
+            'DarkMaxxer Loading',
+            url=_splash_url,
+            width=400,
+            height=350,
+            frameless=True,
+            background_color='#0a0a0f',
+        )
+
         window = webview.create_window(
             'DarkMaxxer',
             url=start_html_url,
             js_api=api,
             width=1280,
             height=800,
-            min_size=(900, 600)
+            min_size=(900, 600),
+            background_color='#0a0a0f',
+            hidden=True,
         )
         api.set_window(window)
 
+        def _boot_sequence():
+            import time
+            time.sleep(5)
+            try:
+                splash_win.destroy()
+            except Exception:
+                pass
+            time.sleep(1)
+            try:
+                window.show()
+            except Exception:
+                pass
+            time.sleep(0.3)
+            try:
+                window.maximize()
+            except Exception:
+                pass
+
+        threading.Thread(target=_boot_sequence, daemon=True).start()
+
+        logo_path = os.path.join(script_dir, "gui", "logo_highres.ico")
+        if not os.path.exists(logo_path):
+            logo_path = os.path.join(script_dir, "gui", "logo.ico")
+        if not os.path.exists(logo_path):
+            logo_path = os.path.join(script_dir, "gui", "logo.png")
+
         try:
-            webview.start(debug=False)
-        except Exception as start_err:
-            # Fallback to starting without specific engine options if needed
-            webview.start()
+            import ctypes
+            # Tell Windows this process is its own unique app, separating its taskbar grouping from pythonw.exe
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('SMXF.DarkMaxxer.IDE.2.5.0')
+        except Exception:
+            pass
+
+        try:
+            webview.start(debug=False, icon=logo_path)
+        except Exception:
+            webview.start(icon=logo_path)
     except BaseException as e:
         if isinstance(e, SystemExit) and e.code == 0:
             sys.exit(0)

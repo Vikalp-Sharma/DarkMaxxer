@@ -19,6 +19,42 @@ try:
 except Exception:
     torch = None
 
+# Fix SSL certificate errors in frozen/bundled PyInstaller environments
+# torch.hub, urllib3, and transformers all need valid cert paths
+if getattr(sys, 'frozen', False):
+    # Ensure offline mode is set (backup — memory_manager.py sets this too)
+    os.environ.setdefault("HF_HUB_OFFLINE", "1")
+    os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+    os.environ.setdefault("TORCH_HOME", os.path.join(os.getenv("APPDATA", ""), "DarkMaxxer", "Cache", "torch"))
+    # Disable torch.hub network calls
+    try:
+        if torch is not None:
+            torch.hub._validate_not_a_forked_repo = lambda *args, **kwargs: True
+    except Exception:
+        pass
+    # SSL cert fallback
+    if "SSL_CERT_FILE" not in os.environ:
+        try:
+            import certifi
+            _ca = certifi.where()
+            os.environ["SSL_CERT_FILE"] = _ca
+            os.environ["REQUESTS_CA_BUNDLE"] = _ca
+        except ImportError:
+            import ssl
+            try:
+                ssl._create_default_https_context = ssl._create_unverified_context
+            except Exception:
+                pass
+
+# Fix PyTorch 2.6+ breaking change: weights_only defaults to True, crashing AirLLM
+if torch is not None:
+    _original_torch_load = torch.load
+    def _patched_torch_load(*args, **kwargs):
+        if 'weights_only' not in kwargs:
+            kwargs['weights_only'] = False
+        return _original_torch_load(*args, **kwargs)
+    torch.load = _patched_torch_load
+
 try:
     from airllm import AutoModel
 except Exception:
@@ -63,7 +99,8 @@ class LLMEngine:
                 raise ValueError(f"Local model folder or file not found: '{model_id}'. Remote model downloading has been disabled per strict offline security policy.")
 
             if callback:
-                callback(f"Loading local model from disk: {model_id}...")
+                callback(f"[1/5] Resolving model path: {model_id}...")
+                callback(f"[1/5] Model size: {os.path.getsize(model_id) / (1024**3):.2f} GB" if os.path.isfile(model_id) else f"[1/5] Model directory detected")
                 
             if hf_token:
                 os.environ["HF_TOKEN"] = hf_token
@@ -88,15 +125,36 @@ class LLMEngine:
                                 for layer in data.get("layers", []):
                                     if layer.get("mediaType") == "application/vnd.ollama.image.model" and "digest" in layer:
                                         digest_hash = layer["digest"].replace("sha256:", "sha256-")
-                                        home_blobs = os.path.expanduser(os.path.join("~", ".ollama", "models", "blobs", digest_hash))
-                                        local_blobs = os.path.join(os.path.dirname(model_id), "..", "blobs", digest_hash)
-                                        local_same = os.path.join(os.path.dirname(model_id), digest_hash)
-                                        for candidate in [home_blobs, os.path.abspath(local_blobs), local_same]:
-                                            if os.path.exists(candidate):
-                                                resolved_gguf_path = candidate
-                                                if callback:
-                                                    callback(f"Resolved Ollama manifest to model blob: {candidate}")
+                            
+                                        # Walk UP the directory tree from manifest to find blob stores
+                                        blob_candidates = []
+                                        _sd = os.path.dirname(os.path.abspath(model_id))
+                                        _seen = set()
+                                        while _sd and _sd not in _seen:
+                                            _seen.add(_sd)
+                                            _bd = os.path.join(_sd, "blobs")
+                                            if os.path.isdir(_bd):
+                                                _direct = os.path.join(_bd, digest_hash)
+                                                if os.path.exists(_direct):
+                                                    blob_candidates.append(_direct)
+                                                for _alias in [".darkmaxxer_alias", ".cache_alias"]:
+                                                    _ap = os.path.join(_bd, _alias, digest_hash + ".gguf")
+                                                    if os.path.exists(_ap):
+                                                        blob_candidates.append(_ap)
+                                            _np = os.path.dirname(_sd)
+                                            if _np == _sd:
                                                 break
+                                            _sd = _np
+                                        # Also check standard ~/.ollama/models/blobs
+                                        _hb = os.path.expanduser(os.path.join("~", ".ollama", "models", "blobs", digest_hash))
+                                        if os.path.exists(_hb) and os.path.abspath(_hb) not in [os.path.abspath(x) for x in blob_candidates]:
+                                            blob_candidates.append(_hb)
+                                        # Pick best: prefer .gguf extension, then largest file
+                                        if blob_candidates:
+                                            _gc = [c for c in blob_candidates if c.lower().endswith('.gguf')]
+                                            resolved_gguf_path = max(_gc or blob_candidates, key=lambda p: os.path.getsize(p))
+                                            if callback:
+                                                callback(f"Resolved Ollama manifest to blob: {resolved_gguf_path} ({os.path.getsize(resolved_gguf_path):,} bytes)")
                                         break
                     except Exception:
                         pass
@@ -164,9 +222,13 @@ class LLMEngine:
                             pass
                     
                     self.current_model_id = model_id
-                    self.model_path = model_id
                     if callback:
                         callback("Ollama/GGUF model loaded successfully -> Ready for User.")
+                    try:
+                        import gc; gc.collect()
+                        import torch
+                        if torch.cuda.is_available(): torch.cuda.empty_cache()
+                    except: pass
                     return
                 except Exception as e:
                     gguf_err = str(e)
@@ -175,16 +237,25 @@ class LLMEngine:
 
             # 3. Try loading strictly through AirLLM Layer-Wise Offloading Engine
             try:
-                if os.path.isfile(model_id):
+                target_air_path = None
+                if os.path.isdir(model_id):
+                    if os.path.exists(os.path.join(model_id, "config.json")):
+                        target_air_path = model_id
+                elif os.path.isfile(model_id):
                     parent_dir = os.path.dirname(model_id)
                     if os.path.exists(os.path.join(parent_dir, "config.json")):
                         target_air_path = parent_dir
-                    else:
-                        raise ValueError("AirLLM requires a HuggingFace Hub ID or a local directory containing config.json. Bypassing AirLLM to avoid hanging.")
-                else:
-                    target_air_path = model_id
+                # If we resolved a GGUF blob, check its parent for config.json
+                if target_air_path is None and resolved_gguf_path and os.path.exists(resolved_gguf_path):
+                    _gp = os.path.dirname(resolved_gguf_path)
+                    if os.path.exists(os.path.join(_gp, "config.json")):
+                        target_air_path = _gp
+                if target_air_path is None:
+                    raise ValueError(f"AirLLM requires a local directory with config.json and safetensors. No compatible directory found for '{os.path.basename(model_id)}'.")
                 if callback:
                     callback(f"Routing through AirLLM Layer-Wise Engine: {target_air_path}...")
+                    callback("[3/5] Initializing layer-wise GPU offloading (this loads one layer at a time)...")
+                    callback("⚠️ This may take a while and the app might lag — this is normal for large models.")
                 _AirAutoModel = AutoModel
                 if _AirAutoModel is None:
                     from airllm import AutoModel as _AirAutoModel
@@ -197,6 +268,11 @@ class LLMEngine:
                 self.model_path = model_id
                 if callback:
                     callback("AirLLM Layer-Wise Offloading active -> Model loaded and ready for User.")
+                try:
+                    import gc; gc.collect()
+                    import torch
+                    if torch.cuda.is_available(): torch.cuda.empty_cache()
+                except: pass
                 return
             except Exception as e:
                 air_err = str(e)
@@ -212,7 +288,7 @@ class LLMEngine:
                         callback(f"Attempting to load weight/file object: {model_id}")
                     loaded_obj = None
                     try:
-                        loaded_obj = torch.load(model_id, map_location="cpu", weights_only=True)
+                        loaded_obj = torch.load(model_id, map_location="cpu", weights_only=False)
                     except Exception:
                         pass
                     
@@ -222,6 +298,11 @@ class LLMEngine:
                         self.model_path = model_id
                         if callback:
                             callback("Model file loaded through PyTorch engine -> Ready for User.")
+                        try:
+                            import gc; gc.collect()
+                            import torch
+                            if torch.cuda.is_available(): torch.cuda.empty_cache()
+                        except: pass
                         return
                 except Exception as e:
                     pytorch_err = str(e)
@@ -252,6 +333,11 @@ class LLMEngine:
                 self.model_path = model_id
                 if callback:
                     callback("Transformers fallback active -> Model ready for User.")
+                try:
+                    import gc; gc.collect()
+                    import torch
+                    if torch.cuda.is_available(): torch.cuda.empty_cache()
+                except: pass
                 return
             except Exception as e:
                 trans_err = str(e)

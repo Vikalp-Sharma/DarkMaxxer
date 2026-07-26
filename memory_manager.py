@@ -1,5 +1,6 @@
 # [Vikalp Sharma] - Proprietary / Anti-Theft Watermark
 import os
+import sys
 import json
 import uuid
 import shutil
@@ -50,6 +51,30 @@ os.environ["HF_HUB_CACHE"] = os.path.join(_cache_dir, "hub")
 os.environ["TORCH_HOME"] = os.path.join(_cache_dir, "torch")
 os.environ["TRANSFORMERS_CACHE"] = os.path.join(_cache_dir, "transformers")
 os.environ["AIRLLM_CACHE_DIR"] = _cache_dir
+
+# Force fully offline mode — prevents SSL cert errors and network hangs in bundled exe
+os.environ["HF_HUB_OFFLINE"] = "1"
+os.environ["TRANSFORMERS_OFFLINE"] = "1"
+os.environ["HF_DATASETS_OFFLINE"] = "1"
+os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
+
+# Fix SSL certificate bundle for PyInstaller frozen environments
+# Without this, torch/transformers/urllib3 raise ssl.SSLCertVerificationError
+try:
+    import certifi
+    _ca_bundle = certifi.where()
+    os.environ.setdefault("SSL_CERT_FILE", _ca_bundle)
+    os.environ.setdefault("REQUESTS_CA_BUNDLE", _ca_bundle)
+    os.environ.setdefault("CURL_CA_BUNDLE", _ca_bundle)
+except ImportError:
+    # certifi not installed — disable SSL verification as last resort for bundled exe
+    if getattr(sys, 'frozen', False):
+        import ssl
+        try:
+            ssl._create_default_https_context = ssl._create_unverified_context
+        except Exception:
+            pass
+        os.environ["PYTHONHTTPSVERIFY"] = "0"
 
 # Vikalp Sharma
 # Proprietary License - Do not redistribute without permission.

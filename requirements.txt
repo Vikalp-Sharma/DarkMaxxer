@@ -9,3 +9,8 @@ huggingface_hub
 gguf
 pillow
 pyinstaller
+sentencepiece
+safetensors
+protobuf
+numpy
+certifi
