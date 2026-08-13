@@ -74,6 +74,27 @@ class LLMEngine:
         self._lock = threading.Lock()
         self._cancel_requested = False
 
+    def _get_device(self):
+        """Detect best available compute device: cuda (NVIDIA), rocm (AMD via PyTorch), or cpu."""
+        if torch is None:
+            return "cpu"
+        # AMD ROCm: PyTorch ROCm build uses torch.cuda API but torch.version.hip is set
+        if hasattr(torch.version, 'hip') and torch.version.hip is not None:
+            if torch.cuda.is_available():  # ROCm uses CUDA API
+                return "cuda"  # ROCm devices use 'cuda' device string in PyTorch
+        # NVIDIA CUDA
+        if torch.cuda.is_available():
+            return "cuda"
+        return "cpu"
+
+    def _empty_cache(self):
+        """Clear GPU memory cache for CUDA or ROCm."""
+        if torch is not None and torch.cuda.is_available():
+            try:
+                torch.cuda.empty_cache()
+            except Exception:
+                pass
+
     def cancel(self):
         self._cancel_requested = True
 
@@ -145,10 +166,6 @@ class LLMEngine:
                                             if _np == _sd:
                                                 break
                                             _sd = _np
-                                        # Also check standard ~/.ollama/models/blobs
-                                        _hb = os.path.expanduser(os.path.join("~", ".ollama", "models", "blobs", digest_hash))
-                                        if os.path.exists(_hb) and os.path.abspath(_hb) not in [os.path.abspath(x) for x in blob_candidates]:
-                                            blob_candidates.append(_hb)
                                         # Pick best: prefer .gguf extension, then largest file
                                         if blob_candidates:
                                             _gc = [c for c in blob_candidates if c.lower().endswith('.gguf')]
@@ -165,70 +182,83 @@ class LLMEngine:
                     callback(f"Loading GGUF / Ollama weight file via Transformers offline: {os.path.basename(resolved_gguf_path)}...")
                 try:
                     from transformers import AutoModelForCausalLM, AutoTokenizer
+                    import torch
                     
                     target_path = resolved_gguf_path
                     if not target_path.lower().endswith(".gguf"):
-                        _app = os.getenv('APPDATA', '')
-                        if _app and os.path.exists(os.path.dirname(_app)):
-                            _locallow = os.path.join(os.path.dirname(_app), "LocalLow")
+                        # On Linux, Ollama blobs don't have .gguf extension.
+                        # Look for existing .gguf alias next to the blob first.
+                        blob_dir = os.path.dirname(resolved_gguf_path)
+                        blob_name = os.path.basename(resolved_gguf_path)
+                        alias_candidates = [
+                            os.path.join(blob_dir, ".darkmaxxer_alias", blob_name + ".gguf"),
+                            os.path.join(blob_dir, ".cache_alias", blob_name + ".gguf"),
+                        ]
+                        found_alias = None
+                        for ac in alias_candidates:
+                            if os.path.exists(ac):
+                                found_alias = ac
+                                break
+                        
+                        if found_alias:
+                            target_path = found_alias
                         else:
-                            _locallow = os.path.join(os.path.expanduser("~"), "AppData", "LocalLow")
-                        alias_dir = os.path.join(_locallow, "DarkMaxxer", "Cache", "models_symlinks")
-                        os.makedirs(alias_dir, exist_ok=True)
-                        target_path = os.path.join(alias_dir, os.path.basename(resolved_gguf_path) + ".gguf")
-                        if not os.path.exists(target_path):
-                            if callback:
-                                callback("Creating instant hard link to satisfy extension check...")
-                            try:
-                                os.link(resolved_gguf_path, target_path)
-                            except OSError:
+                            # Create a .gguf symlink so Transformers recognizes it
+                            alias_dir = os.path.join(blob_dir, ".darkmaxxer_alias")
+                            os.makedirs(alias_dir, exist_ok=True)
+                            target_path = os.path.join(alias_dir, blob_name + ".gguf")
+                            if not os.path.exists(target_path):
+                                if callback:
+                                    callback("Creating .gguf alias link for Transformers...")
                                 try:
                                     os.symlink(resolved_gguf_path, target_path)
                                 except OSError:
-                                    if callback:
-                                        callback("Warning: Could not link. Trying without extension...")
-                                    target_path = resolved_gguf_path
+                                    try:
+                                        os.link(resolved_gguf_path, target_path)
+                                    except OSError:
+                                        target_path = resolved_gguf_path
 
                     gguf_dir = os.path.dirname(target_path)
                     gguf_filename = os.path.basename(target_path)
                     
-                    # Enforce local_files_only=True so it never makes online network requests
-                    try:
-                        self.model = AutoModelForCausalLM.from_pretrained(
-                            gguf_dir,
-                            gguf_file=gguf_filename,
-                            token=hf_token,
-                            local_files_only=True
-                        )
-                    except Exception:
-                        self.model = AutoModelForCausalLM.from_pretrained(
-                            gguf_dir,
-                            gguf_file=gguf_filename,
-                            token=hf_token
-                        )
+                    # Set up offload folder to prevent device_map failures
+                    offload_dir = os.path.join(os.path.expanduser("~"), ".darkmaxxer_build", "offload")
+                    os.makedirs(offload_dir, exist_ok=True)
                     
-                    self.loaded_gguf_path = target_path
-                    try:
-                        self.model.tokenizer = AutoTokenizer.from_pretrained(
-                            gguf_dir,
-                            gguf_file=gguf_filename,
-                            token=hf_token,
-                            local_files_only=True
-                        )
-                    except Exception:
-                        try:
-                            self.model.tokenizer = AutoTokenizer.from_pretrained(gguf_dir, local_files_only=True)
-                        except Exception:
-                            pass
-                    
-                    self.current_model_id = model_id
                     if callback:
-                        callback("Ollama/GGUF model loaded successfully -> Ready for User.")
+                        callback(f"Loading GGUF model: {gguf_filename}...")
+                    
+                    self.model = AutoModelForCausalLM.from_pretrained(
+                        gguf_dir,
+                        gguf_file=gguf_filename,
+                        device_map="auto",
+                        torch_dtype=torch.float16,
+                        low_cpu_mem_usage=True,
+                        offload_folder=offload_dir,
+                        local_files_only=True
+                    )
+                    self.loaded_gguf_path = target_path
+                    self.current_model_id = model_id
+                    self.model_path = model_id
+                    self.model_type = "gguf"
+                    
+                    # Try to load tokenizer from the GGUF file
+                    try:
+                        tok = AutoTokenizer.from_pretrained(
+                            gguf_dir, gguf_file=gguf_filename, local_files_only=True
+                        )
+                        self.model.tokenizer = tok
+                        self._cached_tokenizer = tok
+                    except Exception:
+                        pass
+                    
+                    if callback:
+                        callback("GGUF model loaded successfully -> Ready for User.")
                     try:
                         import gc; gc.collect()
-                        import torch
-                        if torch.cuda.is_available(): torch.cuda.empty_cache()
-                    except: pass
+                        self._empty_cache()
+                    except Exception:
+                        pass
                     return
                 except Exception as e:
                     gguf_err = str(e)
@@ -271,7 +301,7 @@ class LLMEngine:
                 try:
                     import gc; gc.collect()
                     import torch
-                    if torch.cuda.is_available(): torch.cuda.empty_cache()
+                    self._empty_cache()
                 except: pass
                 return
             except Exception as e:
@@ -301,7 +331,7 @@ class LLMEngine:
                         try:
                             import gc; gc.collect()
                             import torch
-                            if torch.cuda.is_available(): torch.cuda.empty_cache()
+                            self._empty_cache()
                         except: pass
                         return
                 except Exception as e:
@@ -322,9 +352,9 @@ class LLMEngine:
                     callback(f"Attempting fallback load via transformers from {target_path}...")
                 is_local = os.path.exists(target_path)
                 try:
-                    self.model = AutoModelForCausalLM.from_pretrained(target_path, local_files_only=is_local)
+                    self.model = AutoModelForCausalLM.from_pretrained(target_path, local_files_only=is_local, device_map="auto", low_cpu_mem_usage=True)
                 except Exception:
-                    self.model = AutoModelForCausalLM.from_pretrained(target_path)
+                    self.model = AutoModelForCausalLM.from_pretrained(target_path, device_map="auto", low_cpu_mem_usage=True)
                 try:
                     self.model.tokenizer = AutoTokenizer.from_pretrained(target_path, local_files_only=is_local)
                 except Exception:
@@ -336,7 +366,7 @@ class LLMEngine:
                 try:
                     import gc; gc.collect()
                     import torch
-                    if torch.cuda.is_available(): torch.cuda.empty_cache()
+                    self._empty_cache()
                 except: pass
                 return
             except Exception as e:
@@ -411,6 +441,33 @@ class LLMEngine:
                     raise RuntimeError("Could not find or load a tokenizer for this model file locally. Please ensure tokenizer/config files exist alongside your model file. Aborting to prevent gibberish output.")
 
             if isinstance(prompt, list):
+                # Guaranteed System Prompt Injection
+                sys_msgs = [m.get("content", "") for m in prompt if m.get("role") == "system"]
+                if sys_msgs:
+                    sys_text = "\n\n".join(sys_msgs)
+                    
+                    supports_system = False
+                    if tokenizer is not None and hasattr(tokenizer, "apply_chat_template"):
+                        try:
+                            test_str = tokenizer.apply_chat_template([{"role": "system", "content": "XYZTEST"}], tokenize=False)
+                            if "XYZTEST" in test_str:
+                                supports_system = True
+                        except Exception:
+                            pass
+                    
+                    if not supports_system:
+                        new_prompt = []
+                        merged = False
+                        for m in prompt:
+                            if m.get("role") == "system":
+                                continue
+                            if m.get("role") == "user" and not merged:
+                                new_prompt.append({"role": "user", "content": f"{sys_text}\n\n--- END SYSTEM INSTRUCTIONS ---\n\nUser Request:\n{m.get('content', '')}"})
+                                merged = True
+                            else:
+                                new_prompt.append(m)
+                        prompt = new_prompt
+
                 prompt_str = ""
                 if tokenizer is not None and hasattr(tokenizer, "apply_chat_template"):
                     try:
@@ -434,11 +491,12 @@ class LLMEngine:
             input_tokens = tokenizer(prompt_str, return_tensors="pt")
             
             # Check GPU availability
-            if use_gpu and torch is not None and torch.cuda.is_available():
-                input_ids = input_tokens.input_ids.cuda()
+            device = self._get_device()
+            if use_gpu and device != "cpu":
+                input_ids = input_tokens.input_ids.to(device)
                 if hasattr(self.model, "to") and not hasattr(self.model, "is_airllm"):
                     try:
-                        self.model.to("cuda")
+                        self.model.to(device)
                     except Exception:
                         pass
             else:

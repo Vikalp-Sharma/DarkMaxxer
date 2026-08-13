@@ -334,18 +334,19 @@
 <div class="flex items-center gap-sm">
 
 <nav class="hidden md:flex gap-lg">
-<a class="text-on-surface-variant font-label-md text-label-md hover:text-primary transition-colors duration-300 cursor-pointer active:scale-95 transition-transform" onclick="try{localStorage.setItem('welcome_seen','true');sessionStorage.setItem('welcome_seen','true')}catch(e){}" href="models.html">Models</a>
+<a class="text-on-surface-variant font-label-md text-label-md hover:text-primary transition-colors duration-300 cursor-pointer active:scale-95 transition-transform" onclick="openSpaOverlay('models.html')">Models</a>
 <a class="text-primary border-b-2 border-primary pb-1 font-label-md text-label-md hover:text-primary transition-colors duration-300 cursor-pointer active:scale-95 transition-transform" href="#" onclick="return false;">Editor</a>
 <a class="text-on-surface-variant font-label-md text-label-md hover:text-primary transition-colors duration-300 cursor-pointer active:scale-95 transition-transform" onclick="toggleTerminalPopout(); return false;" href="#" onclick="return false;">Terminal</a>
 
 </nav>
 </div>
+
+
 <div class="flex items-center gap-md">
 
 
 <div class="flex gap-xs">
-<button onclick="try{localStorage.setItem('welcome_seen','true');sessionStorage.setItem('welcome_seen','true')}catch(e){};window.location.href='settings.html'" class="p-xs text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined">settings</span></button>
-
+<button onclick="openSpaOverlay('settings.html')" class="p-xs text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined">settings</span></button>
 </div>
 
 </div>
@@ -359,7 +360,7 @@
 <span class="material-symbols-outlined text-secondary">memory</span>
 </div>
 <div>
-<div class="font-label-md text-on-surface">DarkMaxxer IDE</div>
+<div id="workspace-name-display" class="font-label-md text-on-surface">DarkMaxxer IDE</div>
 <div class="text-xs text-on-surface-variant">v2.5.0-pro</div>
 </div>
 </div>
@@ -384,9 +385,12 @@
 
 <!-- Explorer Panel -->
 <div id="sidebar-panel-explorer" class="hidden flex-1 flex flex-col overflow-hidden">
-<div class="p-sm pb-0">
-<button onclick="openExternalFolder()" class="w-full bg-surface-variant/30 hover:bg-surface-variant/50 border border-outline-variant/20 text-on-surface font-label-sm py-sm rounded-md flex items-center justify-center gap-xs transition-colors shadow-sm">
+<div class="p-sm pb-0 flex gap-xs">
+<button onclick="openExternalFolder()" class="flex-1 bg-surface-variant/30 hover:bg-surface-variant/50 border border-outline-variant/20 text-on-surface font-label-sm py-sm rounded-md flex items-center justify-center gap-xs transition-colors shadow-sm">
 <span class="material-symbols-outlined text-sm">folder_open</span> Open Folder
+</button>
+<button onclick="activateGlobalWorkspace()" class="flex-1 bg-error-container/20 hover:bg-error-container/40 border border-error/20 text-error font-label-sm py-sm rounded-md flex items-center justify-center gap-xs transition-colors shadow-sm">
+<span>🌐</span> Global
 </button>
 </div>
 <div class="flex-1 overflow-y-auto p-sm font-mono text-xs text-on-surface space-y-1" id="file-tree">
@@ -405,7 +409,7 @@
 <div class="nebula nebula-cyan" style="bottom: 10%; right: 20%;"></div>
 <div class="dying-star"></div>
 <!-- Stars will be injected via JS -->
-<div class="star" style="left: 10.6987%; top: 13.3153%; width: 2.41927px; height: 2.41927px; opacity: 0.167273; --duration: 2.464578189066491s;"></div><div class="star" style="left: 87.0379%; top: 68.1214%; width: 2.01604px; height: 2.01604px; opacity: 0.939909; --duration: 2.621797368296866s;"></div><div class="star" style="left: 81.1929%; top: 91.2896%; width: 2.04594px; height: 2.04594px; opacity: 0.955679; --duration: 2.3714713528938702s;"></div><div class="star" style="left: 97.2922%; top: 56.8736%; width: 1.6057px; height: 1.6057px; opacity: 0.54883; --duration: 1.717208548588363s;"></div><div class="star" style="left: 97.1531%; top: 22.1322%; width: 1.96376px; height: 1.96376px; opacity: 0.271768; --duration: 3.6767362977040374s;"></div><div class="star" style="left: 95.1905%; top: 66.136%; width: 0.587669px; height: 0.587669px; opacity: 0.381109; --duration: 3.007174292047711s; background-color: rgb(223, 183, 255);"></div><div class="star" style="left: 18.9705%; top: 91.4613%; width: 1.18994px; height: 1.18994px; opacity: 0.750998; --duration: 1.0091300429300176s;"></div><div class="star" style="left: 12.1996%; top: 78.023%; width: 1.45536px; height: 1.45536px; opacity: 0.972867; --duration: 2.9009847322897397s;"></div><div class="star" style="left: 34.0486%; top: 87.4666%; width: 2.49043px; height: 2.49043px; opacity: 0.324724; --duration: 2.8962006889120913s;"></div><div class="star" style="left: 53.5051%; top: 51.3083%; width: 1.03899px; height: 1.03899px; opacity: 0.670367; --duration: 1.788228761495637s; background-color: rgb(195, 192, 255);"></div><div class="star" style="left: 87.0433%; top: 7.80012%; width: 1.67839px; height: 1.67839px; opacity: 0.898751; --duration: 1.1733525563408347s;"></div><div class="star" style="left: 13.3113%; top: 92.717%; width: 1.79865px; height: 1.79865px; opacity: 0.890301; --duration: 1.6960137723573s;"></div><div class="star" style="left: 44.6228%; top: 36.3984%; width: 2.48102px; height: 2.48102px; opacity: 0.488506; --duration: 3.431808991574828s;"></div><div class="star" style="left: 17.0999%; top: 75.4116%; width: 0.636174px; height: 0.636174px; opacity: 0.0128754; --duration: 2.49574047111849s;"></div><div class="star" style="left: 46.0725%; top: 44.0902%; width: 1.74684px; height: 1.74684px; opacity: 0.461151; --duration: 1.009646939028297s;"></div><div class="star" style="left: 71.1925%; top: 49.9752%; width: 0.742838px; height: 0.742838px; opacity: 0.590916; --duration: 3.880615844057527s;"></div><div class="star" style="left: 66.0884%; top: 46.0339%; width: 1.36221px; height: 1.36221px; opacity: 0.793454; --duration: 3.131670826231699s;"></div><div class="star" style="left: 38.4591%; top: 87.5581%; width: 0.720505px; height: 0.720505px; opacity: 0.977778; --duration: 1.3099699093140007s; background-color: rgb(195, 192, 255);"></div><div class="star" style="left: 31.2738%; top: 48.239%; width: 1.5706px; height: 1.5706px; opacity: 0.252196; --duration: 2.053946252667167s;"></div><div class="star" style="left: 26.2833%; top: 71.5863%; width: 1.2703px; height: 1.2703px; opacity: 0.553035; --duration: 3.288507188363867s;"></div><div class="star" style="left: 3.15905%; top: 47.2425%; width: 1.55599px; height: 1.55599px; opacity: 0.554148; --duration: 3.489245186372892s;"></div><div class="star" style="left: 62.6308%; top: 61.6584%; width: 1.95733px; height: 1.95733px; opacity: 0.450587; --duration: 3.7312134211807684s;"></div><div class="star" style="left: 52.7747%; top: 50.3764%; width: 1.33322px; height: 1.33322px; opacity: 0.655119; --duration: 3.5588564135862777s;"></div><div class="star" style="left: 39.408%; top: 72.7411%; width: 0.936063px; height: 0.936063px; opacity: 0.405806; --duration: 2.2778421583437476s;"></div><div class="star" style="left: 87.773%; top: 15.9774%; width: 2.34378px; height: 2.34378px; opacity: 0.00756486; --duration: 2.681989469631176s;"></div><div class="star" style="left: 78.3159%; top: 29.7918%; width: 1.47632px; height: 1.47632px; opacity: 0.0957157; --duration: 2.685283812848538s;"></div><div class="star" style="left: 27.122%; top: 30.9769%; width: 1.455px; height: 1.455px; opacity: 0.423803; --duration: 3.3109203332486694s;"></div><div class="star" style="left: 38.6387%; top: 31.4661%; width: 1.04658px; height: 1.04658px; opacity: 0.973553; --duration: 1.2993482539527061s; background-color: rgb(195, 192, 255);"></div><div class="star" style="left: 6.45772%; top: 33.2475%; width: 1.33749px; height: 1.33749px; opacity: 0.459426; --duration: 2.5543045332440464s; background-color: rgb(223, 183, 255);"></div><div class="star" style="left: 33.3333%; top: 47.8072%; width: 1.67496px; height: 1.67496px; opacity: 0.0551027; --duration: 3.2907082457131533s; background-color: rgb(223, 183, 255);"></div><div class="star" style="left: 46.5605%; top: 37.8438%; width: 0.627914px; height: 0.627914px; opacity: 0.313512; --duration: 3.5653820362629705s;"></div><div class="star" style="left: 29.8801%; top: 50.8331%; width: 1.50169px; height: 1.50169px; opacity: 0.165427; --duration: 3.458277448806666s;"></div><div class="star" style="left: 95.336%; top: 37.3872%; width: 1.0592px; height: 1.0592px; opacity: 0.144936; --duration: 1.633059090892048s;"></div><div class="star" style="left: 66.5334%; top: 26.3892%; width: 1.27756px; height: 1.27756px; opacity: 0.112158; --duration: 1.5584454259103977s;"></div><div class="star" style="left: 42.274%; top: 63.142%; width: 1.60425px; height: 1.60425px; opacity: 0.485525; --duration: 1.0684678682760582s;"></div><div class="star" style="left: 38.4059%; top: 93.6967%; width: 1.61359px; height: 1.61359px; opacity: 0.884616; --duration: 3.8942424755778653s;"></div><div class="star" style="left: 56.9515%; top: 72.8216%; width: 0.638301px; height: 0.638301px; opacity: 0.472728; --duration: 3.1057806839555053s;"></div><div class="star" style="left: 78.4545%; top: 14.9078%; width: 1.21454px; height: 1.21454px; opacity: 0.866821; --duration: 3.6271565309175466s;"></div><div class="star" style="left: 34.1085%; top: 89.4039%; width: 2.21078px; height: 2.21078px; opacity: 0.459345; --duration: 2.1143508177274275s;"></div><div class="star" style="left: 14.8737%; top: 97.1457%; width: 0.678145px; height: 0.678145px; opacity: 0.46536; --duration: 1.6473901940767823s;"></div><div class="star" style="left: 67.4071%; top: 23.8011%; width: 2.46734px; height: 2.46734px; opacity: 0.604764; --duration: 1.8204981079530744s;"></div><div class="star" style="left: 31.5667%; top: 77.2118%; width: 1.56266px; height: 1.56266px; opacity: 0.618318; --duration: 1.8280328211650865s;"></div><div class="star" style="left: 41.7267%; top: 63.5253%; width: 1.88698px; height: 1.88698px; opacity: 0.0300862; --duration: 3.44841898095573s;"></div><div class="star" style="left: 77.211%; top: 66.7936%; width: 1.92984px; height: 1.92984px; opacity: 0.0280178; --duration: 1.2919725882659718s;"></div><div class="star" style="left: 62.9735%; top: 74.0583%; width: 1.20455px; height: 1.20455px; opacity: 0.46508; --duration: 3.814950339971533s;"></div><div class="star" style="left: 4.89003%; top: 88.7336%; width: 1.29928px; height: 1.29928px; opacity: 0.386353; --duration: 2.779014081291488s;"></div><div class="star" style="left: 21.9651%; top: 25.185%; width: 1.71343px; height: 1.71343px; opacity: 0.735242; --duration: 1.311886829311924s;"></div><div class="star" style="left: 14.8164%; top: 10.5639%; width: 1.65735px; height: 1.65735px; opacity: 0.349417; --duration: 1.381393045466524s;"></div><div class="star" style="left: 17.655%; top: 15.8276%; width: 2.09756px; height: 2.09756px; opacity: 0.847245; --duration: 3.5073050936100447s;"></div><div class="star" style="left: 67.1794%; top: 7.79293%; width: 0.928444px; height: 0.928444px; opacity: 0.883335; --duration: 1.6424141975969087s;"></div><div class="star" style="left: 4.03689%; top: 88.1323%; width: 1.69778px; height: 1.69778px; opacity: 0.421848; --duration: 1.2802223050044579s;"></div><div class="star" style="left: 71.9679%; top: 66.3423%; width: 1.68023px; height: 1.68023px; opacity: 0.876821; --duration: 1.363510312839225s;"></div><div class="star" style="left: 42.9649%; top: 17.8031%; width: 1.26864px; height: 1.26864px; opacity: 0.32287; --duration: 2.526060204002584s;"></div><div class="star" style="left: 84.2255%; top: 13.6783%; width: 1.66954px; height: 1.66954px; opacity: 0.233063; --duration: 3.2165192893962136s;"></div><div class="star" style="left: 77.9267%; top: 53.0324%; width: 0.978104px; height: 0.978104px; opacity: 0.803222; --duration: 1.955919121330921s;"></div><div class="star" style="left: 44.9819%; top: 53.0708%; width: 1.53052px; height: 1.53052px; opacity: 0.568638; --duration: 1.0608128269366346s;"></div><div class="star" style="left: 63.5038%; top: 65.7971%; width: 2.07333px; height: 2.07333px; opacity: 0.326142; --duration: 2.658891568918315s;"></div><div class="star" style="left: 41.5605%; top: 97.6512%; width: 0.550682px; height: 0.550682px; opacity: 0.8039; --duration: 3.5714651050261845s;"></div><div class="star" style="left: 80.8985%; top: 55.7794%; width: 1.5866px; height: 1.5866px; opacity: 0.364321; --duration: 2.7270226265162067s;"></div><div class="star" style="left: 31.4635%; top: 36.4578%; width: 1.59743px; height: 1.59743px; opacity: 0.637153; --duration: 3.8463152988337157s;"></div><div class="star" style="left: 10.7739%; top: 19.1594%; width: 0.578112px; height: 0.578112px; opacity: 0.144832; --duration: 2.442290573961392s;"></div><div class="star" style="left: 93.1783%; top: 82.0835%; width: 1.19221px; height: 1.19221px; opacity: 0.355549; --duration: 2.415889359416913s; background-color: rgb(223, 183, 255);"></div><div class="star" style="left: 99.1904%; top: 64.8379%; width: 2.35858px; height: 2.35858px; opacity: 0.953879; --duration: 2.271016243972019s;"></div><div class="star" style="left: 17.697%; top: 26.687%; width: 1.43795px; height: 1.43795px; opacity: 0.72937; --duration: 1.681299718142709s; background-color: rgb(223, 183, 255);"></div><div class="star" style="left: 41.456%; top: 68.5671%; width: 1.1777px; height: 1.1777px; opacity: 0.5008; --duration: 2.5873871712870393s; background-color: rgb(223, 183, 255);"></div><div class="star" style="left: 55.5156%; top: 10.4184%; width: 1.3688px; height: 1.3688px; opacity: 0.505715; --duration: 3.2829321419615036s;"></div><div class="star" style="left: 61.7226%; top: 97.2792%; width: 1.76324px; height: 1.76324px; opacity: 0.57262; --duration: 1.308917191012823s; background-color: rgb(223, 183, 255);"></div><div class="star" style="left: 17.1212%; top: 73.7384%; width: 1.25076px; height: 1.25076px; opacity: 0.963693; --duration: 3.738108099898802s;"></div><div class="star" style="left: 96.5066%; top: 78.3226%; width: 1.1714px; height: 1.1714px; opacity: 0.991866; --duration: 1.8684331474474192s; background-color: rgb(223, 183, 255);"></div><div class="star" style="left: 91.7407%; top: 33.9132%; width: 1.45403px; height: 1.45403px; opacity: 0.713852; --duration: 1.7509860668108115s;"></div><div class="star" style="left: 38.0383%; top: 30.0724%; width: 1.9522px; height: 1.9522px; opacity: 0.201668; --duration: 2.709604264642277s; background-color: rgb(195, 192, 255);"></div><div class="star" style="left: 25.8038%; top: 39.0603%; width: 0.983833px; height: 0.983833px; opacity: 0.687638; --duration: 2.888695728042077s; background-color: rgb(195, 192, 255);"></div><div class="star" style="left: 3.97345%; top: 81.0928%; width: 2.28527px; height: 2.28527px; opacity: 0.951723; --duration: 3.4727571505313337s;"></div><div class="star" style="left: 30.7102%; top: 27.4317%; width: 0.558555px; height: 0.558555px; opacity: 0.878665; --duration: 3.493731331515562s;"></div><div class="star" style="left: 25.5052%; top: 21.7976%; width: 0.782881px; height: 0.782881px; opacity: 0.882497; --duration: 1.6811674467172182s;"></div><div class="star" style="left: 34.8982%; top: 48.7414%; width: 2.38275px; height: 2.38275px; opacity: 0.535099; --duration: 1.3614430361767762s;"></div><div class="star" style="left: 23.3265%; top: 74.6589%; width: 2.12061px; height: 2.12061px; opacity: 0.695753; --duration: 2.19307744104153s;"></div><div class="star" style="left: 39.163%; top: 97.6537%; width: 2.14582px; height: 2.14582px; opacity: 0.0542386; --duration: 1.0797896610620565s;"></div><div class="star" style="left: 41.9204%; top: 10.8083%; width: 0.61859px; height: 0.61859px; opacity: 0.412343; --duration: 2.0188705141990444s; background-color: rgb(195, 192, 255);"></div><div class="star" style="left: 48.282%; top: 57.2598%; width: 0.944768px; height: 0.944768px; opacity: 0.946461; --duration: 1.8855421799002956s;"></div><div class="star" style="left: 76.2633%; top: 1.88862%; width: 2.22839px; height: 2.22839px; opacity: 0.867339; --duration: 2.6196454090253654s;"></div><div class="star" style="left: 7.99379%; top: 69.21%; width: 0.987412px; height: 0.987412px; opacity: 0.368318; --duration: 1.5427016365647108s;"></div><div class="star" style="left: 57.1015%; top: 16.6375%; width: 0.82599px; height: 0.82599px; opacity: 0.843089; --duration: 3.0709304088154523s; background-color: rgb(195, 192, 255);"></div><div class="star" style="left: 77.9273%; top: 6.60994%; width: 1.59169px; height: 1.59169px; opacity: 0.171961; --duration: 3.822791567382055s;"></div><div class="star" style="left: 11.8704%; top: 25.7662%; width: 2.37316px; height: 2.37316px; opacity: 0.440738; --duration: 1.204537041926597s;"></div><div class="star" style="left: 19.504%; top: 90.4515%; width: 2.06578px; height: 2.06578px; opacity: 0.572054; --duration: 2.8568850393817082s;"></div><div class="star" style="left: 90.0154%; top: 3.50693%; width: 1.65469px; height: 1.65469px; opacity: 0.701893; --duration: 2.797077768609575s;"></div><div class="star" style="left: 42.7075%; top: 57.9554%; width: 2.06406px; height: 2.06406px; opacity: 0.353469; --duration: 3.672071141889588s;"></div><div class="star" style="left: 92.2779%; top: 47.9015%; width: 0.656225px; height: 0.656225px; opacity: 0.15919; --duration: 3.640796345257389s;"></div><div class="star" style="left: 43.0144%; top: 56.5296%; width: 1.20757px; height: 1.20757px; opacity: 0.486989; --duration: 2.2594033893570207s;"></div><div class="star" style="left: 24.2944%; top: 2.5494%; width: 1.12092px; height: 1.12092px; opacity: 0.261959; --duration: 2.832272332587428s;"></div><div class="star" style="left: 92.4899%; top: 96.9359%; width: 2.13153px; height: 2.13153px; opacity: 0.307541; --duration: 3.2749284088560935s;"></div><div class="star" style="left: 77.4469%; top: 13.8225%; width: 1.40792px; height: 1.40792px; opacity: 0.165775; --duration: 2.6409079102246547s;"></div><div class="star" style="left: 61.2425%; top: 59.6192%; width: 1.27615px; height: 1.27615px; opacity: 0.693274; --duration: 3.658235374959136s;"></div><div class="star" style="left: 17.7206%; top: 97.14%; width: 0.879293px; height: 0.879293px; opacity: 0.90083; --duration: 3.9368304690744216s; background-color: rgb(195, 192, 255);"></div><div class="star" style="left: 17.6944%; top: 52.7366%; width: 2.48976px; height: 2.48976px; opacity: 0.85887; --duration: 3.3545487048790172s;"></div><div class="star" style="left: 47.5306%; top: 10.0689%; width: 1.68941px; height: 1.68941px; opacity: 0.412746; --duration: 1.204290892033591s;"></div><div class="star" style="left: 81.1779%; top: 42.7144%; width: 1.33731px; height: 1.33731px; opacity: 0.328658; --duration: 3.9473483833372773s;"></div><div class="star" style="left: 99.7618%; top: 77.9619%; width: 0.931741px; height: 0.931741px; opacity: 0.838479; --duration: 1.9865290507248812s;"></div><div class="star" style="left: 66.3242%; top: 51.9567%; width: 1.98173px; height: 1.98173px; opacity: 0.7675; --duration: 1.8213975432993328s;"></div><div class="star" style="left: 8.34236%; top: 9.86103%; width: 2.43168px; height: 2.43168px; opacity: 0.220089; --duration: 1.1448655308115818s;"></div><div class="star" style="left: 11.0709%; top: 53.3846%; width: 1.89693px; height: 1.89693px; opacity: 0.672053; --duration: 1.7617525427504066s;"></div><div class="star" style="left: 30.9111%; top: 78.7343%; width: 1.15261px; height: 1.15261px; opacity: 0.186139; --duration: 1.926533979443322s; background-color: rgb(195, 192, 255);"></div><div class="star" style="left: 76.7057%; top: 12.974%; width: 0.678972px; height: 0.678972px; opacity: 0.413988; --duration: 3.440087397431705s; background-color: rgb(223, 183, 255);"></div><div class="star" style="left: 69.0971%; top: 65.4771%; width: 0.542462px; height: 0.542462px; opacity: 0.584256; --duration: 2.5976537754853326s;"></div><div class="star" style="left: 42.6193%; top: 67.1616%; width: 2.24028px; height: 2.24028px; opacity: 0.400797; --duration: 3.5452759154549836s;"></div><div class="star" style="left: 37.9993%; top: 97.5592%; width: 1.49894px; height: 1.49894px; opacity: 0.0349107; --duration: 1.1335059629914448s;"></div><div class="star" style="left: 72.4877%; top: 19.8257%; width: 1.74624px; height: 1.74624px; opacity: 0.94487; --duration: 1.6663224692803493s;"></div><div class="star" style="left: 13.5385%; top: 99.5836%; width: 1.18149px; height: 1.18149px; opacity: 0.218452; --duration: 3.0213625763137486s; background-color: rgb(223, 183, 255);"></div><div class="star" style="left: 97.9256%; top: 96.5934%; width: 1.51424px; height: 1.51424px; opacity: 0.429233; --duration: 1.3220503216820187s;"></div><div class="star" style="left: 15.2223%; top: 52.5537%; width: 0.548105px; height: 0.548105px; opacity: 0.166803; --duration: 1.6271523560680161s;"></div><div class="star" style="left: 50.7047%; top: 23.7789%; width: 1.13223px; height: 1.13223px; opacity: 0.160812; --duration: 3.48627058857689s;"></div><div class="star" style="left: 23.0042%; top: 49.2013%; width: 2.36428px; height: 2.36428px; opacity: 0.622467; --duration: 2.4502188477083893s; background-color: rgb(195, 192, 255);"></div><div class="star" style="left: 23.9087%; top: 38.5066%; width: 2.08965px; height: 2.08965px; opacity: 0.473923; --duration: 2.8055349923435284s;"></div><div class="star" style="left: 62.9269%; top: 14.9694%; width: 2.12111px; height: 2.12111px; opacity: 0.157825; --duration: 3.130606104491962s; background-color: rgb(223, 183, 255);"></div><div class="star" style="left: 67.9249%; top: 73.2289%; width: 0.507128px; height: 0.507128px; opacity: 0.86545; --duration: 3.1670632759129265s; background-color: rgb(223, 183, 255);"></div><div class="star" style="left: 24.0637%; top: 17.6337%; width: 1.73763px; height: 1.73763px; opacity: 0.949414; --duration: 2.389164310008567s;"></div><div class="star" style="left: 60.1761%; top: 65.2955%; width: 2.26325px; height: 2.26325px; opacity: 0.934946; --duration: 2.1390411002713963s;"></div><div class="star" style="left: 34.7975%; top: 47.4486%; width: 1.38402px; height: 1.38402px; opacity: 0.0197661; --duration: 1.0697393036525815s;"></div><div class="star" style="left: 17.3008%; top: 71.7731%; width: 2.45933px; height: 2.45933px; opacity: 0.113682; --duration: 3.584604073679429s;"></div><div class="star" style="left: 66.133%; top: 79.1942%; width: 1.99393px; height: 1.99393px; opacity: 0.651019; --duration: 2.588858887816349s;"></div><div class="star" style="left: 21.1213%; top: 65.3008%; width: 0.941224px; height: 0.941224px; opacity: 0.778012; --duration: 1.6142438387440579s;"></div><div class="star" style="left: 12.8265%; top: 77.6971%; width: 1.78975px; height: 1.78975px; opacity: 0.463634; --duration: 2.292554051634148s;"></div><div class="star" style="left: 90.4267%; top: 80.2053%; width: 1.41692px; height: 1.41692px; opacity: 0.700971; --duration: 1.4341658985598598s;"></div><div class="star" style="left: 57.6065%; top: 76.7092%; width: 2.16078px; height: 2.16078px; opacity: 0.584157; --duration: 3.449142983540817s;"></div><div class="star" style="left: 10.8229%; top: 99.8428%; width: 2.39915px; height: 2.39915px; opacity: 0.441718; --duration: 3.8970810490884777s;"></div><div class="star" style="left: 65.0058%; top: 37.0025%; width: 1.63119px; height: 1.63119px; opacity: 0.254803; --duration: 1.2529050867398168s; background-color: rgb(195, 192, 255);"></div><div class="star" style="left: 43.6651%; top: 48.2839%; width: 1.66744px; height: 1.66744px; opacity: 0.314156; --duration: 3.02761437552716s;"></div><div class="star" style="left: 42.7989%; top: 97.5318%; width: 0.903406px; height: 0.903406px; opacity: 0.803305; --duration: 2.879368372664792s;"></div><div class="star" style="left: 73.1179%; top: 87.8864%; width: 1.88531px; height: 1.88531px; opacity: 0.574954; --duration: 3.603639141578144s;"></div><div class="star" style="left: 63.7105%; top: 39.3712%; width: 1.75473px; height: 1.75473px; opacity: 0.582737; --duration: 3.2774805924018264s;"></div><div class="star" style="left: 68.6566%; top: 19.615%; width: 0.590101px; height: 0.590101px; opacity: 0.409642; --duration: 1.159587083478153s;"></div><div class="star" style="left: 96.3974%; top: 82.8886%; width: 1.05359px; height: 1.05359px; opacity: 0.335761; --duration: 3.9593509934073783s;"></div><div class="star" style="left: 38.4152%; top: 78.65%; width: 2.11821px; height: 2.11821px; opacity: 0.585581; --duration: 2.2749467749932997s;"></div><div class="star" style="left: 35.0525%; top: 79.3617%; width: 1.62959px; height: 1.62959px; opacity: 0.623757; --duration: 1.9867296770797735s; background-color: rgb(223, 183, 255);"></div><div class="star" style="left: 4.97036%; top: 8.20201%; width: 2.26126px; height: 2.26126px; opacity: 0.123411; --duration: 3.4339703545695155s;"></div><div class="star" style="left: 48.9116%; top: 12.2349%; width: 1.01845px; height: 1.01845px; opacity: 0.693859; --duration: 3.4704014636883467s;"></div><div class="star" style="left: 9.08354%; top: 8.57345%; width: 1.12087px; height: 1.12087px; opacity: 0.660871; --duration: 2.2611186896497326s;"></div><div class="star" style="left: 3.16998%; top: 32.8262%; width: 1.02272px; height: 1.02272px; opacity: 0.569942; --duration: 3.127349350906893s;"></div><div class="star" style="left: 29.5098%; top: 98.3868%; width: 0.7555px; height: 0.7555px; opacity: 0.0244036; --duration: 2.864275449689653s; background-color: rgb(195, 192, 255);"></div><div class="star" style="left: 4.29212%; top: 87.765%; width: 1.01167px; height: 1.01167px; opacity: 0.193221; --duration: 2.133536089243871s;"></div><div class="star" style="left: 54.0312%; top: 6.33741%; width: 1.65809px; height: 1.65809px; opacity: 0.656619; --duration: 1.7354243767413746s;"></div><div class="star" style="left: 20.6687%; top: 56.834%; width: 1.0771px; height: 1.0771px; opacity: 0.561398; --duration: 3.360176270184316s;"></div><div class="star" style="left: 35.3899%; top: 28.9957%; width: 1.71411px; height: 1.71411px; opacity: 0.950135; --duration: 1.0729738424337676s;"></div><div class="star" style="left: 33.8014%; top: 50.6827%; width: 2.29244px; height: 2.29244px; opacity: 0.457548; --duration: 1.0813665939377897s; background-color: rgb(223, 183, 255);"></div><div class="star" style="left: 42.3176%; top: 72.9666%; width: 1.36482px; height: 1.36482px; opacity: 0.19111; --duration: 2.1532899158503422s;"></div><div class="star" style="left: 48.5272%; top: 51.3447%; width: 0.927405px; height: 0.927405px; opacity: 0.614384; --duration: 1.589410385027016s;"></div><div class="star" style="left: 61.2046%; top: 12.5515%; width: 0.804032px; height: 0.804032px; opacity: 0.304098; --duration: 2.5832730444230094s;"></div><div class="star" style="left: 64.5066%; top: 93.6554%; width: 2.32164px; height: 2.32164px; opacity: 0.107227; --duration: 1.8962052213334393s;"></div><div class="star" style="left: 27.3577%; top: 83.7851%; width: 1.28377px; height: 1.28377px; opacity: 0.437795; --duration: 2.7240660864503496s;"></div></div>
+</div>
 <!-- Empty State Message -->
 <div id="workspace-empty-panel" class="relative z-10 glass-panel p-xl rounded-xl text-center max-w-md border border-white/10 flex flex-col items-center">
 <div class="w-16 h-16 rounded-full bg-secondary-container/20 flex items-center justify-center mb-md border border-secondary/30 shadow-[0_0_30px_rgba(105,30,166,0.3)]">
@@ -490,13 +494,22 @@
     </div>
 </div>
 
-<!-- Subagents Status Tray -->
-<div id="subagents-tray" class="hidden absolute bottom-20 left-4 right-4 z-20 flex flex-wrap items-center gap-sm p-sm bg-surface-container/95 border border-secondary/40 rounded-xl shadow-[0_0_25px_rgba(168,85,247,0.3)] backdrop-blur-md transition-all duration-300">
-    <div class="flex items-center gap-xs px-sm py-xs bg-secondary/20 border border-secondary/40 rounded-lg text-secondary-fixed font-label-sm">
-        <span class="material-symbols-outlined text-sm animate-spin">device_hub</span>
-        <span>Active Subagents (<span id="subagents-count">0</span>):</span>
+<!-- Subagents Status Bar (slides from top) -->
+<div id="subagents-tray" class="fixed top-0 left-0 right-0 z-[100] transform -translate-y-full transition-all duration-500 ease-out opacity-0" style="pointer-events:none;">
+    <div class="mx-4 mt-2 p-sm bg-[#1a1028]/95 border border-purple-500/40 rounded-xl shadow-[0_4px_30px_rgba(168,85,247,0.35)] backdrop-blur-xl" style="pointer-events:auto;">
+        <div class="flex items-center gap-sm flex-wrap">
+            <div id="subagents-label-container" class="flex items-center gap-xs px-sm py-xs bg-purple-600/25 border border-purple-500/50 rounded-lg text-purple-200 font-label-sm text-xs shrink-0">
+                <span class="material-symbols-outlined text-sm animate-spin text-purple-400">device_hub</span>
+                <span class="font-bold">Subagents</span>
+                <span id="subagents-count" class="bg-purple-500/40 text-purple-100 px-1.5 py-0.5 rounded-md text-[10px] font-bold min-w-[18px] text-center">0</span>
+            </div>
+            <div id="subagents-list" class="flex flex-wrap items-center gap-xs flex-1"></div>
+            <div id="tool-activity" class="hidden flex items-center gap-xs px-sm py-xs bg-emerald-600/20 border border-emerald-500/40 rounded-lg text-emerald-300 font-label-sm text-[10px] shrink-0">
+                <span class="material-symbols-outlined text-sm animate-pulse">construction</span>
+                <span id="tool-activity-text">Working...</span>
+            </div>
+        </div>
     </div>
-    <div id="subagents-list" class="flex flex-wrap items-center gap-xs flex-1"></div>
 </div>
 
 <!-- Chat Input Bar -->
@@ -506,6 +519,23 @@
         <input id="chat-input" type="text" class="flex-1 bg-transparent border-none text-on-surface font-body-md outline-none placeholder:text-on-surface-variant/40" placeholder="Ask DarkMaxxer AI anything...">
         <button id="send-btn" onclick="sendPrompt()" class="px-md py-xs bg-secondary-container/50 hover:bg-secondary-container text-on-secondary-container rounded-lg font-label-md transition-colors border border-secondary/30">▶</button>
         <button id="pause-btn" onclick="pauseGeneration()" class="hidden px-md py-xs bg-error-container/50 hover:bg-error-container text-on-error-container rounded-lg font-label-md transition-colors border border-error/30 animate-pulse">⏸ Pause</button>
+    </div>
+</div>
+
+<!-- Skill Selector Modal -->
+<div id="skill-selector-modal" class="fixed inset-0 hidden z-50 flex items-center justify-center bg-background/60 backdrop-blur-md p-margin-mobile md:p-margin-desktop">
+    <div class="glass-panel ambient-shadow rounded-xl w-full max-w-lg p-xl flex flex-col relative overflow-hidden transform transition-all scale-100 opacity-100 border border-error/20">
+        <div class="mb-lg">
+            <h2 class="font-headline-lg text-headline-lg text-error mb-xs">Select Skills</h2>
+            <p class="font-body-md text-body-md text-on-surface-variant">Choose up to 5 SKILL.md files to load</p>
+        </div>
+        <div class="mb-xl relative z-10 max-h-64 overflow-y-auto pr-2 custom-scrollbar" id="skill-list-container">
+            <!-- Checkboxes injected here -->
+        </div>
+        <div class="flex justify-end space-x-md relative z-10">
+            <button id="skill-cancel-btn" class="px-md py-sm rounded-lg font-label-md text-label-md text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/30 transition-colors duration-200" type="button">Cancel</button>
+            <button id="skill-apply-btn" class="px-md py-sm rounded-lg font-label-md text-label-md text-surface-container-lowest bg-error/80 hover:bg-error transition-all duration-300 shadow-[0_0_15px_rgba(255,180,171,0.3)] hover:shadow-[0_0_25px_rgba(255,180,171,0.6)] group" type="button">Apply</button>
+        </div>
     </div>
 </div>
 
@@ -565,14 +595,19 @@
             <div class="text-xs text-on-surface-variant/60 font-body-md">
                 <span id="gpu-status-text">Select an offline model directory or weight file on disk to begin local inference</span>
             </div>
-            <button onclick="loadModelDirectly()" class="w-full py-sm px-md rounded-lg font-label-md bg-gradient-to-r from-secondary-container to-tertiary-container hover:from-secondary hover:to-tertiary text-on-secondary-fixed border-t border-white/20 transition-all shadow-[0_0_15px_rgba(105,30,166,0.3)] hover:shadow-[0_0_25px_rgba(105,30,166,0.6)]">
-                <span class="flex items-center justify-center gap-sm">
-                    <span class="material-symbols-outlined">speed</span>
-                    Load Model
-                </span>
-            </button>
-            <div class="flex justify-between items-center pt-sm border-t border-outline-variant/10">
-                <a href="models.html" onclick="try{localStorage.setItem('welcome_seen','true');sessionStorage.setItem('welcome_seen','true')}catch(e){}" class="text-on-surface-variant hover:text-primary font-label-sm transition-colors">Advanced model options →</a>
+            <div class="flex gap-sm">
+                <button onclick="document.getElementById('first-run-modal').classList.add('hidden'); try{sessionStorage.setItem('welcome_seen','true');localStorage.setItem('welcome_seen','true');}catch(e){};" class="w-1/3 py-sm px-md border border-outline-variant/30 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/30 transition-colors font-label-md">
+                    Later
+                </button>
+                <button onclick="loadModelDirectly()" class="w-2/3 py-sm px-md rounded-lg font-label-md bg-gradient-to-r from-secondary-container to-tertiary-container hover:from-secondary hover:to-tertiary text-on-secondary-fixed border-t border-white/20 transition-all shadow-[0_0_15px_rgba(105,30,166,0.3)] hover:shadow-[0_0_25px_rgba(105,30,166,0.6)]">
+                    <span class="flex items-center justify-center gap-sm">
+                        <span class="material-symbols-outlined">speed</span>
+                        Load Model
+                    </span>
+                </button>
+            </div>
+            <div class="flex items-center justify-between mt-sm pt-sm border-t border-outline-variant/10">
+                <a onclick="openSpaOverlay('models.html')" class="cursor-pointer text-on-surface-variant hover:text-primary font-label-sm transition-colors">Advanced model options →</a>
             </div>
         </div>
     </div>
@@ -604,6 +639,11 @@
     </div>
 </div>
 
+
+<!-- SPA IFrame Overlay -->
+<div id="spa-iframe-container" class="fixed inset-0 z-[150] hidden bg-surface">
+    <iframe id="spa-iframe" class="w-full h-full border-none" src=""></iframe>
+</div>
 
 <!-- Fullscreen Model Loading Modal with Background Blur -->
 <div id="loading-modal" class="fixed inset-0 z-[200] hidden flex-col items-center justify-center transition-all duration-300" style="background: rgba(4, 4, 12, 0.94); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);">
@@ -691,6 +731,18 @@
         if (typeof window.appendTerminal === 'function') {
             window.appendTerminal("AI Status: " + text);
         }
+
+        if (text.toLowerCase().includes('successfully') || text.toLowerCase().includes('ready')) {
+            setTimeout(() => {
+                if (loadModal) {
+                    loadModal.classList.add('hidden');
+                    loadModal.style.display = 'none';
+                }
+                if (typeof closeSpaOverlay === 'function') {
+                    closeSpaOverlay();
+                }
+            }, 5000);
+        }
     };
 
     window.switchSidebarTab = function(tab, save = true) {
@@ -723,58 +775,144 @@
     window._isGenerating = false;
 
     function _initApiState() {
-        if (!window.pywebview || !window.pywebview.api) return false;
+        if (!window.pywebview || !window.pywebview.api || !window.pywebview.api.get_active_state || !window.pywebview.api.list_conversations) return false;
         if (window._apiInitialized) return true;
         window._apiInitialized = true;
 
-        if (typeof refreshConversations === 'function') refreshConversations();
-        if (typeof refreshFileTree === 'function') refreshFileTree();
-        if (typeof restoreState === 'function') restoreState();
-        if (typeof loadSettings === 'function') loadSettings();
+        try { if (typeof refreshConversations === 'function') refreshConversations(); } catch(e) { console.error(e); }
+        try { if (typeof refreshFileTree === 'function') refreshFileTree(); } catch(e) { console.error(e); }
+        try { if (typeof restoreState === 'function') restoreState(); } catch(e) { console.error(e); }
+        try { if (typeof loadSettings === 'function') loadSettings(); } catch(e) { console.error(e); }
 
         // Start background polling loop for continuous backend response monitoring
         setInterval(() => {
             if (!window.pywebview || !window.pywebview.api || !window.pywebview.api.get_active_state) return;
             window.pywebview.api.get_active_state().then(state => {
-                const input = document.getElementById('chat-input');
-                const sendBtn = document.getElementById('send-btn');
-                const chatBox = document.getElementById('chat-history');
-                const pauseBtn = document.getElementById('pause-btn');
+                try {
+                    const input = document.getElementById('chat-input');
+                    const sendBtn = document.getElementById('send-btn');
+                    const chatBox = document.getElementById('chat-history');
+                    const pauseBtn = document.getElementById('pause-btn');
 
-                if (typeof renderSubagents === 'function') renderSubagents(state.subagents);
+                    if (typeof renderSubagents === 'function') renderSubagents(state.subagents);
 
-                if (state.is_generating) {
-                    window._isGenerating = true;
-                    if (input) input.disabled = true;
-                    if (sendBtn) { sendBtn.disabled = true; sendBtn.classList.add('hidden'); }
-                    if (pauseBtn) { pauseBtn.classList.remove('hidden'); }
+                    // --- Tool Activity Extraction ---
+                    const activityDiv = document.getElementById('tool-activity');
+                    const activityText = document.getElementById('tool-activity-text');
+                    const tray = document.getElementById('subagents-tray');
                     
-                    if (chatBox) {
-                        const lastChild = chatBox.lastElementChild;
-                        if (!lastChild || !lastChild.innerHTML.includes('loading-dots')) {
-                            const loadingEl = document.createElement('div');
-                            loadingEl.className = "p-md rounded-lg mb-sm bg-surface-variant/30 border border-secondary/20 mr-12";
-                            loadingEl.innerHTML = '<div class="font-label-sm mb-xs text-secondary">DarkMaxxer AI</div><div class="whitespace-pre-wrap font-body-md text-on-surface flex items-center">Generating<span class="loading-dots flex ml-xs"><span class="w-1.5 h-1.5 rounded-full bg-primary/60 mx-[1px] animate-bounce" style="animation-delay: 0s"></span><span class="w-1.5 h-1.5 rounded-full bg-primary/60 mx-[1px] animate-bounce" style="animation-delay: 0.15s"></span><span class="w-1.5 h-1.5 rounded-full bg-primary/60 mx-[1px] animate-bounce" style="animation-delay: 0.3s"></span></span></div>';
-                            chatBox.appendChild(loadingEl);
-                            chatBox.scrollTop = chatBox.scrollHeight;
+                    let isToolRunning = false;
+                    if (state.terminal_logs && state.terminal_logs.length > 0) {
+                        const now = new Date();
+                        for (let i = state.terminal_logs.length - 1; i >= Math.max(0, state.terminal_logs.length - 10); i--) {
+                            const log = state.terminal_logs[i];
+                            if (log && typeof log === 'string' && (log.includes("Created file:") || 
+                                log.includes("Edited file:") || 
+                                log.includes("Deleted file:") || 
+                                log.includes("Read file:") || 
+                                log.includes("Running command:") || 
+                                log.includes("Building/Executing target:") || 
+                                log.includes("Created directory:") || 
+                                log.includes("MCP call:"))) {
+                                
+                                const match = log.match(/\[(\d{2}):(\d{2}):(\d{2})\]/);
+                                if (match) {
+                                    const logTime = new Date();
+                                    logTime.setHours(parseInt(match[1], 10));
+                                    logTime.setMinutes(parseInt(match[2], 10));
+                                    logTime.setSeconds(parseInt(match[3], 10));
+                                    
+                                    if ((now - logTime) < 10000 && (now - logTime) >= -10000) {
+                                        isToolRunning = true;
+                                        if (activityText) activityText.innerText = log.split(']')[1].substring(0, 40) + '...';
+                                        break;
+                                    }
+                                }
+                            }
                         }
                     }
-                } else {
-                    if (pauseBtn) { pauseBtn.classList.add('hidden'); }
-                    if (sendBtn) { sendBtn.classList.remove('hidden'); }
-                    if (window._isGenerating || (state.history && state.history.length > 0 && state.history.length !== window._lastHistoryLen)) {
+
+                    if (activityDiv) {
+                        if (isToolRunning || state.is_generating) {
+                            activityDiv.classList.remove('hidden');
+                            if (tray) tray.classList.remove('opacity-0', '-translate-y-full'); // Show tray
+                        } else {
+                            activityDiv.classList.add('hidden');
+                            if (tray && (!state.subagents || state.subagents.filter(sa => sa.status !== 'completed' && sa.status !== 'done' && sa.status !== 'error' && sa.status !== 'killed' && sa.status !== 'failed').length === 0)) {
+                                tray.classList.add('opacity-0', '-translate-y-full');
+                            }
+                        }
+                    }
+                    // --------------------------------
+                    if (state.is_generating && state.generating_conv_id === state.conv_id) {
+                        window._isGenerating = true;
+                        if (input) {
+                            input.disabled = true;
+                            input.placeholder = "AI is thinking...";
+                            input.classList.add('text-center', 'animate-pulse');
+                        }
+                        if (sendBtn) { sendBtn.disabled = true; sendBtn.classList.add('hidden'); }
+                        if (pauseBtn) { pauseBtn.classList.remove('hidden'); }
+                        
+                        if (chatBox) {
+                            const lastChild = chatBox.lastElementChild;
+                            if (!lastChild || !lastChild.innerHTML.includes('loading-dots')) {
+                                const loadingEl = document.createElement('div');
+                                loadingEl.className = "p-md rounded-lg mb-sm bg-surface-variant/30 border border-secondary/20 mr-12";
+                                loadingEl.innerHTML = '<div class="font-label-sm mb-xs text-secondary">DarkMaxxer AI</div><div class="whitespace-pre-wrap font-body-md text-on-surface flex items-center">Generating<span class="loading-dots flex ml-xs"><span class="w-1.5 h-1.5 rounded-full bg-primary/60 mx-[1px] animate-bounce" style="animation-delay: 0s"></span><span class="w-1.5 h-1.5 rounded-full bg-primary/60 mx-[1px] animate-bounce" style="animation-delay: 0.15s"></span><span class="w-1.5 h-1.5 rounded-full bg-primary/60 mx-[1px] animate-bounce" style="animation-delay: 0.3s"></span></span></div>';
+                                chatBox.appendChild(loadingEl);
+                                chatBox.scrollTop = chatBox.scrollHeight;
+                            }
+                        }
+                    } else if (state.is_generating) {
+                        // Backend is generating, but for a DIFFERENT conversation!
+                        window._isGenerating = true;
+                        if (input) {
+                            input.disabled = true;
+                            input.placeholder = "Generating in another conversation...";
+                            input.classList.add('text-center');
+                            input.classList.remove('animate-pulse');
+                        }
+                        if (sendBtn) { sendBtn.disabled = true; }
+                        if (pauseBtn) { pauseBtn.classList.add('hidden'); }
+                        
+                        // Remove loading dots from THIS conversation if they leaked over
+                        if (chatBox) {
+                            const lastChild = chatBox.lastElementChild;
+                            if (lastChild && lastChild.innerHTML.includes('loading-dots')) {
+                                chatBox.removeChild(lastChild);
+                            }
+                        }
+                    } else {
+                        // FORCE hide pause button
+                        if (pauseBtn) { pauseBtn.classList.add('hidden'); }
+                        if (sendBtn) { sendBtn.classList.remove('hidden'); }
+                        
                         window._isGenerating = false;
-                        if (input) input.disabled = false;
+                        if (input) {
+                            input.disabled = false;
+                            if (input.placeholder === "AI is thinking...") {
+                                input.placeholder = "Ask DarkMaxxer AI anything...";
+                            }
+                            input.classList.remove('text-center', 'animate-pulse');
+                        }
                         if (sendBtn) { sendBtn.disabled = false; sendBtn.innerText = '▶'; }
-                        if (state.history) {
+                        
+                        const cb = document.getElementById('chat-history');
+                        const hasLoading = cb && cb.innerHTML.includes('loading-dots');
+                        
+                        // Always re-render if the history length doesn't match OR if we are still showing loading dots
+                        if (state.history && (state.history.length !== window._lastHistoryLen || hasLoading)) {
                             window._lastHistoryLen = state.history.length;
                             if (typeof renderChat === 'function') renderChat(state.history);
+                            if (typeof refreshFileTree === 'function') refreshFileTree();
                         }
-                        if (typeof refreshFileTree === 'function') refreshFileTree();
                     }
+                } catch (e) {
+                    console.error("Polling loop error: ", e);
                 }
-            }).catch(() => {});
-        }, 1000);
+            }).catch(e => { console.error("API error in loop: ", e); });
+        }, 1500);
 
         return true;
     }
@@ -878,6 +1016,36 @@
                 activateWorkspace();
                 if(typeof switchSidebarTab === 'function') switchSidebarTab('chats');
                 renderChat(res.history || []);
+                
+                // Force sync generating state on open
+                pywebview.api.get_active_state().then(state => {
+                    window._isGenerating = state.is_generating || false;
+                    if (!window._isGenerating) {
+                        const pb = document.getElementById('pause-btn');
+                        if(pb) pb.classList.add('hidden');
+                        const sb = document.getElementById('send-btn');
+                        if(sb) sb.classList.remove('hidden');
+                        const inp = document.getElementById('chat-input');
+                        if(inp) {
+                            inp.disabled = false;
+                            inp.classList.remove('text-center', 'animate-pulse');
+                        }
+                    } else {
+                        // Ensure loading dots are present if generating
+                        const chatBox = document.getElementById('chat-history');
+                        if (chatBox) {
+                            const lastChild = chatBox.lastElementChild;
+                            if (!lastChild || !lastChild.innerHTML.includes('loading-dots')) {
+                                const loadingEl = document.createElement('div');
+                                loadingEl.className = "p-md rounded-lg mb-sm bg-surface-variant/30 border border-secondary/20 mr-12";
+                                loadingEl.innerHTML = '<div class="font-label-sm mb-xs text-secondary">DarkMaxxer AI</div><div class="whitespace-pre-wrap font-body-md text-on-surface flex items-center">Generating<span class="loading-dots flex ml-xs"><span class="w-1.5 h-1.5 rounded-full bg-primary/60 mx-[1px] animate-bounce" style="animation-delay: 0s"></span><span class="w-1.5 h-1.5 rounded-full bg-primary/60 mx-[1px] animate-bounce" style="animation-delay: 0.15s"></span><span class="w-1.5 h-1.5 rounded-full bg-primary/60 mx-[1px] animate-bounce" style="animation-delay: 0.3s"></span></span></div>';
+                                chatBox.appendChild(loadingEl);
+                                chatBox.scrollTop = chatBox.scrollHeight;
+                            }
+                        }
+                    }
+                }).catch(() => {});
+
                 refreshFileTree();
                 refreshConversations();
                 appendTerminal("Opened conversation: " + id.substring(0, 8) + "...");
@@ -1022,12 +1190,104 @@
                 if(typeof switchSidebarTab === 'function') switchSidebarTab('explorer');
                 if(typeof refreshFileTree === 'function') refreshFileTree();
                 appendTerminal("Opened folder: " + res.path);
+                const display = document.getElementById('workspace-name-display');
+                if(display && res.folder_name) {
+                    display.innerText = res.folder_name;
+                }
             } else if (res.error && res.error !== "Cancelled") {
                 appendTerminal("Folder open error: " + res.error);
                 alert("Folder open error: " + res.error);
             }
         });
     }
+
+    function activateGlobalWorkspace() {
+        if(confirm("⚠️ Global mode gives the AI full filesystem access. All files on your computer will be readable and editable. Continue?")) {
+            pywebview.api.set_global_workspace().then(res => {
+                if(res.success) {
+                    window._activeConvId = null;
+                    activateWorkspace();
+                    if(typeof switchSidebarTab === 'function') switchSidebarTab('explorer');
+                    if(typeof refreshFileTree === 'function') refreshFileTree();
+                    appendTerminal("Opened global workspace");
+                    
+                    const display = document.getElementById('workspace-name-display');
+                    if(display) {
+                        display.innerText = '🌐 Global Filesystem';
+                    }
+                } else if (res.error) {
+                    appendTerminal("Global workspace error: " + res.error);
+                    alert("Global workspace error: " + res.error);
+                }
+            });
+        }
+    }
+
+    window.showSkillSelector = function(skills) {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('skill-selector-modal');
+            const container = document.getElementById('skill-list-container');
+            container.innerHTML = '';
+            let selected = [];
+            
+            skills.forEach(skill => {
+                const label = document.createElement('label');
+                label.className = 'flex items-center gap-2 p-2 hover:bg-surface-variant/30 rounded cursor-pointer transition-colors';
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'form-checkbox text-error bg-surface-container border-outline-variant/50 rounded';
+                checkbox.value = skill.path;
+                
+                checkbox.onchange = () => {
+                    if(checkbox.checked) {
+                        if(selected.length >= 5) {
+                            checkbox.checked = false;
+                            return;
+                        }
+                        selected.push(skill.path);
+                    } else {
+                        selected = selected.filter(p => p !== skill.path);
+                    }
+                    
+                    const allCheckboxes = container.querySelectorAll('input[type="checkbox"]');
+                    allCheckboxes.forEach(cb => {
+                        if(!cb.checked) {
+                            cb.disabled = selected.length >= 5;
+                        }
+                    });
+                };
+                
+                const text = document.createElement('span');
+                text.className = 'font-mono text-sm text-on-surface';
+                text.innerText = (skill.name || 'skill') + ' - ' + skill.path;
+                
+                label.appendChild(checkbox);
+                label.appendChild(text);
+                container.appendChild(label);
+            });
+            
+            modal.classList.remove('hidden');
+            
+            const applyBtn = document.getElementById('skill-apply-btn');
+            const cancelBtn = document.getElementById('skill-cancel-btn');
+            
+            const cleanup = () => {
+                modal.classList.add('hidden');
+                applyBtn.onclick = null;
+                cancelBtn.onclick = null;
+            };
+            
+            applyBtn.onclick = () => {
+                cleanup();
+                resolve(selected);
+            };
+            
+            cancelBtn.onclick = () => {
+                cleanup();
+                resolve([]);
+            };
+        });
+    };
 
     // --- Model Selection ---
     function browseModelFolder() {
@@ -1141,6 +1401,51 @@
     }
 
     // --- Terminal ---
+
+    function openSpaOverlay(url) {
+        try{localStorage.setItem('welcome_seen','true');sessionStorage.setItem('welcome_seen','true')}catch(e){}
+        const container = document.getElementById('spa-iframe-container');
+        const iframe = document.getElementById('spa-iframe');
+        iframe.src = url;
+        container.classList.remove('hidden');
+    }
+
+    function closeSpaOverlay() {
+        const container = document.getElementById('spa-iframe-container');
+        const iframe = document.getElementById('spa-iframe');
+        container.classList.add('hidden');
+        iframe.src = "";
+        if (typeof refreshConversations === 'function') refreshConversations();
+        if (typeof refreshFileTree === 'function') refreshFileTree();
+    }
+
+    window.addEventListener('message', function(e) {
+        if (e.data === 'closeSpaOverlay') {
+            closeSpaOverlay();
+        }
+    });
+
+    window.showLoading = function(text) {
+        if (!msg) return;
+        let container = document.getElementById('top-error-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'top-error-container';
+            container.className = 'fixed top-3 left-1/2 transform -translate-x-1/2 z-[300] max-w-2xl w-full px-md flex flex-col gap-2 pointer-events-none';
+            document.body.appendChild(container);
+        }
+        const toast = document.createElement('div');
+        toast.className = 'pointer-events-auto bg-error-container/95 border border-error text-on-error-container p-md rounded-xl shadow-[0_0_30px_rgba(255,84,73,0.4)] flex items-start justify-between gap-sm animate-fade-in backdrop-blur-md';
+        toast.innerHTML = `
+            <div class="flex items-start gap-sm">
+                <span class="material-symbols-outlined text-error text-xl shrink-0 mt-0.5">error</span>
+                <div class="font-body-sm text-sm break-words overflow-auto max-h-40 font-mono">${msg}</div>
+            </div>
+            <button onclick="this.parentElement.remove()" class="text-on-error-container/70 hover:text-on-error-container font-bold px-1 transition-colors shrink-0">✕</button>
+        `;
+        container.prepend(toast);
+    };
+
     window.showTopError = function(msg) {
         if (!msg) return;
         let container = document.getElementById('top-error-container');
@@ -1316,23 +1621,33 @@
                         wrap.className = 'folder-children-wrap';
                         wrap.appendChild(renderNode(child, level + 1));
 
-                        let isOpen = false;
+                        let isOpen = window._expandedFolders && window._expandedFolders.has(child.path);
+                        const chevron = el.querySelector('.folder-chevron');
+                        const folderIcon = el.querySelector('.tree-file-icon');
+                        
+                        if (isOpen) {
+                            chevron.classList.add('open');
+                            folderIcon.textContent = 'folder_open';
+                            wrap.classList.add('expanded');
+                        }
+
                         el.onclick = (e) => {
                             e.stopPropagation();
                             isOpen = !isOpen;
-                            const chevron = el.querySelector('.folder-chevron');
-                            const folderIcon = el.querySelector('.tree-file-icon');
+                            if(!window._expandedFolders) window._expandedFolders = new Set();
+                            
                             if (isOpen) {
                                 chevron.classList.add('open');
                                 folderIcon.textContent = 'folder_open';
                                 wrap.classList.add('expanded');
+                                window._expandedFolders.add(child.path);
                             } else {
                                 chevron.classList.remove('open');
                                 folderIcon.textContent = 'folder';
                                 wrap.classList.remove('expanded');
+                                window._expandedFolders.delete(child.path);
                             }
                         };
-
                         container.appendChild(el);
                         container.appendChild(wrap);
                     } else {
@@ -1482,30 +1797,32 @@
         let escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         
         // Step 1: Extract and render code blocks (``` syntax)
-        const codeBlockRegex = /```([a-zA-Z0-9_+\-#.]*)\n?([\s\S]*?)```/g;
+        const codeBlockRegex = /\n*```([a-zA-Z0-9_+\-#.]*)\n?([\s\S]*?)```\n*/g;
         escaped = escaped.replace(codeBlockRegex, (match, lang, codeContent) => {
             const language = (lang || "code").trim().toLowerCase() || "code";
             const cleanCode = codeContent.replace(/\s+$/, "");
             const rawCode = cleanCode.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
             const encoded = encodeURIComponent(rawCode);
-            return `<div class="bg-[#120a1c]/90 border border-purple-500/30 rounded-xl my-3 overflow-hidden shadow-2xl shadow-purple-950/40 text-left font-sans">
-                <div class="flex items-center justify-between px-4 py-2.5 bg-[#1c112b]/95 border-b border-purple-500/25 text-xs font-mono text-purple-200/90 select-none backdrop-blur-md">
-                    <span class="flex items-center gap-1.5 font-bold text-sm tracking-wide text-purple-100">
-                        <span class="material-symbols-outlined text-sm text-purple-400">terminal</span> 
-                        <span class="uppercase tracking-wider text-[10px] bg-purple-500/20 px-2 py-0.5 rounded-md text-purple-300 border border-purple-500/30">${language}</span>
-                    </span>
-                    <button onclick="copyCodeToClipboard(this, '${encoded}')" class="flex items-center gap-1 bg-purple-600/30 hover:bg-purple-600/60 text-purple-200 hover:text-white px-2.5 py-1 rounded-lg border border-purple-500/40 font-sans font-semibold text-[11px] tracking-wide shadow-sm hover:shadow-purple-500/20 transition-all duration-200 cursor-pointer group">
-                        <span class="material-symbols-outlined text-sm group-hover:scale-110 transition-transform">content_copy</span> 
-                        <span>Copy</span>
-                    </button>
-                </div>
-                <pre class="p-4 overflow-x-auto text-xs font-mono leading-relaxed m-0 text-purple-100/90 bg-[#0d0714]/80 select-text" style="scrollbar-width: thin; scrollbar-color: rgba(168,85,247,0.3) transparent;"><code>${cleanCode}</code></pre>
-            </div>`;
+            return '<div class="bg-[#120a1c]/90 border border-purple-500/30 rounded-xl my-3 overflow-hidden shadow-2xl shadow-purple-950/40 text-left font-sans flex flex-col">' +
+                '<div class="flex items-center justify-between px-4 py-2.5 bg-[#1c112b]/95 border-b border-purple-500/25 text-xs font-mono text-purple-200/90 select-none backdrop-blur-md">' +
+                    '<span class="flex items-center gap-1.5 font-bold text-sm tracking-wide text-purple-100">' +
+                        '<span class="material-symbols-outlined text-sm text-purple-400">terminal</span>' + 
+                        '<span class="uppercase tracking-wider text-[10px] bg-purple-500/20 px-2 py-0.5 rounded-md text-purple-300 border border-purple-500/30">' + language + '</span>' +
+                    '</span>' +
+                    '<button onclick="copyCodeToClipboard(this, \'' + encoded + '\')" class="flex items-center gap-1 bg-purple-600/30 hover:bg-purple-600/60 text-purple-200 hover:text-white px-2.5 py-1 rounded-lg border border-purple-500/40 font-sans font-semibold text-[11px] tracking-wide shadow-sm hover:shadow-purple-500/20 transition-all duration-200 cursor-pointer group">' +
+                        '<span class="material-symbols-outlined text-sm group-hover:scale-110 transition-transform">content_copy</span>' + 
+                        '<span>Copy</span>' +
+                    '</button>' +
+                '</div>' +
+                '<pre class="p-4 overflow-x-auto text-xs font-mono leading-relaxed m-0 text-purple-100/90 bg-[#0d0714]/80 select-text" style="scrollbar-width: thin; scrollbar-color: rgba(168,85,247,0.3) transparent;"><code>' + cleanCode + '</code></pre>' +
+            '</div>';
         });
 
-        // Step 2: Convert newlines to <br> for proper line spacing
-        escaped = escaped.replace(/\n\n/g, '<br><br>');
-        escaped = escaped.replace(/\n/g, '<br>');
+        // Step 2: Normalize newlines for whitespace-pre-wrap (browser natively handles \n)
+        escaped = escaped.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+        // Step 2b: Collapse excessive blank lines (3+ newlines → max 2) to prevent large gaps
+        escaped = escaped.replace(/\n{3,}/g, '\n\n');
 
         // Step 3: Render **bold** markdown
         escaped = escaped.replace(/\*\*(.+?)\*\*/g, '<strong class="text-primary font-semibold">$1</strong>');
@@ -1547,24 +1864,24 @@
     }
 
     function renderSubagents(subagents) {
-        const tray = document.getElementById('subagents-tray');
         const list = document.getElementById('subagents-list');
         const count = document.getElementById('subagents-count');
-        if (!tray || !list) return;
+        const subagentsLabel = document.getElementById('subagents-label-container');
+        if (!list) return;
 
         if (!subagents || !Array.isArray(subagents)) {
-            tray.classList.add('hidden');
+            if (subagentsLabel) subagentsLabel.classList.add('hidden');
             return;
         }
 
         const activeSubagents = subagents.filter(sa => sa.status !== 'completed' && sa.status !== 'done' && sa.status !== 'error' && sa.status !== 'killed' && sa.status !== 'failed');
 
         if (activeSubagents.length === 0) {
-            tray.classList.add('hidden');
+            if (subagentsLabel) subagentsLabel.classList.add('hidden');
             return;
         }
 
-        tray.classList.remove('hidden');
+        if (subagentsLabel) subagentsLabel.classList.remove('hidden');
         if (count) count.innerText = activeSubagents.length;
         list.innerHTML = "";
 
@@ -1576,11 +1893,11 @@
             }
 
             const el = document.createElement('div');
-            const statusColor = 'text-secondary-fixed border-secondary/30 bg-secondary/10';
+            const statusColor = 'text-purple-200 border-purple-500/50 bg-purple-600/25';
             const icon = 'sync';
-            const spin = 'animate-spin';
-            el.className = `flex items-center gap-xs px-sm py-xs rounded-lg border text-xs font-label-sm ${statusColor} shadow-sm`;
-            el.innerHTML = `<span class="material-symbols-outlined text-[14px] ${spin}">${icon}</span><span class="font-bold">${sa.name || sa.role || 'Subagent'}</span><span class="opacity-80">${sa.task || sa.status || 'running'}</span>`;
+            const spin = 'animate-spin text-purple-400';
+            el.className = `flex items-center gap-xs px-sm py-xs rounded-lg border text-xs font-label-sm ${statusColor} shadow-[0_2px_10px_rgba(168,85,247,0.2)]`;
+            el.innerHTML = `<span class="material-symbols-outlined text-[14px] ${spin}">${icon}</span><span class="font-bold">${sa.name || sa.role || 'Subagent'}</span><span class="opacity-80 ml-1 bg-purple-900/50 px-1 rounded truncate max-w-[150px]" title="${sa.task || sa.status || 'running'}">${sa.task || sa.status || 'running'}</span>`;
             list.appendChild(el);
         });
     }
@@ -1611,7 +1928,7 @@
             }
 
             const content = document.createElement('div');
-            content.className = "whitespace-pre-wrap font-body-md text-on-surface leading-relaxed";
+            content.className = "whitespace-pre-wrap font-body-md text-on-surface leading-normal";
             content.innerHTML = formatChatMessage(msg.content);
 
             el.appendChild(header);
@@ -1638,6 +1955,11 @@
                     if(placeholder) placeholder.remove();
                     chatBox.appendChild(errEl);
                     chatBox.scrollTop = chatBox.scrollHeight;
+                    setTimeout(() => {
+                        if (errEl && errEl.parentNode) {
+                            errEl.parentNode.removeChild(errEl);
+                        }
+                    }, 10000);
                 }
                 appendTerminal("Prompt blocked: No AI Model loaded.");
                 return;
@@ -1665,6 +1987,14 @@
 
             window._isGenerating = true;
             window._lastHistoryLen = (window._lastHistoryLen || 0) + 1;
+
+            if (chatBox) {
+                const loadingEl = document.createElement('div');
+                loadingEl.className = "p-md rounded-lg mb-sm bg-surface-variant/30 border border-secondary/20 mr-12";
+                loadingEl.innerHTML = '<div class="font-label-sm mb-xs text-secondary">DarkMaxxer AI</div><div class="whitespace-pre-wrap font-body-md text-on-surface flex items-center">Generating<span class="loading-dots flex ml-xs"><span class="w-1.5 h-1.5 rounded-full bg-primary/60 mx-[1px] animate-bounce" style="animation-delay: 0s"></span><span class="w-1.5 h-1.5 rounded-full bg-primary/60 mx-[1px] animate-bounce" style="animation-delay: 0.15s"></span><span class="w-1.5 h-1.5 rounded-full bg-primary/60 mx-[1px] animate-bounce" style="animation-delay: 0.3s"></span></span></div>';
+                chatBox.appendChild(loadingEl);
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
 
             pywebview.api.send_prompt(prompt).then(res => {
                 // send_prompt returns immediately (async generation)
@@ -1694,7 +2024,16 @@
             const sendBtn = document.getElementById('send-btn');
             const pauseBtn = document.getElementById('pause-btn');
             const chatBox = document.getElementById('chat-history');
-            if (input) { input.disabled = false; input.focus(); }
+            
+            if (input) { 
+                input.disabled = false;
+                input.placeholder = "Ask DarkMaxxer AI anything...";
+                input.classList.remove('text-center', 'animate-pulse');
+                if (res.restored_prompt && input.value.trim() === "") {
+                    input.value = res.restored_prompt;
+                }
+                input.focus(); 
+            }
             if (sendBtn) { sendBtn.disabled = false; sendBtn.innerText = '▶'; sendBtn.classList.remove('hidden'); }
             if (pauseBtn) { pauseBtn.classList.add('hidden'); }
             window._isGenerating = false;

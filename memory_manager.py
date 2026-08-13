@@ -207,6 +207,36 @@ class MemoryManager:
                         pass
         return conversations
 
+    def get_conversation_data(self, conv_id: str) -> dict:
+        if not conv_id: return {}
+        file_path = self.get_context_file(conv_id)
+        if os.path.exists(file_path):
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                pass
+        return {}
+
+    def set_conversation_data(self, conv_id: str, key: str, value):
+        if not conv_id: return
+        with self._lock:
+            file_path = self.get_context_file(conv_id)
+            data = {}
+            if os.path.exists(file_path):
+                try:
+                    with open(file_path, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                except Exception:
+                    pass
+            data[key] = value
+            data["id"] = data.get("id", conv_id)
+            try:
+                with open(file_path, "w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=2)
+            except Exception:
+                pass
+
     def get_history(self, conv_id: str) -> list:
         if not conv_id:
             return []
@@ -258,6 +288,21 @@ class MemoryManager:
 
     def delete_history(self, conv_id: str):
         self.save_history(conv_id, [])
+
+    def rename_conversation(self, conv_id: str, new_name: str) -> bool:
+        with self._lock:
+            file_path = self.get_context_file(conv_id)
+            if not os.path.exists(file_path):
+                return False
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                data["name"] = new_name
+                with open(file_path, "w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=2)
+                return True
+            except Exception:
+                return False
 
     def delete_conversation(self, conv_id: str):
         file_path = self.get_context_file(conv_id)

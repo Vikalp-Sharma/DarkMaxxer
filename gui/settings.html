@@ -167,7 +167,7 @@
 <p class="font-body-md text-body-md text-on-surface-variant">Configure DarkMaxxer environment</p>
 </div>
 </div>
-<button onclick="window.location.href='index.html'" class="w-10 h-10 rounded-full flex items-center justify-center hover:bg-surface-variant/30 transition-colors text-on-surface-variant hover:text-on-surface">
+<button onclick="window.parent.postMessage('closeSpaOverlay', '*');" class="w-10 h-10 rounded-full flex items-center justify-center hover:bg-surface-variant/30 transition-colors text-on-surface-variant hover:text-on-surface">
 <span class="material-symbols-outlined">close</span>
 </button>
 </header>
@@ -314,7 +314,7 @@
         <div class="flex items-center justify-between border-b border-outline-variant/10 pb-md">
             <div>
                 <h3 class="font-title-md text-on-surface font-bold">DarkMaxxer Engine</h3>
-                <p class="text-xs text-on-surface-variant">Version 1.0.0 Alpha • Local Hardware Offloading</p>
+                <p class="text-xs text-on-surface-variant">Version 2.2.0 • Local Hardware Offloading</p>
             </div>
             <span class="px-md py-1 rounded-full bg-secondary-container/30 border border-secondary/40 text-secondary-fixed text-xs font-mono font-bold uppercase tracking-wider shadow-[0_0_12px_rgba(189,140,255,0.2)]">AIRLLM ACTIVE</span>
         </div>
@@ -332,7 +332,7 @@
 
         <!-- System Diagnostics Tool -->
         <div class="p-md rounded-lg bg-surface-container-low border border-outline-variant/20 space-y-sm">
-            <div class="flex items-center justify-between">
+            <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-md">
                 <div>
                     <h4 class="font-title-sm text-on-surface font-bold">Hardware & System Diagnostics</h4>
                     <p class="text-xs text-on-surface-variant">Check local VRAM, CUDA device capabilities, and active workspace paths.</p>
@@ -354,6 +354,28 @@
                 <span>Repository: <a href="https://github.com/Vikalp-Sharma/DarkMaxxer" target="_blank" class="text-secondary hover:underline">github.com/Vikalp-Sharma/DarkMaxxer</a></span>
             </div>
             <span class="px-md py-1 rounded bg-secondary-container/20 text-secondary border border-secondary/30 font-bold">Built with pywebview & AirLLM</span>
+        </div>
+    </div>
+
+    <!-- Uninstall / Danger Zone -->
+    <div class="glass-inner rounded-xl p-lg border border-red-500/30 space-y-md shadow-[0_4px_24px_rgba(220,38,38,0.15)] mt-lg">
+        <div class="flex items-center justify-between border-b border-red-500/20 pb-md">
+            <div>
+                <h3 class="font-title-md text-red-400 font-bold">⚠️ Danger Zone</h3>
+                <p class="text-xs text-red-300/60">Irreversible actions — proceed with caution</p>
+            </div>
+        </div>
+        <div class="p-md rounded-lg bg-red-950/30 border border-red-500/20 space-y-sm">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h4 class="font-title-sm text-red-300 font-bold">Uninstall DarkMaxxer</h4>
+                    <p class="text-xs text-red-300/50">Remove virtual environment, shortcuts, config, conversation data, and log files. The app folder itself will remain for manual deletion.</p>
+                </div>
+                <button id="uninstall-btn" onclick="uninstallApp()" class="px-lg py-sm bg-red-600/30 hover:bg-red-600/60 border border-red-500/50 rounded-lg text-red-300 font-label-sm font-bold flex items-center gap-xs transition-all cursor-pointer hover:shadow-[0_0_20px_rgba(220,38,38,0.3)]">
+                    <span class="material-symbols-outlined text-sm">delete_forever</span> Uninstall
+                </button>
+            </div>
+            <div id="uninstall-results" class="hidden pt-sm border-t border-red-500/10 text-xs font-mono text-red-200/80 space-y-1"></div>
         </div>
     </div>
 </section>
@@ -401,7 +423,7 @@
 </div>
 </div>
 <!-- Persistent Uses AirLLM Watermark Credit Line at Bottom of Settings Panel -->
-<div class="mt-xl pt-md border-t border-outline-variant/20 flex items-center justify-between text-xs font-mono text-on-surface-variant/70">
+<div class="mt-auto pt-md pb-md border-t border-outline-variant/20 flex items-center justify-between text-xs font-mono text-on-surface-variant/70 shrink-0">
     <span class="flex items-center gap-xs text-secondary font-bold">
         <span class="material-symbols-outlined text-sm">hub</span> Uses AirLLM — Layer-Wise Local Model Inference Engine
     </span>
@@ -432,6 +454,9 @@
 
 
 <script>
+    if (window.parent && window.parent !== window) {
+        Object.defineProperty(window, 'pywebview', { get: () => window.parent.pywebview });
+    }
     // --- Proxy Fix for PyWebView Navigation Crashes ---
     window.addEventListener('pywebviewready', function() {
         if (window.pywebview && window.pywebview._returnValuesCallbacks) {
@@ -901,7 +926,7 @@
                 if(loadRes.success) {
                     if (statusEl) statusEl.innerText = "✓ Active Model: " + path.split(/[\\/]/).pop();
                     if (window.location.pathname.includes('models.html')) {
-                        window.location.href = "index.html";
+                        window.parent.postMessage('closeSpaOverlay', '*');
                     } else {
                         const modal = document.getElementById('first-run-modal');
                         if(modal) modal.classList.add('hidden');
@@ -1436,6 +1461,27 @@
                 }
             });
         }
+    }
+
+    async function uninstallApp() {
+        if (!confirm('⚠️ UNINSTALL DARKMAXXER\n\nThis will permanently remove:\n• Virtual environment & packages\n• Desktop shortcuts\n• Config & conversation data\n• Log files\n\nThe app folder will remain for manual deletion.\n\nAre you sure?')) return;
+        const btn = document.getElementById('uninstall-btn');
+        const resultsDiv = document.getElementById('uninstall-results');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin">progress_activity</span> Uninstalling...';
+        resultsDiv.classList.remove('hidden');
+        resultsDiv.innerHTML = '<p>Uninstalling...</p>';
+        try {
+            const res = await pywebview.api.uninstall_app();
+            if (res && res.results) {
+                resultsDiv.innerHTML = res.results.map(r => '<p>' + r + '</p>').join('');
+            } else {
+                resultsDiv.innerHTML = '<p>❌ Uninstall failed: no response</p>';
+            }
+        } catch(e) {
+            resultsDiv.innerHTML = '<p>❌ Error: ' + e + '</p>';
+        }
+        btn.innerHTML = '<span class="material-symbols-outlined text-sm">delete_forever</span> Done';
     }
 
     function runDiagnostics() {

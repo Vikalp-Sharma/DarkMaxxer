@@ -2,33 +2,183 @@
 import os
 import sys
 import io
+import traceback
 
-def _ensure_local_site_packages():
-    _here = os.path.dirname(os.path.abspath(__file__))
-    _cands = [
-        os.path.join(_here, "venv", "Lib", "site-packages"),
-        os.path.join(_here, "..", "venv", "Lib", "site-packages"),
-        os.path.join(os.path.expanduser("~"), "DarkMaxxer", "venv", "Lib", "site-packages"),
-        os.path.join(os.getenv("LOCALAPPDATA", ""), "Low", "DarkMaxxer", "venv", "Lib", "site-packages"),
-        os.path.join(os.getenv("APPDATA", ""), "DarkMaxxer", "venv", "Lib", "site-packages"),
-    ]
-    for _c in _cands:
-        if os.path.exists(_c) and _c not in sys.path:
-            sys.path.insert(0, _c)
-_ensure_local_site_packages()
+def _fatal_crash(e):
+    crash_log = os.path.join(os.path.dirname(os.path.abspath(__file__)), "early_crash.log")
+    try:
+        with open(crash_log, "a", encoding="utf-8") as f:
+            f.write(traceback.format_exc())
+    except:
+        pass
 
-# Protect against pythonw.exe stdout/stderr being None (`AttributeError: 'NoneType' object has no attribute 'write'`)
-if sys.stdout is None:
-    sys.stdout = io.StringIO()
-if sys.stderr is None:
-    sys.stderr = io.StringIO()
+try:
+    def _ensure_local_site_packages():
+        _here = os.path.dirname(os.path.abspath(__file__))
+        _cands = [
+            os.path.join(_here, "venv", "Lib", "site-packages"),
+            os.path.join(_here, "..", "venv", "Lib", "site-packages"),
+            os.path.join(os.path.expanduser("~"), "DarkMaxxer", "venv", "Lib", "site-packages"),
+            os.path.join(os.getenv("LOCALAPPDATA", ""), "Low", "DarkMaxxer", "venv", "Lib", "site-packages"),
+            os.path.join(os.getenv("APPDATA", ""), "DarkMaxxer", "venv", "Lib", "site-packages"),
+        ]
+        # Detect pip's custom target directory (PIP_TARGET env or pip.ini global.target)
+        # so packages installed there can actually be imported
+        _pip_target = os.environ.get("PIP_TARGET", "")
+        if not _pip_target:
+            try:
+                import configparser
+                _pip_ini = os.path.join(os.getenv("APPDATA", ""), "pip", "pip.ini")
+                if os.path.exists(_pip_ini):
+                    _cp = configparser.ConfigParser()
+                    _cp.read(_pip_ini, encoding="utf-8")
+                    _pip_target = _cp.get("global", "target", fallback="")
+            except Exception:
+                pass
+        if _pip_target and os.path.isdir(_pip_target):
+            _cands.append(_pip_target)
+        for _c in _cands:
+            if os.path.exists(_c) and _c not in sys.path:
+                sys.path.insert(0, _c)
 
+    _ensure_local_site_packages()
+
+    if sys.stdout is None:
+        sys.stdout = io.StringIO()
+    if sys.stderr is None:
+        sys.stderr = io.StringIO()
+
+    def _crash_handler(exctype, value, tb):
+        crash_log = os.path.join(os.path.dirname(os.path.abspath(__file__)), "crash.log")
+        try:
+            with open(crash_log, "a", encoding="utf-8") as f:
+                f.write("".join(traceback.format_exception(exctype, value, tb)))
+        except:
+            pass
+    sys.excepthook = _crash_handler
+
+except Exception as e:
+    _fatal_crash(e)
+    sys.exit(1)
 import threading
 import subprocess
+
+def _install_dependencies():
+    """Install pip dependencies with bounded retries. Skips entirely for frozen exes."""
+    # Frozen exe (PyInstaller) has no pip — skip to avoid infinite background process
+    if getattr(sys, 'frozen', False):
+        return
+
+    _creationflags = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
+
+    # Already installed — nothing to do
+    try:
+        import webview
+        return
+    except ImportError:
+        pass
+
+    _MAX_RETRIES = 3
+    _TIMEOUT = 300  # 5 min timeout per subprocess call
+
+    pip_python = sys.executable
+    if pip_python.lower().endswith("pythonw.exe"):
+        python_exe = pip_python[:-11] + "python.exe"
+        if os.path.exists(python_exe):
+            pip_python = python_exe
+
+    # Determine the correct site-packages dir that's actually in sys.path
+    # This overrides any custom PIP_TARGET / pip.ini global.target config
+    _target_site_pkg = None
+    for _p in sys.path:
+        if 'site-packages' in _p.lower() and os.path.isdir(_p):
+            _target_site_pkg = _p
+            break
+    _target_args = ["--target", _target_site_pkg] if _target_site_pkg else []
+
+    # Create a clean env without PIP_TARGET to prevent misrouting
+    _pip_env = os.environ.copy()
+    _pip_env.pop("PIP_TARGET", None)
+
+    _here = os.path.dirname(os.path.abspath(__file__))
+    req_file = os.path.join(_here, "requirements.txt")
+    other_pips = []
+    if os.path.exists(req_file):
+        with open(req_file, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    pkg_name = line.split('==')[0].split('>')[0].split('<')[0].strip()
+                    if pkg_name and "pywebview" not in pkg_name.lower() and "webview" not in pkg_name.lower():
+                        other_pips.append(pkg_name)
+
+    # Step 1: Install all other requirements first
+    if other_pips:
+        for attempt in range(_MAX_RETRIES):
+            try:
+                subprocess.run(
+                    [pip_python, "-m", "pip", "install", "--prefer-binary"] + _target_args + other_pips,
+                    capture_output=True, timeout=_TIMEOUT,
+                    creationflags=_creationflags,
+                    env=_pip_env
+                )
+                break
+            except Exception:
+                pass
+
+    # Step 2: Install pywebview individually, retry up to _MAX_RETRIES each
+    for pkg in ["pywebview"]:
+        for attempt in range(_MAX_RETRIES):
+            try:
+                subprocess.run(
+                    [pip_python, "-m", "pip", "install", "--prefer-binary"] + _target_args + [pkg],
+                    capture_output=True, timeout=_TIMEOUT,
+                    creationflags=_creationflags,
+                    env=_pip_env
+                )
+                # Verify it actually installed
+                res = subprocess.run(
+                    [pip_python, "-m", "pip", "show", pkg],
+                    capture_output=True, text=True, timeout=30,
+                    creationflags=_creationflags,
+                    env=_pip_env
+                )
+                if res.returncode == 0:
+                    break  # Installed and verified
+            except Exception:
+                pass
+
+    # Step 3: Verify all other pips are present
+    for p in other_pips:
+        try:
+            res = subprocess.run(
+                [pip_python, "-m", "pip", "show", p],
+                capture_output=True, text=True, timeout=30,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+                env=_pip_env
+            )
+            if res.returncode != 0:
+                # One more attempt for any missing package
+                subprocess.run(
+                    [pip_python, "-m", "pip", "install", "--prefer-binary"] + _target_args + [p],
+                    capture_output=True, timeout=_TIMEOUT,
+                    creationflags=_creationflags,
+                    env=_pip_env
+                )
+        except Exception:
+            pass
+
+_install_dependencies()
+
 try:
     import webview
-except Exception:
+except Exception as e:
     webview = None
+    try:
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "webview_error.log"), "w", encoding="utf-8") as f:
+            f.write(f"Failed to import pywebview: {e}\n")
+    except:
+        pass
 from memory_manager import MemoryManager, ConfigManager
 from llm_engine import LLMEngine
 from mcp_integration import FileOpsServer, MCPClient
@@ -210,17 +360,21 @@ class Api:
             return {"success": False, "error": str(e)}
 
     def _init_file_ops(self, conv_id, force=False):
-        if not force and self.file_ops and hasattr(self.file_ops, 'base_dir') and os.path.exists(self.file_ops.base_dir):
-            if "brain" not in str(self.file_ops.base_dir).lower() and ".system_generated" not in str(self.file_ops.base_dir).lower():
+        if hasattr(self, 'memory') and hasattr(self.memory, 'get_conversation_data'):
+            conv_data = self.memory.get_conversation_data(conv_id)
+            ws_dir = conv_data.get("workspace_dir")
+            ws_mode = conv_data.get("workspace_mode", "local")
+            if ws_dir and os.path.exists(ws_dir):
+                self.file_ops = FileOpsServer(ws_dir)
+                self.config.update_config("active_workspace_dir", ws_dir)
+                self.config.update_config("workspace_mode", ws_mode)
                 return
-        cfg_ws = self.config.get_config().get("active_workspace_dir")
-        if not force and cfg_ws and os.path.exists(cfg_ws) and "brain" not in str(cfg_ws).lower() and ".system_generated" not in str(cfg_ws).lower():
-            self.file_ops = FileOpsServer(cfg_ws)
-            return
+
         workspace_dir = self.memory.get_workspace_dir(conv_id)
         os.makedirs(workspace_dir, exist_ok=True)
         self.file_ops = FileOpsServer(workspace_dir)
         self.config.update_config("active_workspace_dir", workspace_dir)
+        self.config.update_config("workspace_mode", "local")
 
     def open_external_folder(self):
         if not self._window:
@@ -232,13 +386,61 @@ class Api:
             result = self._window.create_file_dialog(folder_dlg)
             if result and len(result) > 0:
                 selected_dir = result[0]
+                folder_name = os.path.basename(selected_dir.rstrip(os.sep)) or "Workspace"
                 self.file_ops = FileOpsServer(selected_dir)
                 self.config.update_config("active_workspace_dir", selected_dir)
+                self.config.update_config("workspace_mode", "local")
+                
+                # Always create a new session for a newly opened folder so it doesn't overwrite the active one
+                self.active_conv_id = self.memory.create_conversation(folder_name)
+                if hasattr(self.memory, 'set_conversation_data'):
+                    self.memory.set_conversation_data(self.active_conv_id, "workspace_dir", selected_dir)
+                    self.memory.set_conversation_data(self.active_conv_id, "workspace_mode", "local")
+                self._init_file_ops(self.active_conv_id)
+                self.config.update_config("active_conv_id", self.active_conv_id)
+                
                 self._log_terminal(f"Workspace set to external folder: {selected_dir}")
-                return {"success": True, "path": selected_dir}
+                return {"success": True, "path": selected_dir, "folder_name": folder_name}
             return {"success": False, "error": "No folder selected"}
         except Exception as e:
             return {"success": False, "error": str(e)}
+
+    def set_global_workspace(self):
+        """Set workspace to global filesystem access (no sandbox)."""
+        try:
+            import platform as _plat
+            if _plat.system() == "Windows":
+                root = os.environ.get("SYSTEMDRIVE", "C:") + os.sep
+            else:
+                root = "/"
+            self.file_ops = FileOpsServer(root)
+            self.file_ops.global_mode = True
+            self.config.update_config("active_workspace_dir", root)
+            self.config.update_config("workspace_mode", "global")
+            if not self.active_conv_id:
+                self.active_conv_id = self.memory.create_conversation("Global Workspace")
+                self.config.update_config("active_conv_id", self.active_conv_id)
+            self._init_file_ops(self.active_conv_id)
+            self.file_ops = FileOpsServer(root)
+            self.file_ops.global_mode = True
+            self._log_terminal(f"Global workspace mode enabled — root: {root}")
+            return {"success": True, "path": root, "mode": "global"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def get_available_skills(self):
+        """Scan workspace for all SKILL.md files."""
+        skills = []
+        if self.file_ops and os.path.exists(self.file_ops.base_dir):
+            for root, dirs, files in os.walk(self.file_ops.base_dir):
+                if "SKILL.md" in files:
+                    full_path = os.path.join(root, "SKILL.md")
+                    rel_path = os.path.relpath(full_path, self.file_ops.base_dir)
+                    parent_name = os.path.basename(root)
+                    skills.append({"path": rel_path, "name": parent_name, "full_path": full_path})
+                # Don't recurse into hidden/venv/node_modules
+                dirs[:] = [d for d in dirs if not d.startswith(".") and d not in ("venv", "node_modules", "__pycache__", ".git")]
+        return skills
 
     def get_settings(self):
         try:
@@ -275,18 +477,26 @@ class Api:
         self._current_gen_id = gen_id
 
         if not self.active_conv_id:
-            self.active_conv_id = self.memory.create_conversation("DarkMaxxer Session")
+            ws_name = os.path.basename(self.file_ops.base_dir) if self.file_ops else "Chat Session"
+            self.active_conv_id = self.memory.create_conversation(ws_name or "Chat Session")
             self._init_file_ops(self.active_conv_id)
             self.config.update_config("active_conv_id", self.active_conv_id)
         elif not os.path.exists(os.path.join(self.memory.context_dir, f"{self.active_conv_id}.json")):
-            # If ID exists but file is missing/locked, recreate it rather than making a new ID
-            self.memory.save_history(self.active_conv_id, [])
+            try:
+                self.memory.save_history(self.active_conv_id, [])
+            except Exception:
+                pass
 
         history = self.memory.get_history(self.active_conv_id)
         history.append({"role": "user", "content": prompt})
         self.memory.save_history(self.active_conv_id, history)
-
-        t = threading.Thread(target=self._generate_worker, args=(prompt, self.active_conv_id, history, gen_id))
+        self.generating_conv_id = self.active_conv_id
+        
+        self._gen_counter += 1
+        gen_id = self._gen_counter
+        self._current_gen_id = gen_id
+        
+        t = threading.Thread(target=self._generate_worker, args=(prompt, self.active_conv_id, history, gen_id), name="DarkMaxxerGenThread")
         t.daemon = True
         t.start()
         return {"success": True, "status": "generating"}
@@ -306,16 +516,17 @@ class Api:
         if self.active_conv_id:
             try:
                 hist = self.memory.get_history(self.active_conv_id)
+                popped_prompt = None
                 # Purge pending incomplete user prompts & paused tags from history!
                 while hist and hist[-1].get("role") == "user":
-                    hist.pop()
+                    popped_prompt = hist.pop().get("content", "")
                 while hist and hist[-1].get("role") == "assistant" and "[Generation paused" in str(hist[-1].get("content", "")):
                     hist.pop()
                 self.memory.save_history(self.active_conv_id, hist)
             except Exception:
                 pass
         self._log_terminal("Generation paused by user.")
-        return {"success": True}
+        return {"success": True, "restored_prompt": popped_prompt if 'popped_prompt' in locals() else None}
 
     def _generate_worker(self, prompt, conv_id, history, gen_id=0):
         try:
@@ -360,15 +571,54 @@ class Api:
             skill_content = ""
             skill_found = False
             if self.file_ops and os.path.exists(self.file_ops.base_dir):
-                for root, dirs, files in os.walk(self.file_ops.base_dir):
-                    if "SKILL.md" in files:
-                        try:
-                            with open(os.path.join(root, "SKILL.md"), "r", encoding="utf-8") as f:
-                                skill_content = f.read()
-                                skill_found = True
-                        except Exception:
-                            pass
-                        break
+                # Collect ALL SKILL.md files in workspace
+                all_skills = []
+                for sroot, sdirs, sfiles in os.walk(self.file_ops.base_dir):
+                    if "SKILL.md" in sfiles:
+                        all_skills.append(os.path.join(sroot, "SKILL.md"))
+                    sdirs[:] = [d for d in sdirs if not d.startswith(".") and d not in ("venv", "node_modules", "__pycache__", ".git")]
+
+                selected_skills = all_skills
+                # If multiple skills found, ask user to select (max 5) via JS modal
+                if len(all_skills) > 1 and self._window:
+                    try:
+                        skill_info = []
+                        for sp in all_skills:
+                            rel = os.path.relpath(sp, self.file_ops.base_dir)
+                            name = os.path.basename(os.path.dirname(sp))
+                            skill_info.append({"path": rel, "name": name})
+                        import json as _json
+                        result = self._window.evaluate_js(
+                            f"window.showSkillSelector && window.showSkillSelector({_json.dumps(skill_info)})"
+                        )
+                        if result and isinstance(result, list):
+                            # Map selected relative paths back to full paths
+                            selected_skills = []
+                            for sel in result[:5]:
+                                fp = os.path.join(self.file_ops.base_dir, sel)
+                                if os.path.isfile(fp):
+                                    selected_skills.append(fp)
+                        elif result is None or result == []:
+                            selected_skills = all_skills[:1]  # Default to first
+                    except Exception:
+                        selected_skills = all_skills[:5]
+                else:
+                    selected_skills = all_skills[:5]
+
+                # Read selected skills
+                skill_parts = []
+                for sk_path in selected_skills:
+                    try:
+                        with open(sk_path, "r", encoding="utf-8") as f:
+                            content = f.read()
+                            if content.strip():
+                                sk_name = os.path.basename(os.path.dirname(sk_path))
+                                skill_parts.append(f"### Skill: {sk_name}\n{content}")
+                    except Exception:
+                        pass
+                if skill_parts:
+                    skill_content = "\n\n".join(skill_parts)
+                    skill_found = True
 
             # Build structured messages array for chat models
             messages = []
@@ -394,50 +644,60 @@ class Api:
                         "=== END MCP TOOLS ===\n"
                     )
 
+            # Platform detection for shell commands
+            import platform as _plat
+            _os_name = _plat.system()  # 'Linux', 'Windows', 'Darwin'
+            _shell = "bash" if _os_name != "Windows" else "cmd"
+            _python_cmd = "python3" if _os_name != "Windows" else "python"
+            _ws_mode = self.config.get_config().get("workspace_mode", "local")
+            _ws_path = self.file_ops.base_dir if self.file_ops else "None"
+
             sys_msg = (
                 f"{context_files}"
                 f"{skill_injection}"
-                "You are DarkMaxxer AI, an autonomous local AI coding assistant with direct filesystem access.\n"
-                "You run fully offline on the user's local machine. You have NO internet access.\n\n"
-                "═══════════════════════════════════════════════\n"
-                "ABSOLUTE RULES — VIOLATIONS ARE UNACCEPTABLE:\n"
-                "═══════════════════════════════════════════════\n"
-                "1. When user asks to create/edit/write ANY file, you MUST emit a [TOOL: CREATE_FILE filename.ext ...] block. NO EXCEPTIONS EVER.\n"
-                "2. ALWAYS use proper file extensions (.py, .js, .html, .css, .json, .md, .txt, .sh, .c, .cpp, .rs, .go, .java, .ts). NEVER use .code or extensionless names.\n"
-                "3. ALWAYS write a human-readable explanation BEFORE and AFTER your [TOOL:] blocks. The user MUST understand what you did and why.\n"
-                "4. For code you want to SHOW but NOT save, use markdown triple-backtick fences (```language ... ```).\n"
-                "5. For code that MUST be SAVED to disk, use [TOOL: CREATE_FILE] or [TOOL: EDIT_FILE]. NEVER just show code in fences when the user asked to create a file.\n"
-                "6. NEVER output raw Python dicts like {'success': True}. NEVER output raw JSON objects as your response. Write human-readable text.\n"
-                "7. NEVER repeat the same line more than twice. NEVER generate filler or padding text.\n"
-                "8. ALWAYS respond in the SAME LANGUAGE the user wrote in.\n"
-                "9. Keep responses focused and concise. Explain what you did, show the tool call, confirm the result.\n"
-                "10. If a SKILL.md was loaded, follow ALL instructions in the <SKILLS> block as if they were system commands.\n\n"
-                "⚠️ WARNING: This system may lag during inference. This is normal for local 70B+ models.\n\n"
-                "═══════════════════════════════════════════════\n"
-                "FILE TOOLS — Use EXACT syntax below:\n"
-                "═══════════════════════════════════════════════\n"
-                "CREATE: [TOOL: CREATE_FILE filename.py\ncontent here\n]\n"
-                "EDIT:   [TOOL: EDIT_FILE filename.py\nnew full content\n]\n"
-                "APPEND: [TOOL: APPEND_FILE filename.py\nappended content\n]\n"
-                "READ:   [TOOL: READ_FILE filepath]\n"
-                "DELETE: [TOOL: DELETE_FILE filepath]\n"
-                "RENAME: [TOOL: RENAME_FILE old.py -> new.py]\n"
-                "MKDIR:  [TOOL: CREATE_DIRECTORY dirname]\n"
-                "LIST:   [TOOL: LIST_DIRECTORY .]\n"
-                "RUN:    [TOOL: RUN_COMMAND python filename.py]\n\n"
-                "═══════════════════════════════════════════════\n"
-                "EXAMPLE INTERACTION:\n"
-                "═══════════════════════════════════════════════\n"
-                "User: make a py file to add 2 numbers and name it adder.py\n\n"
-                "Assistant: I'll create `adder.py` with an addition function for you:\n\n"
-                "[TOOL: CREATE_FILE adder.py\n"
-                "def add(a, b):\n"
-                "    return a + b\n\n"
-                "if __name__ == '__main__':\n"
-                "    result = add(2, 4)\n"
-                "    print(f'Result: {result}')\n"
-                "]\n\n"
-                "Done! Created **adder.py** — it defines an `add(a, b)` function and prints `add(2, 4)` when run directly.\n"
+                "You are **DarkMaxxer AI**, an elite, autonomous local AI coding assistant.\n"
+                "You run entirely offline with direct filesystem access.\n\n"
+                "# CRITICAL RULES\n"
+                "1. You MUST use the exact [TOOL: ACTION] syntax to perform actions.\n"
+                "2. ALWAYS close your tool calls with [/TOOL].\n"
+                "3. DO NOT output conversational text inside the tool block! Put your explanations OUTSIDE the tool block.\n"
+                "4. NEVER use placeholder paths like 'path/to/file.py' unless the user explicitly asks you to create nested folders! Create files in the current root by default (e.g. 'hi.py').\n"
+                "5. When the user asks you to write code, YOU MUST CREATE THE FILE YOURSELF using CREATE_FILE. DO NOT just show the code and expect the user to copy-paste it.\n"
+                "6. NEVER hallucinate tool names. Only use the tools listed below.\n"
+                "7. If you create a file, you MUST supply the code block wrapped in ```.\n"
+                "8. When using CREATE_FILE or EDIT_FILE, write the ACTUAL raw file content inside the code block. DO NOT write shell commands (like 'echo' or 'cat') to create the file.\n"
+                "9. Ensure the language identifier of your code block matches the file extension you are writing (e.g., use ```python for .py files, NOT ```bash).\n"
+                "10. NEVER give the user instructions on how to create, edit, or run files manually (e.g. 'Open a text editor', 'Copy and paste this', 'Save the file as'). YOU are an autonomous agent and YOU MUST do these things yourself using your tools!\n"
+                "11. NEVER output a code block containing code intended for a file WITHOUT wrapping it in a [TOOL: CREATE_FILE] tag. You must use your tools to act.\n\n"
+                f"# PLATFORM\n"
+                f"- Shell: {_shell}\n"
+                f"- Workspace Mode: {_ws_mode} | Root: {_ws_path}\n\n"
+                "# TOOLS & SYNTAX\n"
+                "To use a tool, you MUST use this EXACT format:\n\n"
+                "## 1. Create a File\n"
+                "Creates a new file in the workspace. Write the RAW content of the file inside the code block.\n"
+                "[TOOL: CREATE_FILE script.py]\n"
+                "```python\n"
+                "print('Hello world!')\n"
+                "```\n"
+                "[/TOOL]\n\n"
+                "## 2. Edit a File\n"
+                "Overwrites the entire file.\n"
+                "[TOOL: EDIT_FILE script.py]\n"
+                "```python\n"
+                "print('Hello updated!')\n"
+                "```\n"
+                "[/TOOL]\n\n"
+                "## 3. Run a Command\n"
+                "[TOOL: RUN_COMMAND]\n"
+                "```bash\n"
+                "python3 script.py\n"
+                "```\n"
+                "[/TOOL]\n\n"
+                "## 4. Other File Tools\n"
+                "READ_FILE, DELETE_FILE, APPEND_FILE, CREATE_DIRECTORY, LIST_DIRECTORY.\n"
+                "[TOOL: READ_FILE script.py]\n"
+                "[/TOOL]\n\n"
                 + mcp_injection
             )
             messages.append({"role": "system", "content": sys_msg})
@@ -488,14 +748,21 @@ class Api:
             latest_history.append({"role": "assistant", "content": response})
             self.memory.save_history(conv_id, latest_history)
 
-            # Memory cleanup after generation
-            try:
-                import gc
-                gc.collect()
-                if torch is not None and torch.cuda.is_available():
-                    torch.cuda.empty_cache()
-            except Exception:
-                pass
+            # Memory cleanup after generation (in background to avoid blocking UI update)
+            def _cleanup():
+                try:
+                    import gc
+                    gc.collect()
+                    try:
+                        import torch as _torch
+                        if _torch.cuda.is_available():
+                            _torch.cuda.empty_cache()
+                    except Exception:
+                        pass
+                except Exception:
+                    pass
+            import threading
+            threading.Thread(target=_cleanup, daemon=True).start()
         except Exception as e:
             if self._cancel_requested or self._current_gen_id != gen_id:
                 self._log_terminal("Generation was cancelled.")
@@ -510,19 +777,10 @@ class Api:
         finally:
             if self._current_gen_id == gen_id:
                 self.is_generating = False
+                self.generating_conv_id = None
                 self._cancel_requested = False
 
     def _process_tools(self, response_text, user_prompt=None):
-        if not self.file_ops:
-            if hasattr(self, 'active_conv_id') and self.active_conv_id:
-                self._init_file_ops(self.active_conv_id)
-            else:
-                if hasattr(self, 'memory') and self.memory:
-                    self.active_conv_id = self.memory.create_conversation("DarkMaxxer Session")
-                    self._init_file_ops(self.active_conv_id)
-        if not self.file_ops:
-            return response_text
-
         import re
         import subprocess
 
@@ -547,226 +805,170 @@ class Api:
         delete_pattern = re.compile(r'\[TOOL:\s*DELETE_FILE[\s:|]+([^\s|\]"\'`]+)\]', re.DOTALL | re.IGNORECASE)
         read_pattern = re.compile(r'\[TOOL:\s*READ_FILE[\s:|]+([^\s|\]"\'`]+)\]', re.DOTALL | re.IGNORECASE)
         cmd_pattern = re.compile(r'\[TOOL:\s*RUN_COMMAND[\s:|]+(.*?)\]', re.DOTALL | re.IGNORECASE)
-        build_pattern = re.compile(r'\[TOOL:\s*BUILD_FILE[\s:|]+([^\s|\]"\'`]+)\]', re.DOTALL | re.IGNORECASE)
-        rename_pattern = re.compile(r'\[TOOL:\s*(?:RENAME_FILE|CHANGE_EXTENSION)[\s:|]+([^\s|\]"\'`]+)\s*(?:->|to|\s)\s*([^\s|\]"\'`]+)\]', re.DOTALL | re.IGNORECASE)
-        append_pattern = re.compile(r'\[TOOL:\s*APPEND_FILE[\s:|]+([^\s|\]"\'`]+)[\s:|]*(.*?)\]', re.DOTALL | re.IGNORECASE)
-        listdir_pattern = re.compile(r'\[TOOL:\s*LIST_DIRECTORY[\s:|]*([^\s|\]"\'`]*)\]', re.DOTALL | re.IGNORECASE)
-        mkdir_pattern = re.compile(r'\[TOOL:\s*CREATE_DIRECTORY[\s:|]+([^\s|\]"\'`]+)\]', re.DOTALL | re.IGNORECASE)
-
-        tools_executed = False
-
-        def create_repl(match):
-            nonlocal tools_executed
-            path, content = match.group(1).strip(), _clean_content(match.group(2))
-            try:
-                res = self.file_ops.create_file(path, content)
-                self._log_terminal(f"Created file: {path}")
-                tools_executed = True
-                return f"\n✅ Created: **{path}**\n"
-            except Exception as e:
-                self._log_terminal(f"Error creating {path}: {e}")
-                return f"\n❌ Create failed: {str(e)}\n"
-
-        def edit_repl(match):
-            nonlocal tools_executed
-            path, content = match.group(1).strip(), _clean_content(match.group(2))
-            try:
-                res = self.file_ops.edit_file(path, content)
-                self._log_terminal(f"Edited file: {path}")
-                tools_executed = True
-                return f"\n✅ Edited: **{path}**\n"
-            except Exception as e:
-                self._log_terminal(f"Error editing {path}: {e}")
-                return f"\n❌ Edit failed: {str(e)}\n"
-
-        def delete_repl(match):
-            nonlocal tools_executed
-            path = match.group(1).strip()
-            try:
-                res = self.file_ops.delete_file(path)
-                self._log_terminal(f"Deleted file: {path}")
-                tools_executed = True
-                return f"\n✅ Deleted: **{path}**\n"
-            except Exception as e:
-                self._log_terminal(f"Error deleting {path}: {e}")
-                return f"\n❌ Delete failed: {str(e)}\n"
-
-        def read_repl(match):
-            nonlocal tools_executed
-            path = match.group(1).strip()
-            try:
-                content = self.file_ops.read_file(path)
-                self._log_terminal(f"Read file: {path}")
-                tools_executed = True
-                return f"\n📖 **Contents of {path}:**\n```\n{content[:2000]}\n```\n"
-            except Exception as e:
-                self._log_terminal(f"Error reading {path}: {e}")
-                return f"\n❌ Read failed: {str(e)}\n"
-
-        def rename_repl(match):
-            nonlocal tools_executed
-            old_path, new_path = match.group(1).strip(), match.group(2).strip()
-            try:
-                res = self.file_ops.rename_file(old_path, new_path)
-                self._log_terminal(f"Renamed file: {old_path} -> {new_path}")
-                tools_executed = True
-                return f"\n✅ Renamed: **{old_path}** → **{new_path}**\n"
-            except Exception as e:
-                self._log_terminal(f"Error renaming {old_path} -> {new_path}: {e}")
-                return f"\n❌ Rename failed: {str(e)}\n"
-
-        def append_repl(match):
-            nonlocal tools_executed
-            path, content = match.group(1).strip(), _clean_content(match.group(2))
-            try:
-                res = self.file_ops.append_file(path, content)
-                self._log_terminal(f"Appended to file: {path}")
-                tools_executed = True
-                return f"\n✅ Appended to: **{path}**\n"
-            except Exception as e:
-                self._log_terminal(f"Error appending to {path}: {e}")
-                return f"\n❌ Append failed: {str(e)}\n"
-
-        def listdir_repl(match):
-            nonlocal tools_executed
-            path = match.group(1).strip() or "."
-            try:
-                res = self.file_ops.list_directory(path)
-                self._log_terminal(f"Listed directory: {path}")
-                tools_executed = True
-                return f"\n📁 **Directory Contents of {path}:**\nFolders: {res['folders']}\nFiles: {res['files']}\n"
-            except Exception as e:
-                self._log_terminal(f"Error listing directory {path}: {e}")
-                return f"\n❌ List directory failed: {str(e)}\n"
-
-        def mkdir_repl(match):
-            nonlocal tools_executed
-            path = match.group(1).strip()
-            try:
-                res = self.file_ops.create_directory(path)
-                self._log_terminal(f"Created directory: {path}")
-                tools_executed = True
-                return f"\n✅ Created directory: **{path}**\n"
-            except Exception as e:
-                self._log_terminal(f"Error creating directory {path}: {e}")
-                return f"\n❌ Create directory failed: {str(e)}\n"
-
-        def cmd_repl(match):
-            nonlocal tools_executed
-            cmd_str = _clean_content(match.group(1))
-            try:
-                self._log_terminal(f"Running command: {cmd_str}")
-                cwd = self.file_ops.base_dir if self.file_ops and os.path.exists(self.file_ops.base_dir) else None
-                out = subprocess.check_output(cmd_str, shell=True, cwd=cwd, stderr=subprocess.STDOUT, text=True, timeout=60)
-                self._log_terminal(f"Command output:\n{out[:1000]}")
-                tools_executed = True
-                return f"\n💻 **Command Executed:** `{cmd_str}`\n**Output:**\n```\n{out[:2000]}\n```\n"
-            except Exception as e:
-                err_msg = e.output if hasattr(e, 'output') and e.output else str(e)
-                self._log_terminal(f"Command failed: {err_msg}")
-                return f"\n❌ Command failed `{cmd_str}`:\n```\n{err_msg}\n```\n"
-
-        _DANGEROUS_CHARS = [";", "&", "|", "`", "$", "(", ")", "<", ">", "\n", "\r"]
-
-        def build_repl(match):
-            nonlocal tools_executed
-            path = match.group(1).strip()
-            if any(dc in path for dc in _DANGEROUS_CHARS):
-                self._log_terminal(f"Security: Blocked dangerous build target: {path}")
-                return f"\n❌ Build blocked by security policy: {path}\n"
-            try:
-                self._log_terminal(f"Building/Executing target: {path}")
-                cwd = self.file_ops.base_dir if self.file_ops and os.path.exists(self.file_ops.base_dir) else None
-                if path.endswith(".py"):
-                    cmd = ["python", path]
-                elif path.endswith(".js"):
-                    cmd = ["node", path]
-                else:
-                    cmd = path if not any(dc in path for dc in _DANGEROUS_CHARS) else []
-                if isinstance(cmd, list):
-                    out = subprocess.check_output(cmd, shell=False, cwd=cwd, stderr=subprocess.STDOUT, text=True, timeout=120)
-                else:
-                    out = subprocess.check_output(cmd, shell=True, cwd=cwd, stderr=subprocess.STDOUT, text=True, timeout=120)
-                self._log_terminal(f"Build output:\n{out[:1000]}")
-                tools_executed = True
-                return f"\nBuild/Execution Success: {path}\nOutput:\n{out[:2000]}\n"
-            except Exception as e:
-                err_msg = e.output if hasattr(e, 'output') and e.output else str(e)
-                self._log_terminal(f"Build error: {err_msg}")
-                return f"\nBuild Failed: {path}\nError:\n{err_msg}\n"
-
-        response_text = create_pattern.sub(create_repl, response_text)
-        response_text = edit_pattern.sub(edit_repl, response_text)
-        response_text = delete_pattern.sub(delete_repl, response_text)
-        response_text = read_pattern.sub(read_repl, response_text)
-        response_text = rename_pattern.sub(rename_repl, response_text)
-        response_text = append_pattern.sub(append_repl, response_text)
-        response_text = listdir_pattern.sub(listdir_repl, response_text)
-        response_text = mkdir_pattern.sub(mkdir_repl, response_text)
-        response_text = cmd_pattern.sub(cmd_repl, response_text)
-        response_text = build_pattern.sub(build_repl, response_text)
-
-        # MCP_CALL pattern: [TOOL: MCP_CALL server=Name tool=tool_name args={...}]
-        mcp_pattern = re.compile(r'\[TOOL:\s*MCP_CALL\s+server=([\w\-]+)\s+tool=([\w\-\.]+)\s*(?:args=)?({.*?})?\]', re.DOTALL | re.IGNORECASE)
-        def mcp_repl(match):
-            nonlocal tools_executed
-            server_name = match.group(1).strip()
-            tool_name = match.group(2).strip()
-            args_str = (match.group(3) or '{}').strip()
-            try:
-                import json as _json
-                args = _json.loads(args_str)
-            except Exception:
-                args = {}
-            client = self.mcp_clients.get(server_name)
-            if not client or not client.is_connected:
-                self._log_terminal(f"MCP server '{server_name}' not connected")
-                return f"\n❌ MCP server **{server_name}** is not connected. Add it in Settings > MCP Servers.\n"
-            self._log_terminal(f"MCP call: {server_name}.{tool_name}({args})")
-            result = client.call_tool(tool_name, args)
-            tools_executed = True
-            if "error" in result:
-                return f"\n❌ MCP {server_name}.{tool_name} failed: {result['error']}\n"
-            return f"\n🔌 **MCP {server_name}.{tool_name}** result:\n{result.get('result', 'OK')}\n"
-        response_text = mcp_pattern.sub(mcp_repl, response_text)
-
-        # Loose tool pattern check if not executed yet: [TOOL: CREATE_FILE path] ```code```
-        if not tools_executed:
-            loose_create = re.compile(r'\[TOOL:\s*CREATE_FILE[\s:|]+([^\s|\]"\'`]+)\]\s*```[a-zA-Z]*\s*(.*?)\s*```', re.DOTALL | re.IGNORECASE)
-            def loose_repl(match):
-                nonlocal tools_executed
-                path, content = match.group(1).strip(), match.group(2).strip()
+        mcp_pattern = re.compile(r'\[TOOL:\s*MCP_CALL[\s:|]+server=([^\s|\]]+)[\s:|]+tool=([^\s|\]]+)(?:[\s:|]+args=(\{.*?\}))?\]', re.DOTALL | re.IGNORECASE)
+        
+        all_matches = []
+        for pat, action in [
+            (create_pattern, "CREATE_FILE"),
+            (edit_pattern, "EDIT_FILE"),
+            (delete_pattern, "DELETE_FILE"),
+            (read_pattern, "READ_FILE"),
+            (cmd_pattern, "RUN_COMMAND"),
+            (mcp_pattern, "MCP_CALL")
+        ]:
+            for m in pat.finditer(response_text):
+                all_matches.append((m.start(), m.end(), action, m))
+                
+        all_matches.sort(key=lambda x: x[0])
+        tools_executed = len(all_matches) > 0
+        
+        if not all_matches:
+            # Fallback smart extraction
+            if not tools_executed and user_prompt:
+                import re as _re
+                user_fn_match = _re.search(r'\b([a-zA-Z0-9_][a-zA-Z0-9_\-]*\.(?:py|js|html|css|json|txt|md|sh|c|cpp|rs|go|java|ts|tsx|jsx))\b', str(user_prompt), _re.IGNORECASE)
+                if user_fn_match:
+                    target_fname = user_fn_match.group(1)
+                    code_fences = _re.findall(r'```[a-zA-Z]*\n(.*?)```', response_text, _re.DOTALL)
+                    if code_fences:
+                        best_code = max(code_fences, key=len).strip()
+                        if len(best_code) > 5:
+                            try:
+                                if not self.file_ops:
+                                    if hasattr(self, 'active_conv_id') and self.active_conv_id:
+                                        self._init_file_ops(self.active_conv_id)
+                                    else:
+                                        if hasattr(self, 'memory') and self.memory:
+                                            self.active_conv_id = self.memory.create_conversation("DarkMaxxer Session")
+                                            self._init_file_ops(self.active_conv_id)
+                                if self.file_ops:
+                                    res = self.file_ops.create_file(target_fname, best_code)
+                                    self._log_terminal(f"Smart extraction: Created {target_fname} from AI code block")
+                                    response_text = f"\n✅ Created: **{target_fname}**\n\n" + response_text
+                            except Exception as e:
+                                self._log_terminal(f"Smart extraction failed for {target_fname}: {e}")
+            return response_text
+            
+        if not self.file_ops:
+            if hasattr(self, 'active_conv_id') and self.active_conv_id:
+                self._init_file_ops(self.active_conv_id)
+            else:
+                if hasattr(self, 'memory') and self.memory:
+                    self.active_conv_id = self.memory.create_conversation("DarkMaxxer Session")
+                    self._init_file_ops(self.active_conv_id)
+        if not self.file_ops:
+            return response_text
+            
+        new_parts = []
+        last_idx = 0
+        
+        for start, end, action, m in all_matches:
+            new_parts.append(response_text[last_idx:start])
+            injection = ""
+            
+            if action == "CREATE_FILE":
+                path = m.group(1).strip()
+                content = _clean_content(m.group(2))
                 try:
-                    res = self.file_ops.create_file(path, content)
+                    self.file_ops.create_file(path, content)
                     self._log_terminal(f"Created file: {path}")
-                    tools_executed = True
-                    return f"\n✅ Created: **{path}**\n"
+                    injection = f"\n✅ Created: **{path}**\n"
                 except Exception as e:
                     self._log_terminal(f"Error creating {path}: {e}")
-                    return f"\n❌ Create failed: {str(e)}\n"
-            response_text = loose_create.sub(loose_repl, response_text)
-
-        # Smart extraction: If AI returned code in markdown fences but forgot [TOOL:], and user explicitly named a file
-        if not tools_executed and user_prompt:
-            import re as _re
-            # Only trigger if user explicitly named a file with extension
-            user_fn_match = _re.search(r'\b([a-zA-Z0-9_][a-zA-Z0-9_\-]*\.(?:py|js|html|css|json|txt|md|sh|c|cpp|rs|go|java|ts|tsx|jsx))\b', str(user_prompt), _re.IGNORECASE)
-            if user_fn_match:
-                target_fname = user_fn_match.group(1)
-                # Extract code ONLY from actual markdown fences the AI wrote — never fabricate
-                code_fences = _re.findall(r'```[a-zA-Z]*\n(.*?)```', response_text, _re.DOTALL)
-                if code_fences:
-                    best_code = max(code_fences, key=len).strip()
-                    if len(best_code) > 5:  # Must be real code, not empty
-                        try:
-                            res = self.file_ops.create_file(target_fname, best_code)
-                            self._log_terminal(f"Smart extraction: Created {target_fname} from AI code block")
-                            tools_executed = True
-                            response_text = f"\n✅ Created: **{target_fname}**\n\n" + response_text
-                        except Exception as e:
-                            self._log_terminal(f"Smart extraction failed for {target_fname}: {e}")
-
-        return response_text
+                    injection = f"\n❌ Create failed: {str(e)}\n"
+            
+            elif action == "EDIT_FILE":
+                path = m.group(1).strip()
+                content = _clean_content(m.group(2))
+                try:
+                    self.file_ops.edit_file(path, content)
+                    self._log_terminal(f"Edited file: {path}")
+                    injection = f"\n✅ Edited: **{path}**\n"
+                except Exception as e:
+                    self._log_terminal(f"Error editing {path}: {e}")
+                    injection = f"\n❌ Edit failed: {str(e)}\n"
+                    
+            elif action == "DELETE_FILE":
+                path = m.group(1).strip()
+                try:
+                    self.file_ops.delete_file(path)
+                    self._log_terminal(f"Deleted file: {path}")
+                    injection = f"\n✅ Deleted: **{path}**\n"
+                except Exception as e:
+                    self._log_terminal(f"Error deleting {path}: {e}")
+                    injection = f"\n❌ Delete failed: {str(e)}\n"
+                    
+            elif action == "READ_FILE":
+                path = m.group(1).strip()
+                try:
+                    self._log_terminal(f"Read file: {path}")
+                    injection = f"\n✅ Read file: **{path}**\n"
+                except Exception as e:
+                    self._log_terminal(f"Error reading {path}: {e}")
+                    injection = f"\n❌ Read failed: {str(e)}\n"
+                    
+            elif action == "RUN_COMMAND":
+                cmd = _clean_content(m.group(1))
+                try:
+                    self._log_terminal(f"Running command: {cmd.splitlines()[0] if cmd else ''}...")
+                    injection = f"\n✅ Executed Command\n"
+                except Exception as e:
+                    self._log_terminal(f"Error running command: {e}")
+                    injection = f"\n❌ Command failed: {str(e)}\n"
+                    
+            elif action == "MCP_CALL":
+                server = m.group(1).strip()
+                tool_name = m.group(2).strip()
+                args_str = m.group(3)
+                try:
+                    import json as _json
+                    args = _json.loads(args_str) if args_str else {}
+                    self._log_terminal(f"MCP call: {server}.{tool_name}")
+                    injection = f"\n✅ MCP Tool Called: **{server}.{tool_name}**\n"
+                except Exception as e:
+                    self._log_terminal(f"Error calling MCP: {e}")
+                    injection = f"\n❌ MCP Call failed: {str(e)}\n"
+                    
+            new_parts.append(injection)
+            
+            # The conversational text might be inside the TOOL tag, around the code block!
+            if action in ("CREATE_FILE", "EDIT_FILE", "RUN_COMMAND"):
+                path_or_cmd = m.group(1).strip()
+                raw_tool_content = m.group(2) if action in ("CREATE_FILE", "EDIT_FILE") else m.group(1)
+                
+                parts = raw_tool_content.split("```")
+                pre_text = parts[0].strip() if len(parts) > 0 else ""
+                post_text = parts[-1].strip() if len(parts) > 2 else ""
+                
+                if pre_text: new_parts.append("\n" + pre_text + "\n")
+                
+                # Extract the code block itself to display in the chat history
+                if len(parts) >= 3:
+                    # The actual code block is everything between the first ``` and the last ```
+                    # The first part of parts[1] might be the language identifier
+                    code_inner = "```".join(parts[1:-1])
+                    lines = code_inner.split("\n", 1)
+                    lang = lines[0].strip() if len(lines) > 0 else ""
+                    code_body = lines[1] if len(lines) > 1 else ""
+                    
+                    if action in ("CREATE_FILE", "EDIT_FILE"):
+                        if not lang:
+                            import os as _os
+                            ext = _os.path.splitext(path_or_cmd)[1].replace(".", "").lower()
+                            if ext:
+                                lang = ext
+                    elif action == "RUN_COMMAND":
+                        if not lang:
+                            lang = "bash"
+                            
+                    new_parts.append(f"\n```{lang}\n{code_body}\n```\n")
+                
+                if post_text: new_parts.append("\n" + post_text + "\n")
+                
+            last_idx = end
+            
+        new_parts.append(response_text[last_idx:])
+        return "".join(new_parts)
 
     def _log_terminal(self, msg):
         """Log a message to the terminal panel with proper JS escaping and memory persistence."""
@@ -913,38 +1115,59 @@ class Api:
             return {"success": False, "error": str(e)}
 
     def run_command(self, cmd):
-        """Run a shell command in the active workspace directory (sandboxed)."""
+        """Run a shell command in the active workspace directory (sandboxed or global)."""
         if not self.file_ops:
             return {"success": False, "error": "No workspace active"}
         try:
             self._log_terminal(f"$ {cmd}")
             import re as _re
-            _DANGEROUS_PATTERNS = [
-                r'\.\.',            # directory traversal
-                r'(?i)^\s*cd\s',    # cd commands
-                r'(?i)^\s*pushd',   # pushd commands
-                r'(?i)powershell',   # powershell
-                r'(?i)cmd\s*/c',     # cmd /c
-                r'(?i)^\s*del\s',   # del commands
-                r'(?i)^\s*rd\s',    # rd commands
-                r'(?i)^\s*rmdir',   # rmdir commands
-                r'(?i)^\s*format',  # format commands
-                r'(?i)^\s*reg\s',   # registry
-                r'(?i)^\s*net\s',   # network commands
-                r'(?i)^\s*sc\s',    # service control
-            ]
-            if any(_re.search(pat, cmd) for pat in _DANGEROUS_PATTERNS):
-                self._log_terminal("Security Alert: Command denied. Directory traversal and external navigation are restricted. Nothing can escape the workspace folder.")
-                return {"success": False, "error": "Command denied by sandbox security policy: directory traversal restricted."}
+            import platform as _plat
+
+            ws_mode = self.config.get_config().get("workspace_mode", "local")
+
+            # Platform-aware security filters
+            if ws_mode != "global":
+                if _plat.system() == "Windows":
+                    _DANGEROUS_PATTERNS = [
+                        r'\.\.',            # directory traversal
+                        r'(?i)^\s*cd\s',    # cd commands
+                        r'(?i)^\s*pushd',   # pushd commands
+                        r'(?i)powershell',   # powershell
+                        r'(?i)cmd\s*/c',     # cmd /c
+                        r'(?i)^\s*del\s',   # del commands
+                        r'(?i)^\s*rd\s',    # rd commands
+                        r'(?i)^\s*rmdir',   # rmdir commands
+                        r'(?i)^\s*format',  # format commands
+                        r'(?i)^\s*reg\s',   # registry
+                        r'(?i)^\s*net\s',   # network commands
+                        r'(?i)^\s*sc\s',    # service control
+                    ]
+                else:  # Linux / macOS
+                    _DANGEROUS_PATTERNS = [
+                        r'\.\.',                    # directory traversal
+                        r'(?i)^\s*cd\s',            # cd commands
+                        r'(?i)^\s*rm\s+-rf\s+/',    # rm -rf /
+                        r'(?i)^\s*sudo\s+rm',       # sudo rm
+                        r'(?i)^\s*mkfs',            # format filesystem
+                        r'(?i)^\s*dd\s+if=',        # raw disk write
+                        r'(?i)^\s*chmod\s+.*/',     # chmod on root
+                        r'(?i)^\s*chown\s+.*/',     # chown on root
+                        r'(?i)^\s*shutdown',        # shutdown
+                        r'(?i)^\s*reboot',          # reboot
+                    ]
+                if any(_re.search(pat, cmd) for pat in _DANGEROUS_PATTERNS):
+                    self._log_terminal("Security Alert: Command denied by sandbox policy.")
+                    return {"success": False, "error": "Command denied by sandbox security policy."}
+
             result = subprocess.run(
                 cmd, shell=True, capture_output=True, text=True,
-                cwd=self.file_ops.base_dir, timeout=30
+                cwd=self.file_ops.base_dir, timeout=60
             )
             output = result.stdout + result.stderr
             self._log_terminal(output if output.strip() else "(no output)")
             return {"success": True, "output": output, "returncode": result.returncode}
         except subprocess.TimeoutExpired:
-            self._log_terminal("Command timed out (30s limit)")
+            self._log_terminal("Command timed out (60s limit)")
             return {"success": False, "error": "Command timed out"}
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -980,16 +1203,27 @@ class Api:
 
     def get_active_state(self):
         conf = self.config.get_config()
+        ws_mode = conf.get("workspace_mode", "local")
+        # Fallback to fix stuck generating state if thread died or UI missed it
+        if getattr(self, "is_generating", False):
+            import threading
+            has_gen_thread = any(t.name == "DarkMaxxerGenThread" and t.is_alive() for t in threading.enumerate())
+            if not has_gen_thread:
+                self.is_generating = False
+                self.generating_conv_id = None
+
         state = {
             "file_ops_active": self.file_ops is not None,
-            "ai_path": conf.get("ai_path"),
+            "ai_path": conf.get("ai_path") if conf.get("ai_path") and os.path.exists(conf.get("ai_path", "")) else None,
             "ai_loaded": self.llm.model is not None,
             "is_generating": getattr(self, "is_generating", False),
+            "generating_conv_id": getattr(self, "generating_conv_id", None),
             "conv_id": None,
             "history": [],
             "terminal_logs": getattr(self, "terminal_logs", []),
             "workspace_path": self.file_ops.base_dir if self.file_ops else None,
             "workspace_name": os.path.basename(self.file_ops.base_dir) if self.file_ops else None,
+            "workspace_mode": ws_mode,
             "active_sidebar_tab": conf.get("active_sidebar_tab", "chats"),
             "subagents": getattr(self, "subagents", [])
         }
@@ -1004,29 +1238,131 @@ class Api:
         return state
 
     def run_diagnostics(self):
-        """Run system diagnostics for the About panel."""
+        """Run system diagnostics for the About panel — supports NVIDIA, AMD ROCm, and CPU."""
         import platform
+        accelerator = "CPU"
+        device_name = "CPU only"
+        vram_gb = "N/A"
+        has_gpu = False
+
         try:
             import torch
-            has_cuda = torch.cuda.is_available()
-            device_name = torch.cuda.get_device_name(0) if has_cuda else "CPU / Metal / Non-CUDA"
-            vram_gb = round(torch.cuda.get_device_properties(0).total_memory / (1024**3), 2) if has_cuda else "N/A"
+            # Check for AMD ROCm (PyTorch ROCm sets torch.version.hip)
+            is_rocm = hasattr(torch.version, 'hip') and torch.version.hip is not None
+            has_gpu = torch.cuda.is_available()
+
+            if has_gpu:
+                accelerator = "ROCm" if is_rocm else "CUDA"
+                try:
+                    device_name = torch.cuda.get_device_name(0)
+                    vram_gb = round(torch.cuda.get_device_properties(0).total_memory / (1024**3), 2)
+                except Exception:
+                    device_name = f"{accelerator} GPU (details unavailable)"
         except Exception:
-            has_cuda = False
-            device_name = "Not detected or CPU"
-            vram_gb = "N/A"
+            pass
 
         return {
             "success": True,
             "os": platform.platform(),
             "python": platform.python_version(),
-            "cuda_available": has_cuda,
+            "cuda_available": has_gpu,
+            "accelerator": accelerator,
             "device": device_name,
             "vram": f"{vram_gb} GB" if vram_gb != "N/A" else "N/A",
             "workspace": self.file_ops.base_dir if self.file_ops else "None",
+            "workspace_mode": self.config.get_config().get("workspace_mode", "local"),
             "model_loaded": self.llm.model is not None,
             "model_path": self.llm.model_path if self.llm.model_path else "None loaded"
         }
+
+    def uninstall_app(self):
+        """Uninstall DarkMaxxer — remove app files, venv, shortcuts, and config."""
+        import platform as _plat
+        import shutil
+        results = []
+        app_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        try:
+            # 1. Remove venv
+            venv_dir = os.path.join(app_dir, "venv")
+            if os.path.isdir(venv_dir):
+                shutil.rmtree(venv_dir, ignore_errors=True)
+                results.append("✔ Removed virtual environment")
+            
+            # 2. Remove desktop shortcuts
+            if _plat.system() == "Windows":
+                # Windows shortcuts
+                for loc in [os.path.join(os.environ.get("USERPROFILE", ""), "Desktop"),
+                            os.path.join(os.environ.get("APPDATA", ""), "Microsoft", "Windows", "Start Menu", "Programs")]:
+                    shortcut = os.path.join(loc, "DarkMaxxer.lnk")
+                    if os.path.exists(shortcut):
+                        os.remove(shortcut)
+                        results.append(f"✔ Removed shortcut: {shortcut}")
+            else:
+                # Linux system uninstall
+                uninstaller = os.path.join(app_dir, "DarkLinux", "dist", "uninstall.sh")
+                if os.path.exists(uninstaller):
+                    import subprocess
+                    r = subprocess.run(["bash", uninstaller], capture_output=True, text=True)
+                    if r.returncode == 0:
+                        results.append("✔ Uninstalled DarkMaxxer system packages and caches")
+                    else:
+                        results.append("⚠ System uninstall failed or was cancelled")
+                else:
+                    results.append("⚠ Could not find Linux uninstall script")
+            
+            # 3. Remove config
+            config_file = os.path.join(app_dir, "config.json")
+            if os.path.exists(config_file):
+                os.remove(config_file)
+                results.append("✔ Removed config.json")
+            
+            # 4. Remove setup marker
+            marker = os.path.join(app_dir, "venv", ".setup_complete")
+            if os.path.exists(marker):
+                os.remove(marker)
+                results.append("✔ Removed setup marker")
+            
+            # 5. Remove crash/log files
+            for log_file in ["crash.log", "crash_report.log", "early_crash.log", "webview_error.log", "debug_output.txt"]:
+                log_path = os.path.join(app_dir, log_file)
+                if os.path.exists(log_path):
+                    os.remove(log_path)
+                    results.append(f"✔ Removed {log_file}")
+            
+            # 6. Remove context/memory data
+            context_dir = os.path.join(app_dir, "context")
+            if os.path.isdir(context_dir):
+                shutil.rmtree(context_dir, ignore_errors=True)
+                results.append("✔ Removed conversation data")
+            
+            # 7. Remove AppData / Cache
+            appdata = os.getenv('APPDATA')
+            if appdata:
+                locallow = os.path.join(os.path.dirname(appdata), "LocalLow")
+            else:
+                locallow = os.path.join(os.path.expanduser("~"), ".local", "share")
+            
+            for cache_path in [
+                os.path.join(locallow, "DarkMaxxer"),
+                os.path.join(os.getenv('APPDATA', ''), "DarkMaxxer"),
+                os.path.join(os.path.expanduser("~"), ".config", "DarkMaxxer")
+            ]:
+                if cache_path and os.path.exists(cache_path):
+                    try:
+                        shutil.rmtree(cache_path, ignore_errors=True)
+                        results.append(f"✔ Removed AppData/Cache: {cache_path}")
+                    except Exception:
+                        pass
+            
+            if not results:
+                results.append("Nothing to clean up — app appears already uninstalled.")
+            
+            results.append("\n✔ Uninstall complete. You can now delete the app folder.")
+            return {"success": True, "results": results}
+        except Exception as e:
+            results.append(f"❌ Error: {str(e)}")
+            return {"success": False, "results": results, "error": str(e)}
 
     def verify_watermarks(self):
         """Verify proprietary watermarks across core Python files."""
@@ -1060,10 +1396,16 @@ class Api:
             return {"success": False, "error": str(e)}
 
     def open_workspace_in_explorer(self):
-        """Open the active workspace directory in Windows File Explorer."""
+        """Open the active workspace directory in the system file manager."""
         if self.file_ops and os.path.exists(self.file_ops.base_dir):
             try:
-                os.startfile(self.file_ops.base_dir)
+                import platform as _plat
+                if _plat.system() == "Windows":
+                    os.startfile(self.file_ops.base_dir)
+                elif _plat.system() == "Darwin":
+                    subprocess.Popen(["open", self.file_ops.base_dir])
+                else:
+                    subprocess.Popen(["xdg-open", self.file_ops.base_dir])
                 return {"success": True}
             except Exception as e:
                 return {"success": False, "error": str(e)}
@@ -1080,9 +1422,24 @@ if __name__ == '__main__':
     if script_dir not in sys.path:
         sys.path.insert(0, script_dir)
 
+    if "--uninstall" in sys.argv:
+        print("\033[1;36m[DarkMaxxer]\033[0m Starting uninstaller...")
+        api = Api()
+        res = api.uninstall_app()
+        for r in res.get("results", []):
+            if r.startswith("✔"):
+                print(f"\033[1;32m{r}\033[0m")
+            elif r.startswith("⚠"):
+                print(f"\033[1;33m{r}\033[0m")
+            elif r.startswith("❌"):
+                print(f"\033[1;31m{r}\033[0m")
+            else:
+                print(r)
+        sys.exit(0 if res.get("success") else 1)
+
     try:
         if webview is None:
-            err_msg = "pywebview is not installed or failed to import. Please run DarkMaxxerSetup.exe or 'pip install pywebview webview'."
+            err_msg = "pywebview is not installed or failed to import. Please run DarkMaxxerSetup.exe or 'pip install pywebview'."
             print(f"ERROR: {err_msg}")
             try:
                 with open(os.path.join(script_dir, "crash_report.log"), "w", encoding="utf-8") as f:
@@ -1104,6 +1461,10 @@ if __name__ == '__main__':
 
         conf = api.config.get_config()
         ai_path = conf.get("ai_path")
+        # Validate saved model path still exists on disk
+        if ai_path and not os.path.exists(ai_path):
+            ai_path = None  # Path gone (moved drive, changed OS, etc.)
+            api.config.update_config("ai_path", None)
         if not ai_path:
             start_html = os.path.join(gui_dir, 'models.html')
             if not os.path.exists(start_html):
@@ -1165,69 +1526,108 @@ if __name__ == '__main__':
             _sf.write(_splash_html)
         _splash_url = 'file:///' + os.path.abspath(_splash_path).replace(os.sep, '/')
 
-        splash_win = webview.create_window(
-            'DarkMaxxer Loading',
-            url=_splash_url,
-            width=400,
-            height=350,
-            frameless=True,
-            background_color='#0a0a0f',
-        )
-
-        window = webview.create_window(
-            'DarkMaxxer',
-            url=start_html_url,
-            js_api=api,
-            width=1280,
-            height=800,
-            min_size=(900, 600),
-            background_color='#0a0a0f',
-            hidden=True,
-        )
-        api.set_window(window)
-
-        def _boot_sequence():
-            import time
-            time.sleep(5)
-            try:
-                splash_win.destroy()
-            except Exception:
-                pass
-            time.sleep(1)
-            try:
-                window.show()
-            except Exception:
-                pass
-            time.sleep(0.3)
-            try:
-                window.maximize()
-            except Exception:
-                pass
-
-        threading.Thread(target=_boot_sequence, daemon=True).start()
-
+        # Resolve icon path BEFORE any windows are created
         logo_path = os.path.join(script_dir, "gui", "logo_highres.ico")
         if not os.path.exists(logo_path):
             logo_path = os.path.join(script_dir, "gui", "logo.ico")
         if not os.path.exists(logo_path):
             logo_path = os.path.join(script_dir, "gui", "logo.png")
 
+        # Set AppUserModelID BEFORE creating windows so the taskbar
+        # shows DarkMaxxer's icon instead of python.exe's default icon
         try:
             import ctypes
-            # Tell Windows this process is its own unique app, separating its taskbar grouping from pythonw.exe
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('SMXF.DarkMaxxer.IDE.2.5.0')
         except Exception:
             pass
+        if sys.platform.startswith('linux'):
+            # Linux/Wayland: skip splash — hidden+show pattern unreliable on GTK
+            window = webview.create_window(
+                'DarkMaxxer',
+                url=start_html_url,
+                js_api=api,
+                width=1280,
+                height=800,
+                min_size=(900, 600),
+                background_color='#0a0a0f',
+            )
+            api.set_window(window)
 
-        try:
-            webview.start(debug=False, icon=logo_path)
-        except Exception:
-            webview.start(icon=logo_path)
+            try:
+                webview.start(debug=False, icon=logo_path, gui='gtk')
+            except Exception:
+                try:
+                    webview.start(icon=logo_path, gui='gtk')
+                except Exception:
+                    webview.start(icon=logo_path)
+        else:
+            # Windows: splash → hidden main → swap
+            splash_win = webview.create_window(
+                'DarkMaxxer Loading',
+                url=_splash_url,
+                width=400,
+                height=350,
+                frameless=True,
+                background_color='#0a0a0f',
+            )
+
+            window = webview.create_window(
+                'DarkMaxxer',
+                url=start_html_url,
+                js_api=api,
+                width=1280,
+                height=800,
+                min_size=(900, 600),
+                background_color='#0a0a0f',
+                hidden=True,
+            )
+            api.set_window(window)
+
+            def _boot_sequence():
+                import time
+                time.sleep(5)
+                try:
+                    splash_win.destroy()
+                except Exception:
+                    pass
+                time.sleep(1)
+                try:
+                    window.show()
+                except Exception:
+                    pass
+                time.sleep(0.3)
+                try:
+                    window.maximize()
+                except Exception:
+                    pass
+
+            threading.Thread(target=_boot_sequence, daemon=True).start()
+
+            try:
+                webview.start(debug=False, icon=logo_path)
+            except Exception:
+                webview.start(icon=logo_path)
     except BaseException as e:
         if isinstance(e, SystemExit) and e.code == 0:
             sys.exit(0)
         import traceback
         tb = traceback.format_exc()
+        
+        # Detect the specific pywebview GTK/QT missing error
+        err_str = str(e)
+        if "QT or GTK" in err_str or "WebViewException" in type(e).__name__:
+            fix_msg = (
+                "pywebview cannot find GTK or QT backend.\n\n"
+                "Fix for Fedora/RHEL:\n"
+                "  sudo dnf install python3-gobject webkit2gtk4.1 gtk3\n\n"
+                "Fix for Ubuntu/Debian:\n"
+                "  sudo apt install python3-gi gir1.2-webkit2-4.1 libgtk-3-0\n\n"
+                "Then delete the venv and re-run:\n"
+                "  sudo rm -rf /opt/darkmaxxer/venv && darkmaxxer"
+            )
+        else:
+            fix_msg = f"Application encountered a fatal error on startup:\n{e}\n\nCheck crash_report.log for details."
+        
         try:
             with open(os.path.join(script_dir, "crash_report.log"), "w", encoding="utf-8") as f:
                 f.write(f"Fatal Startup Error:\n{tb}\n")
@@ -1235,8 +1635,9 @@ if __name__ == '__main__':
             from tkinter import messagebox
             r = tk.Tk()
             r.withdraw()
-            messagebox.showerror("DarkMaxxer Startup Crash", f"Application encountered a fatal error on startup:\n{e}\n\nCheck crash_report.log for details.")
+            messagebox.showerror("DarkMaxxer Startup Crash", fix_msg)
             r.destroy()
         except Exception:
             pass
         sys.exit(1)
+

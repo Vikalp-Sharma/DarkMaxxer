@@ -189,9 +189,12 @@ class FileOpsServer:
     def __init__(self, base_dir: str):
         self.base_dir = os.path.abspath(base_dir)
         os.makedirs(self.base_dir, exist_ok=True)
+        self.global_mode = False
 
     def _safe_path(self, rel_path: str) -> str:
         """Resolve a relative path safely within the base directory."""
+        if self.global_mode and os.path.isabs(rel_path):
+            return rel_path
         full = os.path.normpath(os.path.join(self.base_dir, rel_path))
         if not full.startswith(self.base_dir):
             raise ValueError(f"Path traversal blocked: '{rel_path}' escapes workspace.")
