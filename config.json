@@ -1,12 +1,1 @@
-{
-  "active_conv_id": "96107dec-de14-44fb-91a8-0816e376a1db",
-  "active_workspace_dir": "/home/tokyo_/AppData/LocalLow/DarkMaxxer/Chat/96107dec-de14-44fb-91a8-0816e376a1db",
-  "ai_path": "/run/media/tokyo_/SMFX/Quantum/manifests/hf.co/QuantFactory/Pocket-Tiger-Gemma-2B-v1g-GGUF/Q8_0",
-  "active_sidebar_tab": "explorer",
-  "settings": {
-    "local_inference": true,
-    "gpu_acceleration": true,
-    "context_memory": true
-  },
-  "workspace_mode": "local"
-}
+{}

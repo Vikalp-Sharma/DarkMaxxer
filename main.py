@@ -262,7 +262,7 @@ class Api:
             return {"success": False, "error": "pywebview not available"}
         try:
             open_dlg = getattr(webview.FileDialog, "OPEN", getattr(webview, "OPEN_DIALOG", 10))
-            file_types = ('Model Files (*.file;*.pkl;*.bin;*.safetensors;*.pth;*.pt;*.gguf;*.json;*.*)', 'All files (*.*)')
+            file_types = ('Model Files (*.gguf;*.safetensors;*.bin;*.pth;*.pt;*.pkl;*.json)', 'All files (*.*)')
             result = self._window.create_file_dialog(open_dlg, file_types=file_types)
             if result and len(result) > 0:
                 self.config.update_config("ai_path", result[0])
@@ -310,6 +310,7 @@ class Api:
             self.config.update_config("ai_path", model_id)
             return {"success": True}
         except Exception as e:
+            self.config.update_config("ai_path", None)
             return {"success": False, "error": str(e)}
 
     # --- Conversations ---
@@ -1520,10 +1521,19 @@ if __name__ == '__main__':
             '<img class="logo" src="' + _logo_url + '" alt=""></div>'
             '<div class="t">DarkMaxxer</div>'
             '<div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>'
-            '</div></body></html>'
+            '</div>'
+            '<script>setTimeout(function(){ window.location.replace("' + start_html_url + '"); }, 3500);</script>'
+            '</body></html>'
         )
-        with open(_splash_path, 'w', encoding='utf-8') as _sf:
-            _sf.write(_splash_html)
+        try:
+            with open(_splash_path, 'w', encoding='utf-8') as _sf:
+                _sf.write(_splash_html)
+        except PermissionError:
+            _fallback_dir = os.path.expanduser('~/.darkmaxxer')
+            os.makedirs(_fallback_dir, exist_ok=True)
+            _splash_path = os.path.join(_fallback_dir, 'splash.html')
+            with open(_splash_path, 'w', encoding='utf-8') as _sf:
+                _sf.write(_splash_html)
         _splash_url = 'file:///' + os.path.abspath(_splash_path).replace(os.sep, '/')
 
         # Resolve icon path BEFORE any windows are created
@@ -1540,71 +1550,24 @@ if __name__ == '__main__':
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('SMXF.DarkMaxxer.IDE.2.5.0')
         except Exception:
             pass
-        if sys.platform.startswith('linux'):
-            # Linux/Wayland: skip splash — hidden+show pattern unreliable on GTK
-            window = webview.create_window(
-                'DarkMaxxer',
-                url=start_html_url,
-                js_api=api,
-                width=1280,
-                height=800,
-                min_size=(900, 600),
-                background_color='#0a0a0f',
-            )
-            api.set_window(window)
+        # Use splash screen sequence for all platforms
+        # Use a single window sequence for stability on Linux/GTK
+        main_win = webview.create_window(
+            'DarkMaxxer',
+            url=_splash_url,  # Load splash screen first
+            js_api=api,
+            width=1280,
+            height=800,
+            min_size=(900, 600),
+            background_color='#0a0a0f',
+        )
+        api.set_window(main_win)
 
+        try:
+            webview.start(debug=False, icon=logo_path, gui='gtk')
+        except Exception:
             try:
-                webview.start(debug=False, icon=logo_path, gui='gtk')
-            except Exception:
-                try:
-                    webview.start(icon=logo_path, gui='gtk')
-                except Exception:
-                    webview.start(icon=logo_path)
-        else:
-            # Windows: splash → hidden main → swap
-            splash_win = webview.create_window(
-                'DarkMaxxer Loading',
-                url=_splash_url,
-                width=400,
-                height=350,
-                frameless=True,
-                background_color='#0a0a0f',
-            )
-
-            window = webview.create_window(
-                'DarkMaxxer',
-                url=start_html_url,
-                js_api=api,
-                width=1280,
-                height=800,
-                min_size=(900, 600),
-                background_color='#0a0a0f',
-                hidden=True,
-            )
-            api.set_window(window)
-
-            def _boot_sequence():
-                import time
-                time.sleep(5)
-                try:
-                    splash_win.destroy()
-                except Exception:
-                    pass
-                time.sleep(1)
-                try:
-                    window.show()
-                except Exception:
-                    pass
-                time.sleep(0.3)
-                try:
-                    window.maximize()
-                except Exception:
-                    pass
-
-            threading.Thread(target=_boot_sequence, daemon=True).start()
-
-            try:
-                webview.start(debug=False, icon=logo_path)
+                webview.start(icon=logo_path, gui='gtk')
             except Exception:
                 webview.start(icon=logo_path)
     except BaseException as e:

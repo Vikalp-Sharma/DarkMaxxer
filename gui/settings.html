@@ -788,46 +788,7 @@
             if (typeof switchSidebarTab === 'function') switchSidebarTab(targetTab, false);
             if (typeof refreshConversations === 'function') refreshConversations();
             if (typeof refreshFileTree === 'function') refreshFileTree();
-            
-            // Auto-load AI model if path saved but not loaded
-            if (state.ai_path && !state.ai_loaded) {
-                if (typeof appendTerminal === 'function') appendTerminal("Auto-loading AI model: " + state.ai_path);
-                const loadModal = document.getElementById('loading-modal');
-                const loadModalStatus = document.getElementById('loading-modal-status');
-                if (loadModal) {
-                    loadModal.classList.remove('hidden');
-                    loadModal.style.display = 'flex';
-                }
-                if (loadModalStatus) loadModalStatus.innerText = "Auto-loading model: " + state.ai_path.split(/[\\/]/).pop() + "...";
 
-                setTimeout(() => {
-                    pywebview.api.load_model(state.ai_path).then(res => {
-                        const modalEl = document.getElementById('loading-modal');
-                        if (modalEl) {
-                            modalEl.classList.add('hidden');
-                            modalEl.style.display = 'none';
-                        }
-                        if(res.success) {
-                            if (typeof appendTerminal === 'function') appendTerminal("AI model loaded successfully.");
-                            const modal = document.getElementById('first-run-modal');
-                            if(modal) modal.classList.add('hidden');
-                            const statusEl = document.getElementById('gpu-status-text');
-                            if (statusEl) statusEl.innerText = "⚡ Active Model: " + state.ai_path.split(/[\\/]/).pop();
-                        } else {
-                            if (typeof appendTerminal === 'function') appendTerminal("Failed to auto-load model: " + (res.error || "Unknown error"));
-                            alert("Failed to load AI model:\n" + (res.error || "Unknown error"));
-                        }
-                    }).catch(err => {
-                        const modalEl = document.getElementById('loading-modal');
-                        if (modalEl) {
-                            modalEl.classList.add('hidden');
-                            modalEl.style.display = 'none';
-                        }
-                        if (typeof appendTerminal === 'function') appendTerminal("Failed to auto-load model: " + err);
-                        alert("Exception during AI model auto-load:\n" + err);
-                    });
-                }, 50);
-            }
 
             // Show first-run modal only if no AI model configured and welcome has not been seen/dismissed
             let welcomeSeen = false;

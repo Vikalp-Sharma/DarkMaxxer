@@ -596,7 +596,7 @@
                 <span id="gpu-status-text">Select an offline model directory or weight file on disk to begin local inference</span>
             </div>
             <div class="flex gap-sm">
-                <button onclick="document.getElementById('first-run-modal').classList.add('hidden'); try{sessionStorage.setItem('welcome_seen','true');localStorage.setItem('welcome_seen','true');}catch(e){};" class="w-1/3 py-sm px-md border border-outline-variant/30 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/30 transition-colors font-label-md">
+                <button onclick="const m = document.getElementById('first-run-modal'); m.classList.add('hidden'); m.style.display=''; try{sessionStorage.setItem('welcome_seen','true');localStorage.setItem('welcome_seen','true');}catch(e){}; if(typeof activateWorkspace === 'function') activateWorkspace();" class="w-1/3 py-sm px-md border border-outline-variant/30 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/30 transition-colors font-label-md">
                     Later
                 </button>
                 <button onclick="loadModelDirectly()" class="w-2/3 py-sm px-md rounded-lg font-label-md bg-gradient-to-r from-secondary-container to-tertiary-container hover:from-secondary hover:to-tertiary text-on-secondary-fixed border-t border-white/20 transition-all shadow-[0_0_15px_rgba(105,30,166,0.3)] hover:shadow-[0_0_25px_rgba(105,30,166,0.6)]">
@@ -662,6 +662,9 @@
         <div class="w-full bg-surface-container-highest/80 rounded-full h-2.5 overflow-hidden border border-outline-variant/30">
             <div id="loading-modal-bar" class="bg-gradient-to-r from-secondary via-tertiary to-secondary h-full w-1/3 animate-pulse rounded-full transition-all duration-300 shadow-[0_0_12px_rgba(189,140,255,0.8)]"></div>
         </div>
+        <button onclick="document.getElementById('loading-modal').classList.add('hidden'); document.getElementById('loading-modal').style.display='none'; window.isModelLoading=false;" class="mt-xs py-2 px-6 rounded-lg font-label-md bg-surface-container hover:bg-surface-variant text-on-surface-variant hover:text-error transition-colors border border-outline-variant/30">
+            Cancel / Go Back
+        </button>
     </div>
 </div>
 
@@ -708,6 +711,7 @@
     };
 
     window.updateLoadStatus = function(msg, pct) {
+        if (window.isModelLoading === false) return; // Prevent race conditions
         let text = msg;
         if (pct !== undefined && pct !== null) text += ` (${pct}%)`;
         const statusEl = document.getElementById('gpu-status-text');
@@ -733,6 +737,7 @@
         }
 
         if (text.toLowerCase().includes('successfully') || text.toLowerCase().includes('ready')) {
+            window.isModelLoading = false;
             setTimeout(() => {
                 if (loadModal) {
                     loadModal.classList.add('hidden');
@@ -972,6 +977,12 @@
             list.innerHTML = "";
             if (!convs || convs.length === 0) {
                 list.innerHTML = '<div class="text-on-surface-variant/50 text-center py-lg font-body-md">No conversations yet</div>';
+                window._activeConvId = null;
+                const chatBox = document.getElementById('chat-history');
+                if (chatBox) chatBox.innerHTML = '<div class="text-on-surface-variant/50 text-center py-xl font-body-md">Start a conversation by typing below...</div>';
+                const fileTree = document.getElementById('file-tree');
+                if (fileTree) fileTree.innerHTML = '<div class="text-on-surface-variant/50 text-center py-md font-body-md text-xs">No files or folders yet</div>';
+                if(typeof deactivateWorkspace === 'function') deactivateWorkspace();
                 return;
             }
             convs.forEach(c => {
@@ -980,7 +991,7 @@
                 el.className = "p-md hover:bg-surface-variant/20 cursor-pointer flex items-center gap-md rounded-lg transition-all " +
                     (isActive ? "bg-secondary-container/30 text-secondary-fixed border-l-2 border-secondary" : "text-on-surface-variant hover:text-on-surface");
                 el.innerHTML = '<span class="material-symbols-outlined text-sm">memory</span>' +
-                               '<span class="font-label-md flex-1 text-left truncate">' + c.name + '</span>' +
+                               '<span class="font-label-md flex-1 text-left truncate">' + (c.title || c.name || 'Unnamed') + '</span>' +
                                '<button onclick="event.stopPropagation(); deleteConversation(\'' + c.id + '\')" class="p-xs text-on-surface-variant hover:text-error transition-colors"><span class="material-symbols-outlined text-sm">delete</span></button>';
                 el.onclick = () => openConversation(c.id);
                 list.appendChild(el);
@@ -989,17 +1000,19 @@
     }
 
     window.deleteConversation = function(id) {
+        if(window._activeConvId === id) {
+            window._activeConvId = null;
+            const chatBox = document.getElementById('chat-history');
+            if (chatBox) chatBox.innerHTML = '<div class="text-on-surface-variant/50 text-center py-xl font-body-md">Start a conversation by typing below...</div>';
+            if(typeof deactivateWorkspace === 'function') deactivateWorkspace();
+        }
         pywebview.api.delete_conversation(id).then(res => {
             if(res.success) {
-                refreshConversations();
                 if(window._activeConvId === id) {
                     window._activeConvId = null;
-                    const chatBox = document.getElementById('chat-history');
-                    if (chatBox) chatBox.innerHTML = '<div class="text-on-surface-variant/50 text-center py-xl font-body-md">Start a conversation by typing below...</div>';
-                    const fileTree = document.getElementById('file-tree');
-                    if (fileTree) fileTree.innerHTML = '<div class="text-on-surface-variant/50 text-center py-md font-body-md text-xs">No files or folders yet</div>';
-                    deactivateWorkspace();
+                    if(typeof deactivateWorkspace === 'function') deactivateWorkspace();
                 }
+                refreshConversations();
             } else {
                 alert("Error deleting conversation: " + res.error);
             }
@@ -1156,7 +1169,16 @@
                             if (statusEl) statusEl.innerText = "⚡ Active Model: " + state.ai_path.split(/[\\/]/).pop();
                         } else {
                             if (typeof appendTerminal === 'function') appendTerminal("Failed to auto-load model: " + (res.error || "Unknown error"));
-                            alert("Failed to load AI model:\n" + (res.error || "Unknown error"));
+                            const modal = document.getElementById('first-run-modal');
+                            if(modal) {
+                                modal.classList.remove('hidden');
+                                modal.style.display = 'flex';
+                            }
+                            const statusEl = document.getElementById('gpu-status-text');
+                            if (statusEl) {
+                                statusEl.innerText = "Auto-load Error: " + (res.error || "Unknown error");
+                                statusEl.classList.add('text-error');
+                            }
                         }
                     }).catch(err => {
                         const modalEl = document.getElementById('loading-modal');
@@ -1165,7 +1187,16 @@
                             modalEl.style.display = 'none';
                         }
                         if (typeof appendTerminal === 'function') appendTerminal("Failed to auto-load model: " + err);
-                        alert("Exception during AI model auto-load:\n" + err);
+                        const modal = document.getElementById('first-run-modal');
+                        if(modal) {
+                            modal.classList.remove('hidden');
+                            modal.style.display = 'flex';
+                        }
+                        const statusEl = document.getElementById('gpu-status-text');
+                        if (statusEl) {
+                            statusEl.innerText = "Auto-load Exception: " + err;
+                            statusEl.classList.add('text-error');
+                        }
                     });
                 }, 50);
             }
@@ -1340,6 +1371,12 @@
 
             const loadModal = document.getElementById('loading-modal');
             const loadModalStatus = document.getElementById('loading-modal-status');
+            window.isModelLoading = true;
+            
+            // Clear old logs
+            const logsEl = document.getElementById('loading-logs');
+            if(logsEl) logsEl.innerHTML = '';
+
             if (loadModal) {
                 loadModal.classList.remove('hidden');
                 loadModal.style.display = 'flex';
@@ -1348,6 +1385,7 @@
 
             setTimeout(() => {
                 pywebview.api.load_model(path).then(loadRes => {
+                    window.isModelLoading = false;
                     const modalEl = document.getElementById('loading-modal');
                     if (modalEl) {
                         modalEl.classList.add('hidden');
@@ -1363,17 +1401,22 @@
                             if (typeof activateWorkspace === 'function') activateWorkspace();
                         }
                     } else {
-                        if (statusEl) statusEl.innerText = "Error: " + (loadRes.error || "Unknown error");
-                        alert("Failed to load model:\n" + (loadRes.error || "Unknown error"));
+                        if (statusEl) {
+                            statusEl.innerText = "Error: " + (loadRes.error || "Unknown error");
+                            statusEl.classList.add('text-error');
+                        }
                     }
                 }).catch(err => {
+                    window.isModelLoading = false;
                     const modalEl = document.getElementById('loading-modal');
                     if (modalEl) {
                         modalEl.classList.add('hidden');
                         modalEl.style.display = 'none';
                     }
-                    if (statusEl) statusEl.innerText = "Error: " + err;
-                    alert("Exception during AI model load:\n" + err);
+                    if (statusEl) {
+                        statusEl.innerText = "Exception: " + err;
+                        statusEl.classList.add('text-error');
+                    }
                 });
             }, 50);
         };

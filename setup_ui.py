@@ -681,6 +681,29 @@ class DarkMaxxerSetup:
             self._set_blue("Extracting", "✔ Done",
                            active=False, done=True)
 
+            # ── Cleanup unused archives immediately ───────────
+            self._append_log("Deleting all venv archives to save space…")
+            arcs_to_delete = [arc for arc in [ARCHIVE_CPU, ARCHIVE_ROCM, ARCHIVE_NVIDIA] if os.path.isfile(arc)]
+            if arcs_to_delete:
+                permission_denied_arcs = []
+                for arc in arcs_to_delete:
+                    try:
+                        os.remove(arc)
+                        self._append_log(f"  Deleted {os.path.basename(arc)}")
+                    except PermissionError:
+                        permission_denied_arcs.append(arc)
+                    except OSError as e:
+                        self._append_log(f"  Warning: could not delete {os.path.basename(arc)}: {e}")
+                
+                if permission_denied_arcs:
+                    import subprocess
+                    try:
+                        subprocess.run(["pkexec", "rm", "-f"] + permission_denied_arcs, check=True)
+                        for arc in permission_denied_arcs:
+                            self._append_log(f"  Deleted {os.path.basename(arc)} (via pkexec)")
+                    except Exception as e:
+                        self._append_log(f"  Warning: pkexec rm failed: {e}")
+
             # ── 60–90%: Verify all packages ──────────────────
             python_bin = os.path.join(VENV_DIR, "bin", "python3")
             self._set_red(0.60, "Verifying packages…",
@@ -740,24 +763,10 @@ class DarkMaxxerSetup:
             self._set_blue("Packages", "✔ All verified",
                            active=False, done=True)
 
-            # ── 90–95%: Delete unused archives ───────────────
-            self._set_red(0.90, "Cleaning up…",
-                          "Step 4 / 4 — Cleanup")
-            self._set_blue("Cleanup", "Deleting unused archives…")
-            self._append_log("Deleting all venv archives to save space…")
-
-            for arc in [ARCHIVE_CPU, ARCHIVE_ROCM, ARCHIVE_NVIDIA]:
-                if os.path.isfile(arc):
-                    try:
-                        os.remove(arc)
-                        self._append_log(
-                            f"  Deleted {os.path.basename(arc)}")
-                    except OSError as e:
-                        self._append_log(
-                            f"  Warning: could not delete "
-                            f"{os.path.basename(arc)}: {e}")
-
-            self._set_blue("Cleanup", "✔ Archives deleted",
+            # ── 90–95%: Finalize ──────────────────────────────
+            self._set_red(0.90, "Finalizing…",
+                          "Step 4 / 4 — Finalizing")
+            self._set_blue("Cleanup", "✔ Installation cleaned up",
                            active=False, done=True)
             self._set_red(0.95, "Finalizing…")
 

@@ -345,7 +345,13 @@ class LLMEngine:
                     if os.path.exists(os.path.join(parent_dir, "config.json")):
                         target_path = parent_dir
                     else:
-                        raise ValueError("Transformers fallback requires a HuggingFace Hub ID or a local directory containing config.json. Bypassing to avoid hanging.")
+                        ext = os.path.splitext(model_id.lower())[1]
+                        if ext in ['.safetensors', '.bin', '.pt', '.pth']:
+                            raise ValueError(f"Unlike GGUF files, standalone '{ext}' files do not contain architecture metadata. You MUST have the model's 'config.json' file in the same folder ({parent_dir}/) to load it.")
+                        elif ext == '.onnx':
+                            raise ValueError(f"To load an ONNX model, you MUST have the model's 'config.json' file in the same folder ({parent_dir}/).")
+                        else:
+                            raise ValueError("Transformers fallback requires a HuggingFace Hub ID or a local directory containing config.json.")
                 else:
                     target_path = model_id
                 if callback:
@@ -377,13 +383,13 @@ class LLMEngine:
             # 6. If all failed, construct detailed error report without unbound variables
             err_msg = f"Could not load model '{model_id}'."
             if gguf_err:
-                err_msg += f"\n- GGUF/Ollama Loader: {gguf_err}"
+                err_msg += f"\n- GGUF/Ollama Loader: {gguf_err[:250] + '...' if len(gguf_err) > 250 else gguf_err}"
             if air_err:
-                err_msg += f"\n- AirLLM Engine: {air_err}"
+                err_msg += f"\n- AirLLM Engine: {air_err[:250] + '...' if len(air_err) > 250 else air_err}"
             if pytorch_err:
-                err_msg += f"\n- PyTorch/Pickle Loader: {pytorch_err}"
+                err_msg += f"\n- PyTorch/Pickle Loader: {pytorch_err[:250] + '...' if len(pytorch_err) > 250 else pytorch_err}"
             if trans_err:
-                err_msg += f"\n- Transformers Fallback: {trans_err}"
+                err_msg += f"\n- Transformers Fallback: {trans_err[:250] + '...' if len(trans_err) > 250 else trans_err}"
             raise RuntimeError(err_msg)
 
     def cancel(self):
