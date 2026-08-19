@@ -234,6 +234,18 @@
 <label class="toggle-label block overflow-hidden h-6 rounded-full bg-surface-container-high border-2 border-outline-variant cursor-pointer transition-colors duration-200 ease-in-out" for="toggle_memory"></label>
 </div>
 </div>
+<div class="h-px w-full bg-outline-variant/10"></div>
+<!-- Toggle Item -->
+<div class="flex items-center justify-between p-4 bg-surface-container/20 rounded-xl hover:bg-surface-container/50 transition-colors group">
+<div>
+<h3 class="font-label-md text-label-md text-on-surface">Casual Language Mode</h3>
+<p class="font-body-md text-body-md text-on-surface-variant text-sm mt-1">Disables strict tool usage prompts for a relaxed chatting experience. Better for small models (Phi, Qwen, etc).</p>
+</div>
+<div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+<input onchange="saveSettings()" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-surface border-2 border-outline-variant appearance-none cursor-pointer z-10 transition-transform duration-200 ease-in-out" id="toggle_casual" name="toggle_casual" type="checkbox">
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-surface-container-high border-2 border-outline-variant cursor-pointer transition-colors duration-200 ease-in-out" for="toggle_casual"></label>
+</div>
+</div>
 
 <div class="h-px w-full bg-outline-variant/10"></div>
 <div class="flex items-center justify-end gap-md pt-sm">
@@ -1281,7 +1293,8 @@
                 const toggles = {
                     'toggle_local': s.local_inference !== undefined ? s.local_inference : true,
                     'toggle_gpu': s.gpu_acceleration !== undefined ? s.gpu_acceleration : true,
-                    'toggle_memory': s.context_memory !== undefined ? s.context_memory : true
+                    'toggle_memory': s.context_memory !== undefined ? s.context_memory : true,
+                    'toggle_casual': s.casual_mode !== undefined ? s.casual_mode : false
                 };
                 Object.entries(toggles).forEach(([id, val]) => {
                     const el = document.getElementById(id);
@@ -1384,11 +1397,13 @@
         const local_inf = document.getElementById('toggle_local') ? document.getElementById('toggle_local').checked : true;
         const gpu_acc = document.getElementById('toggle_gpu') ? document.getElementById('toggle_gpu').checked : true;
         const ctx_mem = document.getElementById('toggle_memory') ? document.getElementById('toggle_memory').checked : true;
+        const casual_md = document.getElementById('toggle_casual') ? document.getElementById('toggle_casual').checked : false;
 
         const new_settings = {
             local_inference: local_inf,
             gpu_acceleration: gpu_acc,
-            context_memory: ctx_mem
+            context_memory: ctx_mem,
+            casual_mode: casual_md
         };
 
         if(window.pywebview && window.pywebview.api) {

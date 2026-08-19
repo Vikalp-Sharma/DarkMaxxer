@@ -201,7 +201,17 @@ class Api:
         self.terminal_logs = []
         self.subagents = []
         self.mcp_clients = {}  # name -> MCPClient
+        
         self._init_mcp_servers()
+        
+        import getpass
+        import re
+        try:
+            raw_user = getpass.getuser()
+            clean_user = re.sub(r'[^a-zA-Z0-9]', '', raw_user).capitalize()
+            self.ai_name = f"{clean_user}AI" if clean_user else "UserAI"
+        except Exception:
+            self.ai_name = "UserAI"
 
         # Restore active session if available
         conf = self.config.get_config()
@@ -489,8 +499,14 @@ class Api:
                 pass
 
         history = self.memory.get_history(self.active_conv_id)
+        settings = self.config.get_settings()
+        use_memory = settings.get("context_memory", True)
         history.append({"role": "user", "content": prompt})
+        
+        # Always save the conversation to disk so the UI doesn't lose it!
+        # The use_memory flag will just prevent sending it to the LLM.
         self.memory.save_history(self.active_conv_id, history)
+
         self.generating_conv_id = self.active_conv_id
         
         self._gen_counter += 1
@@ -534,6 +550,13 @@ class Api:
             if self._cancel_requested or self._current_gen_id != gen_id:
                 self._log_terminal("Generation cancelled before start.")
                 return
+
+            if hasattr(self, '_last_cmd_output') and self._last_cmd_output:
+                injection = f"\n\n[Previous Command Output]\n{self._last_cmd_output}"
+                prompt += injection
+                if history and len(history) > 0 and history[-1].get("role") == "user":
+                    history[-1]["content"] = history[-1].get("content", "") + injection
+                self._last_cmd_output = None
 
             settings = self.config.get_settings()
             use_memory = settings.get("context_memory", True)
@@ -656,7 +679,7 @@ class Api:
             sys_msg = (
                 f"{context_files}"
                 f"{skill_injection}"
-                "You are **DarkMaxxer AI**, an elite, autonomous local AI coding assistant.\n"
+                f"You are **{self.ai_name}**, an elite, autonomous local AI coding assistant.\n"
                 "You run entirely offline with direct filesystem access.\n\n"
                 "# CRITICAL RULES\n"
                 "1. You MUST use the exact [TOOL: ACTION] syntax to perform actions.\n"
@@ -669,7 +692,8 @@ class Api:
                 "8. When using CREATE_FILE or EDIT_FILE, write the ACTUAL raw file content inside the code block. DO NOT write shell commands (like 'echo' or 'cat') to create the file.\n"
                 "9. Ensure the language identifier of your code block matches the file extension you are writing (e.g., use ```python for .py files, NOT ```bash).\n"
                 "10. NEVER give the user instructions on how to create, edit, or run files manually (e.g. 'Open a text editor', 'Copy and paste this', 'Save the file as'). YOU are an autonomous agent and YOU MUST do these things yourself using your tools!\n"
-                "11. NEVER output a code block containing code intended for a file WITHOUT wrapping it in a [TOOL: CREATE_FILE] tag. You must use your tools to act.\n\n"
+                "11. NEVER output a code block containing code intended for a file WITHOUT wrapping it in a [TOOL: CREATE_FILE] tag. You must use your tools to act.\n"
+                "12. You must ONLY use tools to manipulate code. NEVER provide loose code blocks outside of a tool tag for the user to copy-paste. Act automatically!\n\n"
                 f"# PLATFORM\n"
                 f"- Shell: {_shell}\n"
                 f"- Workspace Mode: {_ws_mode} | Root: {_ws_path}\n\n"
@@ -742,12 +766,13 @@ class Api:
                 self._log_terminal("Generation cancelled right before saving history (discarding response).")
                 return
 
-            try:
-                latest_history = self.memory.get_history(conv_id)
-            except Exception:
-                latest_history = history
-            latest_history.append({"role": "assistant", "content": response})
-            self.memory.save_history(conv_id, latest_history)
+            if use_memory:
+                try:
+                    latest_history = self.memory.get_history(conv_id)
+                except Exception:
+                    latest_history = history
+                latest_history.append({"role": "assistant", "content": response})
+                self.memory.save_history(conv_id, latest_history)
 
             # Memory cleanup after generation (in background to avoid blocking UI update)
             def _cleanup():
@@ -769,12 +794,13 @@ class Api:
                 self._log_terminal("Generation was cancelled.")
                 return
             self._log_terminal(f"Generation error: {str(e)}")
-            try:
-                latest_history = self.memory.get_history(conv_id)
-            except Exception:
-                latest_history = history
-            latest_history.append({"role": "assistant", "content": f"[Error generating response: {str(e)}]"})
-            self.memory.save_history(conv_id, latest_history)
+            if use_memory:
+                try:
+                    latest_history = self.memory.get_history(conv_id)
+                except Exception:
+                    latest_history = history
+                latest_history.append({"role": "assistant", "content": f"[Error generating response: {str(e)}]"})
+                self.memory.save_history(conv_id, latest_history)
         finally:
             if self._current_gen_id == gen_id:
                 self.is_generating = False
@@ -786,26 +812,21 @@ class Api:
         import subprocess
 
         def _clean_content(content):
-            content = content.strip()
-            if content.startswith("```"):
-                lines = content.splitlines()
-                if len(lines) > 1 and lines[0].startswith("```"):
-                    lines = lines[1:]
-                if lines and lines[-1].strip() == "```":
-                    lines = lines[:-1]
-                content = "\n".join(lines).strip()
-            elif content.endswith("```"):
-                lines = content.splitlines()
-                if lines and lines[-1].strip() == "```":
-                    lines = lines[:-1]
-                content = "\n".join(lines).strip()
-            return content
+            content = content.replace("[/TOOL]", "").replace("[/tool]", "").strip()
+            import re as _re
+            fences = _re.findall(r'```(?:[a-zA-Z]*)\n(.*?)```', content, _re.DOTALL)
+            if fences:
+                return fences[0].strip()
+            
+            content = _re.sub(r'^```[a-zA-Z]*\n?', '', content)
+            content = _re.sub(r'\n?```$', '', content)
+            return content.strip()
 
-        create_pattern = re.compile(r'\[TOOL:\s*CREATE_FILE[\s:|]+([^\s|\]"\'`]+)[\s:|]*(.*?)\]', re.DOTALL | re.IGNORECASE)
-        edit_pattern = re.compile(r'\[TOOL:\s*EDIT_FILE[\s:|]+([^\s|\]"\'`]+)[\s:|]*(.*?)\]', re.DOTALL | re.IGNORECASE)
-        delete_pattern = re.compile(r'\[TOOL:\s*DELETE_FILE[\s:|]+([^\s|\]"\'`]+)\]', re.DOTALL | re.IGNORECASE)
-        read_pattern = re.compile(r'\[TOOL:\s*READ_FILE[\s:|]+([^\s|\]"\'`]+)\]', re.DOTALL | re.IGNORECASE)
-        cmd_pattern = re.compile(r'\[TOOL:\s*RUN_COMMAND[\s:|]+(.*?)\]', re.DOTALL | re.IGNORECASE)
+        create_pattern = re.compile(r'\[TOOL:\s*CREATE_FILE[\s:|]+([^\]\s]+)\]?(.*?)(?=\[TOOL:|$)', re.DOTALL | re.IGNORECASE)
+        edit_pattern = re.compile(r'\[TOOL:\s*EDIT_FILE[\s:|]+([^\]\s]+)\]?(.*?)(?=\[TOOL:|$)', re.DOTALL | re.IGNORECASE)
+        delete_pattern = re.compile(r'\[TOOL:\s*DELETE_FILE[\s:|]+([^\]\s]+)\]?', re.DOTALL | re.IGNORECASE)
+        read_pattern = re.compile(r'\[TOOL:\s*READ_FILE[\s:|]+([^\]\s]+)\]?', re.DOTALL | re.IGNORECASE)
+        cmd_pattern = re.compile(r'\[TOOL:\s*RUN_COMMAND\]?(.*?)(?=\[TOOL:|$)', re.DOTALL | re.IGNORECASE)
         mcp_pattern = re.compile(r'\[TOOL:\s*MCP_CALL[\s:|]+server=([^\s|\]]+)[\s:|]+tool=([^\s|\]]+)(?:[\s:|]+args=(\{.*?\}))?\]', re.DOTALL | re.IGNORECASE)
         
         all_matches = []
@@ -830,9 +851,14 @@ class Api:
                 user_fn_match = _re.search(r'\b([a-zA-Z0-9_][a-zA-Z0-9_\-]*\.(?:py|js|html|css|json|txt|md|sh|c|cpp|rs|go|java|ts|tsx|jsx))\b', str(user_prompt), _re.IGNORECASE)
                 if user_fn_match:
                     target_fname = user_fn_match.group(1)
-                    code_fences = _re.findall(r'```[a-zA-Z]*\n(.*?)```', response_text, _re.DOTALL)
+                    code_fences = _re.findall(r'```([a-zA-Z]*)\n(.*?)```', response_text, _re.DOTALL)
                     if code_fences:
-                        best_code = max(code_fences, key=len).strip()
+                        ext = target_fname.split('.')[-1].lower()
+                        valid_fences = [code for lang, code in code_fences if ext == 'sh' or lang.lower() not in ('bash', 'sh', 'shell', 'zsh', 'cmd', 'powershell')]
+                        if valid_fences:
+                            best_code = max(valid_fences, key=len).strip()
+                        else:
+                            best_code = max([code for _, code in code_fences], key=len).strip()
                         if len(best_code) > 5:
                             try:
                                 if not self.file_ops:
@@ -912,6 +938,22 @@ class Api:
                 cmd = _clean_content(m.group(1))
                 try:
                     self._log_terminal(f"Running command: {cmd.splitlines()[0] if cmd else ''}...")
+                    
+                    cwd = self.file_ops.base_dir if self.file_ops else None
+                    process = subprocess.Popen(
+                        cmd,
+                        shell=True,
+                        executable='/bin/bash',
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        cwd=cwd,
+                        text=True
+                    )
+                    stdout, _ = process.communicate()
+                    out_str = stdout if stdout else ""
+                    self._last_cmd_output = out_str.strip()[:2000]
+                    self._log_terminal(f"Command Output:\n{self._last_cmd_output[:200]}")
+                    
                     injection = f"\n✅ Executed Command\n"
                 except Exception as e:
                     self._log_terminal(f"Error running command: {e}")
@@ -1226,7 +1268,8 @@ class Api:
             "workspace_name": os.path.basename(self.file_ops.base_dir) if self.file_ops else None,
             "workspace_mode": ws_mode,
             "active_sidebar_tab": conf.get("active_sidebar_tab", "chats"),
-            "subagents": getattr(self, "subagents", [])
+            "subagents": getattr(self, "subagents", []),
+            "ai_name": getattr(self, "ai_name", "UserAI")
         }
         active_id = self.active_conv_id or conf.get("active_conv_id")
         if active_id:
@@ -1301,10 +1344,10 @@ class Api:
                         results.append(f"✔ Removed shortcut: {shortcut}")
             else:
                 # Linux system uninstall
-                uninstaller = os.path.join(app_dir, "DarkLinux", "dist", "uninstall.sh")
+                uninstaller = os.path.join(app_dir, "DarkLinux", "uninstall.sh")
                 if os.path.exists(uninstaller):
                     import subprocess
-                    r = subprocess.run(["bash", uninstaller], capture_output=True, text=True)
+                    r = subprocess.run(["pkexec", "bash", uninstaller], capture_output=True, text=True)
                     if r.returncode == 0:
                         results.append("✔ Uninstalled DarkMaxxer system packages and caches")
                     else:

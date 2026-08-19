@@ -281,7 +281,7 @@ class LLMEngine:
                     if os.path.exists(os.path.join(_gp, "config.json")):
                         target_air_path = _gp
                 if target_air_path is None:
-                    raise ValueError(f"AirLLM requires a local directory with config.json and safetensors. No compatible directory found for '{os.path.basename(model_id)}'.")
+                    raise ValueError(f"AirLLM requires a local directory with config.json and safetensors/bin/pth weights. No compatible directory found for '{os.path.basename(model_id)}'.")
                 if callback:
                     callback(f"Routing through AirLLM Layer-Wise Engine: {target_air_path}...")
                     callback("[3/5] Initializing layer-wise GPU offloading (this loads one layer at a time)...")
@@ -396,7 +396,7 @@ class LLMEngine:
         """Immediately aborts any ongoing generation."""
         self._cancel_requested = True
 
-    def generate(self, prompt: str, max_new_tokens: int = 512, use_gpu: bool = True) -> str:
+    def generate(self, prompt: str, max_new_tokens: int = 131072, use_gpu: bool = True) -> str:
         """
         Generate text from the loaded model object (AirLLM, GGUF, Transformers, or PyTorch custom object).
         """
@@ -426,10 +426,16 @@ class LLMEngine:
                 if tokenizer is None:
                     try:
                         if self.current_model_id and os.path.isfile(self.current_model_id):
-                            try:
-                                tokenizer = AutoTokenizer.from_pretrained(os.path.dirname(self.current_model_id), gguf_file=os.path.basename(self.current_model_id), local_files_only=True)
-                            except Exception:
-                                tokenizer = AutoTokenizer.from_pretrained(self.current_model_id, local_files_only=True)
+                            if self.current_model_id.lower().endswith('.gguf'):
+                                try:
+                                    tokenizer = AutoTokenizer.from_pretrained(os.path.dirname(self.current_model_id), gguf_file=os.path.basename(self.current_model_id), local_files_only=True)
+                                except Exception:
+                                    pass
+                            if tokenizer is None:
+                                try:
+                                    tokenizer = AutoTokenizer.from_pretrained(os.path.dirname(self.current_model_id), local_files_only=True)
+                                except Exception:
+                                    pass
                         else:
                             is_loc = self.current_model_id and os.path.exists(self.current_model_id)
                             tokenizer = AutoTokenizer.from_pretrained(self.current_model_id, local_files_only=is_loc)
@@ -451,28 +457,17 @@ class LLMEngine:
                 sys_msgs = [m.get("content", "") for m in prompt if m.get("role") == "system"]
                 if sys_msgs:
                     sys_text = "\n\n".join(sys_msgs)
-                    
-                    supports_system = False
-                    if tokenizer is not None and hasattr(tokenizer, "apply_chat_template"):
-                        try:
-                            test_str = tokenizer.apply_chat_template([{"role": "system", "content": "XYZTEST"}], tokenize=False)
-                            if "XYZTEST" in test_str:
-                                supports_system = True
-                        except Exception:
-                            pass
-                    
-                    if not supports_system:
-                        new_prompt = []
-                        merged = False
-                        for m in prompt:
-                            if m.get("role") == "system":
-                                continue
-                            if m.get("role") == "user" and not merged:
-                                new_prompt.append({"role": "user", "content": f"{sys_text}\n\n--- END SYSTEM INSTRUCTIONS ---\n\nUser Request:\n{m.get('content', '')}"})
-                                merged = True
-                            else:
-                                new_prompt.append(m)
-                        prompt = new_prompt
+                    new_prompt = []
+                    merged = False
+                    for m in prompt:
+                        if m.get("role") == "system":
+                            continue
+                        if m.get("role") == "user" and not merged:
+                            new_prompt.append({"role": "user", "content": f"{sys_text}\n\n--- END SYSTEM INSTRUCTIONS ---\n\nUser Request:\n{m.get('content', '')}"})
+                            merged = True
+                        else:
+                            new_prompt.append(m)
+                    prompt = new_prompt
 
                 prompt_str = ""
                 if tokenizer is not None and hasattr(tokenizer, "apply_chat_template"):
@@ -500,13 +495,19 @@ class LLMEngine:
             device = self._get_device()
             if use_gpu and device != "cpu":
                 input_ids = input_tokens.input_ids.to(device)
+            else:
+                input_ids = input_tokens.input_ids
+
+            if input_ids.shape[1] == 0:
+                raise RuntimeError("Tokenizer returned 0 tokens. This usually happens if you loaded a model weight file (.safetensors, .bin, .pth) but forgot to add 'config.json' and 'tokenizer.json' into the same folder.")
+
+            if use_gpu and device != "cpu":
                 if hasattr(self.model, "to") and not hasattr(self.model, "is_airllm"):
                     try:
                         self.model.to(device)
                     except Exception:
                         pass
             else:
-                input_ids = input_tokens.input_ids
                 if hasattr(self.model, "to") and not hasattr(self.model, "is_airllm"):
                     try:
                         self.model.to("cpu")
@@ -514,14 +515,21 @@ class LLMEngine:
                         pass
             
             # Generate response tokens
+            try:
+                import torch
+                torch.backends.cuda.matmul.allow_tf32 = True
+                torch.backends.cudnn.allow_tf32 = True
+            except Exception:
+                pass
+
             if hasattr(self.model, "generate"):
                 gen_kwargs = {
                     "input_ids": input_ids,
-                    "max_new_tokens": min(max_new_tokens, 512),
+                    "max_new_tokens": max_new_tokens if max_new_tokens > 0 else 131072,
                     "use_cache": True,
                     "return_dict_in_generate": True,
                     "repetition_penalty": 1.18,
-                    "do_sample": True,
+                    "do_sample": False,
                     "temperature": 0.7,
                     "top_p": 0.9,
                 }
@@ -546,7 +554,7 @@ class LLMEngine:
                     # Fallback if specific kwargs are rejected by custom generate methods
                     generation_output = self.model.generate(
                         input_ids,
-                        max_new_tokens=min(max_new_tokens, 512),
+                        max_new_tokens=max_new_tokens if max_new_tokens > 0 else 131072,
                         use_cache=True,
                         return_dict_in_generate=True
                     )

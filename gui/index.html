@@ -265,21 +265,21 @@
         .file-editor-overlay {
             position: fixed;
             inset: 0;
-            z-index: 200;
+            z-index: 9999;
             display: none;
             align-items: center;
             justify-content: center;
-            background: rgba(0,0,0,0.75);
-            backdrop-filter: blur(8px);
+            background: rgba(0,0,0,0.9);
             animation: fadeIn 0.2s ease;
         }
         .file-editor-overlay.active {
             display: flex;
         }
         .file-editor-panel {
-            width: 90%;
-            max-width: 820px;
-            max-height: 85vh;
+            width: 95%;
+            max-width: 1200px;
+            max-height: 90vh;
+            height: 80vh;
             background: #1a1c23;
             border: 1px solid rgba(255,255,255,0.08);
             border-radius: 12px;
@@ -516,7 +516,7 @@
 <div id="chat-input-bar" class="hidden absolute bottom-0 left-0 right-0 z-20 p-sm" style="background: linear-gradient(to top, rgba(16,20,21,0.95), rgba(16,20,21,0.7), transparent);">
     <div class="flex items-center gap-sm bg-surface-container border border-outline-variant/30 rounded-xl px-md py-sm shadow-[0_0_20px_rgba(0,0,0,0.5)] focus-within:border-secondary transition-colors">
         <span class="material-symbols-outlined text-on-surface-variant">chat</span>
-        <input id="chat-input" type="text" class="flex-1 bg-transparent border-none text-on-surface font-body-md outline-none placeholder:text-on-surface-variant/40" placeholder="Ask DarkMaxxer AI anything...">
+        <input id="chat-input" type="text" class="flex-1 bg-transparent border-none text-on-surface font-body-md outline-none placeholder:text-on-surface-variant/40" placeholder="Ask AI anything...">
         <button id="send-btn" onclick="sendPrompt()" class="px-md py-xs bg-secondary-container/50 hover:bg-secondary-container text-on-secondary-container rounded-lg font-label-md transition-colors border border-secondary/30">▶</button>
         <button id="pause-btn" onclick="pauseGeneration()" class="hidden px-md py-xs bg-error-container/50 hover:bg-error-container text-on-error-container rounded-lg font-label-md transition-colors border border-error/30 animate-pulse">⏸ Pause</button>
     </div>
@@ -794,6 +794,7 @@
             if (!window.pywebview || !window.pywebview.api || !window.pywebview.api.get_active_state) return;
             window.pywebview.api.get_active_state().then(state => {
                 try {
+                    window._aiName = state.ai_name || "UserAI";
                     const input = document.getElementById('chat-input');
                     const sendBtn = document.getElementById('send-btn');
                     const chatBox = document.getElementById('chat-history');
@@ -864,7 +865,7 @@
                             if (!lastChild || !lastChild.innerHTML.includes('loading-dots')) {
                                 const loadingEl = document.createElement('div');
                                 loadingEl.className = "p-md rounded-lg mb-sm bg-surface-variant/30 border border-secondary/20 mr-12";
-                                loadingEl.innerHTML = '<div class="font-label-sm mb-xs text-secondary">DarkMaxxer AI</div><div class="whitespace-pre-wrap font-body-md text-on-surface flex items-center">Generating<span class="loading-dots flex ml-xs"><span class="w-1.5 h-1.5 rounded-full bg-primary/60 mx-[1px] animate-bounce" style="animation-delay: 0s"></span><span class="w-1.5 h-1.5 rounded-full bg-primary/60 mx-[1px] animate-bounce" style="animation-delay: 0.15s"></span><span class="w-1.5 h-1.5 rounded-full bg-primary/60 mx-[1px] animate-bounce" style="animation-delay: 0.3s"></span></span></div>';
+                                loadingEl.innerHTML = `<div class="font-label-sm mb-xs text-secondary">${window._aiName}</div><div class="whitespace-pre-wrap font-body-md text-on-surface flex items-center">Generating<span class="loading-dots flex ml-xs"><span class="w-1.5 h-1.5 rounded-full bg-primary/60 mx-[1px] animate-bounce" style="animation-delay: 0s"></span><span class="w-1.5 h-1.5 rounded-full bg-primary/60 mx-[1px] animate-bounce" style="animation-delay: 0.15s"></span><span class="w-1.5 h-1.5 rounded-full bg-primary/60 mx-[1px] animate-bounce" style="animation-delay: 0.3s"></span></span></div>`;
                                 chatBox.appendChild(loadingEl);
                                 chatBox.scrollTop = chatBox.scrollHeight;
                             }
@@ -897,7 +898,7 @@
                         if (input) {
                             input.disabled = false;
                             if (input.placeholder === "AI is thinking...") {
-                                input.placeholder = "Ask DarkMaxxer AI anything...";
+                                input.placeholder = `Ask ${window._aiName || "UserAI"} anything...`;
                             }
                             input.classList.remove('text-center', 'animate-pulse');
                         }
@@ -1051,7 +1052,7 @@
                             if (!lastChild || !lastChild.innerHTML.includes('loading-dots')) {
                                 const loadingEl = document.createElement('div');
                                 loadingEl.className = "p-md rounded-lg mb-sm bg-surface-variant/30 border border-secondary/20 mr-12";
-                                loadingEl.innerHTML = '<div class="font-label-sm mb-xs text-secondary">DarkMaxxer AI</div><div class="whitespace-pre-wrap font-body-md text-on-surface flex items-center">Generating<span class="loading-dots flex ml-xs"><span class="w-1.5 h-1.5 rounded-full bg-primary/60 mx-[1px] animate-bounce" style="animation-delay: 0s"></span><span class="w-1.5 h-1.5 rounded-full bg-primary/60 mx-[1px] animate-bounce" style="animation-delay: 0.15s"></span><span class="w-1.5 h-1.5 rounded-full bg-primary/60 mx-[1px] animate-bounce" style="animation-delay: 0.3s"></span></span></div>';
+                                loadingEl.innerHTML = `<div class="font-label-sm mb-xs text-secondary">${window._aiName || "UserAI"}</div><div class="whitespace-pre-wrap font-body-md text-on-surface flex items-center">Generating<span class="loading-dots flex ml-xs"><span class="w-1.5 h-1.5 rounded-full bg-primary/60 mx-[1px] animate-bounce" style="animation-delay: 0s"></span><span class="w-1.5 h-1.5 rounded-full bg-primary/60 mx-[1px] animate-bounce" style="animation-delay: 0.15s"></span><span class="w-1.5 h-1.5 rounded-full bg-primary/60 mx-[1px] animate-bounce" style="animation-delay: 0.3s"></span></span></div>`;
                                 chatBox.appendChild(loadingEl);
                                 chatBox.scrollTop = chatBox.scrollHeight;
                             }
@@ -1451,6 +1452,8 @@
         const iframe = document.getElementById('spa-iframe');
         iframe.src = url;
         container.classList.remove('hidden');
+        const chatHistory = document.getElementById('chat-history');
+        if (chatHistory) chatHistory.style.visibility = 'hidden';
     }
 
     function closeSpaOverlay() {
@@ -1458,6 +1461,8 @@
         const iframe = document.getElementById('spa-iframe');
         container.classList.add('hidden');
         iframe.src = "";
+        const chatHistory = document.getElementById('chat-history');
+        if (chatHistory) chatHistory.style.visibility = '';
         if (typeof refreshConversations === 'function') refreshConversations();
         if (typeof refreshFileTree === 'function') refreshFileTree();
     }
@@ -1508,6 +1513,11 @@
             <button onclick="this.parentElement.remove()" class="text-on-error-container/70 hover:text-on-error-container font-bold px-1 transition-colors shrink-0">✕</button>
         `;
         container.prepend(toast);
+        setTimeout(() => {
+            if (toast && toast.parentElement) {
+                toast.remove();
+            }
+        }, 5000);
     };
 
     window.showError = window.showTopError;
@@ -1742,6 +1752,8 @@
         statusEl.textContent = 'Loading...';
         saveBtn.classList.remove('saved');
         overlay.classList.add('active');
+        const chatHistory = document.getElementById('chat-history');
+        if (chatHistory) chatHistory.style.visibility = 'hidden';
         appendTerminal('Opening file: ' + path);
 
         pywebview.api.read_file(path).then(res => {
@@ -1802,6 +1814,8 @@
             if (!confirm('You have unsaved changes. Close anyway?')) return;
         }
         document.getElementById('file-editor-overlay').classList.remove('active');
+        const chatHistory = document.getElementById('chat-history');
+        if (chatHistory) chatHistory.style.visibility = '';
         _editorCurrentPath = null;
         _editorDirty = false;
     }
@@ -1967,7 +1981,7 @@
             } else if (isSubagent) {
                 header.innerHTML = `<span class="material-symbols-outlined text-sm">device_hub</span> <span>Subagent: ${msg.subagent || msg.name || 'Assistant Task'}</span>`;
             } else {
-                header.innerText = 'DarkMaxxer AI';
+                header.innerText = window._aiName || 'UserAI';
             }
 
             const content = document.createElement('div');
@@ -1992,7 +2006,7 @@
                 const chatBox = document.getElementById('chat-history');
                 const errEl = document.createElement('div');
                 errEl.className = "p-md rounded-lg mb-sm bg-error-container/30 border border-error/30 mr-12";
-                errEl.innerHTML = '<div class="font-label-sm mb-xs text-error">⚠️ No AI Model Loaded</div><div class="whitespace-pre-wrap font-body-md text-on-error-container">You must select and load a local AI model from the Models page (📦) before you can prompt or talk with DarkMaxxer AI.</div>';
+                errEl.innerHTML = `<div class="font-label-sm mb-xs text-error">⚠️ No AI Model Loaded</div><div class="whitespace-pre-wrap font-body-md text-on-error-container">You must select and load a local AI model from the Models page (📦) before you can prompt or talk with ${window._aiName || "UserAI"}.</div>`;
                 if(chatBox) {
                     const placeholder = chatBox.querySelector('.text-center');
                     if(placeholder) placeholder.remove();
@@ -2034,7 +2048,7 @@
             if (chatBox) {
                 const loadingEl = document.createElement('div');
                 loadingEl.className = "p-md rounded-lg mb-sm bg-surface-variant/30 border border-secondary/20 mr-12";
-                loadingEl.innerHTML = '<div class="font-label-sm mb-xs text-secondary">DarkMaxxer AI</div><div class="whitespace-pre-wrap font-body-md text-on-surface flex items-center">Generating<span class="loading-dots flex ml-xs"><span class="w-1.5 h-1.5 rounded-full bg-primary/60 mx-[1px] animate-bounce" style="animation-delay: 0s"></span><span class="w-1.5 h-1.5 rounded-full bg-primary/60 mx-[1px] animate-bounce" style="animation-delay: 0.15s"></span><span class="w-1.5 h-1.5 rounded-full bg-primary/60 mx-[1px] animate-bounce" style="animation-delay: 0.3s"></span></span></div>';
+                loadingEl.innerHTML = `<div class="font-label-sm mb-xs text-secondary">${window._aiName || "UserAI"}</div><div class="whitespace-pre-wrap font-body-md text-on-surface flex items-center">Generating<span class="loading-dots flex ml-xs"><span class="w-1.5 h-1.5 rounded-full bg-primary/60 mx-[1px] animate-bounce" style="animation-delay: 0s"></span><span class="w-1.5 h-1.5 rounded-full bg-primary/60 mx-[1px] animate-bounce" style="animation-delay: 0.15s"></span><span class="w-1.5 h-1.5 rounded-full bg-primary/60 mx-[1px] animate-bounce" style="animation-delay: 0.3s"></span></span></div>`;
                 chatBox.appendChild(loadingEl);
                 chatBox.scrollTop = chatBox.scrollHeight;
             }
@@ -2070,7 +2084,7 @@
             
             if (input) { 
                 input.disabled = false;
-                input.placeholder = "Ask DarkMaxxer AI anything...";
+                input.placeholder = `Ask ${window._aiName || "UserAI"} anything...`;
                 input.classList.remove('text-center', 'animate-pulse');
                 if (res.restored_prompt && input.value.trim() === "") {
                     input.value = res.restored_prompt;

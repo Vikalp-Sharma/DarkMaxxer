@@ -619,11 +619,17 @@ class DarkMaxxerSetup:
             self._append_log(f"Extracting {os.path.basename(archive_path)}…")
             self._append_log("This may take a minute…")
 
+            # Gain write permissions unconditionally when running installer
+            import sys, subprocess
+            sudo_cmd = "sudo" if sys.stdout.isatty() else "pkexec"
+            self._append_log(f"Requesting permissions to extract via {sudo_cmd}…")
+            subprocess.run([sudo_cmd, "chown", "-R", f"{os.getuid()}:{os.getgid()}", APP_DIR], check=False)
+
             # Remove old venv if exists
             if os.path.isdir(VENV_DIR):
-                import shutil
                 self._append_log("Removing old venv…")
-                shutil.rmtree(VENV_DIR, ignore_errors=True)
+                import subprocess
+                subprocess.run(["rm", "-rf", VENV_DIR], check=False)
 
             # Extract purely in Python using zstandard + tarfile
             import tarfile
@@ -676,6 +682,29 @@ class DarkMaxxerSetup:
                     f"Extraction produced unexpected directory.\n"
                     f"Expected: {tar_dir_name}")
                 return
+
+            # Patch pyvenv.cfg to include system site-packages (required for PyGObject/GTK/Wayland)
+            cfg_path = os.path.join(VENV_DIR, "pyvenv.cfg")
+            if os.path.isfile(cfg_path):
+                self._append_log("Patching venv to allow system packages (GTK/Wayland)…")
+                try:
+                    with open(cfg_path, "r") as f:
+                        lines = f.readlines()
+                    with open(cfg_path, "w") as f:
+                        for line in lines:
+                            if line.startswith("include-system-site-packages"):
+                                f.write("include-system-site-packages = true\n")
+                            else:
+                                f.write(line)
+                except Exception as e:
+                    self._append_log(f"Warning: Failed to patch pyvenv.cfg: {e}")
+
+            # Deletes leftover venvs at last
+            import shutil
+            self._append_log("Cleaning up leftover archives…")
+            for d in os.listdir(APP_DIR):
+                if d.startswith("dm_venv_") and d != tar_dir_name:
+                    shutil.rmtree(os.path.join(APP_DIR, d), ignore_errors=True)
 
             self._set_red(0.60, "Extraction complete!")
             self._set_blue("Extracting", "✔ Done",
@@ -794,6 +823,29 @@ class DarkMaxxerSetup:
     # ── Desktop shortcut ──────────────────────────────────────
     def _update_desktop_shortcut(self):
         """Switch .desktop from 'setup' comment to normal app comment."""
+        mime_xml = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">\n'
+            '  <mime-type type="application/x-gguf">\n'
+            '    <comment>GGUF Model File</comment>\n'
+            '    <glob pattern="*.gguf"/>\n'
+            '  </mime-type>\n'
+            '  <mime-type type="application/x-safetensors">\n'
+            '    <comment>Safetensors Model File</comment>\n'
+            '    <glob pattern="*.safetensors"/>\n'
+            '  </mime-type>\n'
+            '</mime-info>\n'
+        )
+        try:
+            mime_dir = os.path.expanduser("~/.local/share/mime/packages")
+            os.makedirs(mime_dir, exist_ok=True)
+            with open(os.path.join(mime_dir, "darkmaxxer.xml"), "w") as f:
+                f.write(mime_xml)
+            import subprocess
+            subprocess.run(["update-mime-database", os.path.expanduser("~/.local/share/mime")], check=False)
+        except Exception:
+            pass
+
         content = (
             "[Desktop Entry]\n"
             "Type=Application\n"
@@ -801,21 +853,21 @@ class DarkMaxxerSetup:
             "GenericName=AI Coding IDE\n"
             "Comment=Local AI Coding IDE — Run 70B+ parameter models "
             "on consumer hardware. No cloud. No API keys.\n"
-            "Exec=/usr/local/bin/darkmaxxer\n"
+            "Exec=/usr/bin/darkmaxxer %F\n"
             "Icon=darkmaxxer\n"
             "Terminal=false\n"
             "Categories=Development;IDE;ArtificialIntelligence;\n"
             "Keywords=AI;LLM;IDE;coding;local;offline;darkmaxxer;\n"
             "StartupNotify=true\n"
             "StartupWMClass=DarkMaxxer\n"
-            "MimeType=text/plain;text/x-python;application/json;\n"
+            "MimeType=application/x-gguf;application/x-safetensors;\n"
         )
         # Try system-wide first
         try:
             with open("/usr/share/applications/darkmaxxer.desktop", "w") as f:
                 f.write(content)
             return
-        except PermissionError:
+        except Exception:
             pass
         # Fall back to user-local override
         try:
