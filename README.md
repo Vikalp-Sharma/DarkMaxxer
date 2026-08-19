@@ -349,7 +349,6 @@ The red-themed tkinter GUI auto-detects your GPU (NVIDIA CUDA / AMD ROCm / CPU-o
 ```bash
 git clone https://github.com/Vikalp-Sharma/DarkMaxxer.git
 cd DarkMaxxer
-python -m venv venv
 
 # Windows
 .\venv\Scripts\activate
