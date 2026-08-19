@@ -10,7 +10,7 @@
 <br />
 
 <picture>
-  <img alt="Tagline" src="https://img.shields.io/badge/%20-The%20Ultimate%20Local%20AI%20Coding%20IDE-0a0a0f?style=for-the-badge&labelColor=0a0a0f" />
+  <img alt="Tagline" src="https://img.shields.io/badge/hardware-%20-The%20Ultimate%20Local%20AI%20Coding%20IDE-0a0a0f?style=for-the-badge&labelColor=0a0a0f" />
 </picture>
 
 <br />
@@ -23,41 +23,42 @@
 
 <!-- ═══════════════ PRIMARY BADGES ═══════════════ -->
 
-<a href="https://github.com/Vikalp-Sharma/DarkMaxxer/releases"><img src="https://img.shields.io/badge/%20%20Release-v3.0.0-6C63FF?style=for-the-badge&logo=github&logoColor=white&labelColor=12121a" alt="Release" /></a>&nbsp;
-<a href="https://python.org"><img src="https://img.shields.io/badge/%20%20Python-3.10%E2%80%943.14-3776AB?style=for-the-badge&logo=python&logoColor=white&labelColor=12121a" alt="Python" /></a>&nbsp;
-<a href="LICENSE"><img src="https://img.shields.io/badge/%20%20License-Proprietary-E10098?style=for-the-badge&logo=gnu-privacy-guard&logoColor=white&labelColor=12121a" alt="License" /></a>
+<a href="#-quick-start"><img src="https://img.shields.io/badge/hardware-%20%20Hardware-GPU%20Optional%20%E2%80%A2%20NVIDIA%20%2F%20AMD%20%2F%20CPU-F59E0B?style=for-the-badge&logo=nvidia&logoColor=white&labelColor=12121a" alt="Hardware" /></a>&nbsp;
+<a href="https://github.com/Vikalp-Sharma/DarkMaxxer/releases"><img src="https://img.shields.io/badge/hardware-%20%20Release-v3.0.0-6C63FF?style=for-the-badge&logo=github&logoColor=white&labelColor=12121a" alt="Release" /></a>&nbsp;
+<a href="https://python.org"><img src="https://img.shields.io/badge/hardware-%20%20Python-3.10%E2%80%943.14-3776AB?style=for-the-badge&logo=python&logoColor=white&labelColor=12121a" alt="Python" /></a>&nbsp;
+<a href="LICENSE"><img src="https://img.shields.io/badge/hardware-%20%20License-Proprietary-E10098?style=for-the-badge&logo=gnu-privacy-guard&logoColor=white&labelColor=12121a" alt="License" /></a>
 
 <br />
 <br />
 
 <!-- ═══════════════ PLATFORM BADGES ═══════════════ -->
 
-<a href="#-quick-start"><img src="https://img.shields.io/badge/Windows_10_%2F_11-0078D6?style=flat-square&logo=windows11&logoColor=white&labelColor=0d1117" alt="Windows" /></a>&nbsp;
-<a href="#-quick-start"><img src="https://img.shields.io/badge/Fedora_%2F_RHEL-51A2DA?style=flat-square&logo=fedora&logoColor=white&labelColor=0d1117" alt="Fedora" /></a>&nbsp;
-<a href="#-quick-start"><img src="https://img.shields.io/badge/Debian_%2F_Ubuntu-A81D33?style=flat-square&logo=debian&logoColor=white&labelColor=0d1117" alt="Debian" /></a>&nbsp;
-<a href="#-quick-start"><img src="https://img.shields.io/badge/Arch_Linux-1793D1?style=flat-square&logo=archlinux&logoColor=white&labelColor=0d1117" alt="Arch" /></a>
+<a href="#-quick-start"><img src="https://img.shields.io/badge/hardware-Windows_10_%2F_11-0078D6?style=flat-square&logo=windows11&logoColor=white&labelColor=0d1117" alt="Windows" /></a>&nbsp;
+<a href="#-quick-start"><img src="https://img.shields.io/badge/hardware-Fedora_%2F_RHEL-51A2DA?style=flat-square&logo=fedora&logoColor=white&labelColor=0d1117" alt="Fedora" /></a>&nbsp;
+<a href="#-quick-start"><img src="https://img.shields.io/badge/hardware-Debian_%2F_Ubuntu-A81D33?style=flat-square&logo=debian&logoColor=white&labelColor=0d1117" alt="Debian" /></a>&nbsp;
+<a href="#-quick-start"><img src="https://img.shields.io/badge/hardware-Arch_Linux-1793D1?style=flat-square&logo=archlinux&logoColor=white&labelColor=0d1117" alt="Arch" /></a>
 
 <br />
 <br />
 
 <!-- ═══════════════ TECH STACK BADGES ═══════════════ -->
 
-<a href="https://github.com/lyogavin/airllm"><img src="https://img.shields.io/badge/Engine-AirLLM-FF6F00?style=flat-square&logo=pytorch&logoColor=white&labelColor=1a1a2e" alt="AirLLM" /></a>&nbsp;
-<a href="https://github.com/ggerganov/ggml"><img src="https://img.shields.io/badge/Format-GGUF-00C7B7?style=flat-square&logo=llvm&logoColor=white&labelColor=1a1a2e" alt="GGUF" /></a>&nbsp;
-<a href="https://huggingface.co"><img src="https://img.shields.io/badge/Models-HuggingFace-FFD21E?style=flat-square&logo=huggingface&logoColor=black&labelColor=1a1a2e" alt="HuggingFace" /></a>&nbsp;
-<a href="https://pywebview.flowrl.com"><img src="https://img.shields.io/badge/GUI-PyWebView-4FC08D?style=flat-square&logo=googlechrome&logoColor=white&labelColor=1a1a2e" alt="PyWebView" /></a>&nbsp;
-<a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/Protocol-MCP-8B5CF6?style=flat-square&logo=lightning&logoColor=white&labelColor=1a1a2e" alt="MCP" /></a>
+<a href="https://github.com/lyogavin/airllm"><img src="https://img.shields.io/badge/hardware-Engine-AirLLM-FF6F00?style=flat-square&logo=pytorch&logoColor=white&labelColor=1a1a2e" alt="AirLLM" /></a>&nbsp;
+<a href="https://github.com/ggerganov/ggml"><img src="https://img.shields.io/badge/hardware-Format-GGUF-00C7B7?style=flat-square&logo=llvm&logoColor=white&labelColor=1a1a2e" alt="GGUF" /></a>&nbsp;
+<a href="https://huggingface.co"><img src="https://img.shields.io/badge/hardware-Models-HuggingFace-FFD21E?style=flat-square&logo=huggingface&logoColor=black&labelColor=1a1a2e" alt="HuggingFace" /></a>&nbsp;
+<a href="https://pywebview.flowrl.com"><img src="https://img.shields.io/badge/hardware-GUI-PyWebView-4FC08D?style=flat-square&logo=googlechrome&logoColor=white&labelColor=1a1a2e" alt="PyWebView" /></a>&nbsp;
+<a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/hardware-Protocol-MCP-8B5CF6?style=flat-square&logo=lightning&logoColor=white&labelColor=1a1a2e" alt="MCP" /></a>
 
 <br />
 <br />
 
 <!-- ═══════════════ FEATURE HIGHLIGHT BADGES ═══════════════ -->
 
-<img src="https://img.shields.io/badge/%F0%9F%94%92%20100%25%20Offline-No%20Telemetry-10B981?style=flat-square&labelColor=0d1117" alt="Offline" />&nbsp;
-<img src="https://img.shields.io/badge/%F0%9F%94%8F%20Code%20Signed-SMXF%20Certificate-6366F1?style=flat-square&labelColor=0d1117" alt="Signed" />&nbsp;
-<img src="https://img.shields.io/badge/%E2%9A%A1%20NVIDIA%20%2B%20AMD-GPU%20Offloading-F59E0B?style=flat-square&labelColor=0d1117" alt="GPU" />&nbsp;
-<img src="https://img.shields.io/badge/%F0%9F%A4%96%20Agentic-File%20System%20Tools-EC4899?style=flat-square&labelColor=0d1117" alt="Agentic" />&nbsp;
-<img src="https://img.shields.io/badge/%F0%9F%93%A6%20Pre--Built%20Venvs-Zero%20Download-06B6D4?style=flat-square&labelColor=0d1117" alt="Offline Install" />
+<img src="https://img.shields.io/badge/hardware-%F0%9F%94%92%20100%25%20Offline-No%20Telemetry-10B981?style=flat-square&labelColor=0d1117" alt="Offline" />&nbsp;
+<img src="https://img.shields.io/badge/hardware-%F0%9F%94%8F%20Code%20Signed-SMXF%20Certificate-6366F1?style=flat-square&labelColor=0d1117" alt="Signed" />&nbsp;
+<img src="https://img.shields.io/badge/hardware-%E2%9A%A1%20NVIDIA%20%2B%20AMD-GPU%20Offloading-F59E0B?style=flat-square&labelColor=0d1117" alt="GPU" />&nbsp;
+<img src="https://img.shields.io/badge/hardware-%F0%9F%A4%96%20Agentic-File%20System%20Tools-EC4899?style=flat-square&labelColor=0d1117" alt="Agentic" />&nbsp;
+<img src="https://img.shields.io/badge/hardware-%F0%9F%93%A6%20Pre--Built%20Venvs-Zero%20Download-06B6D4?style=flat-square&labelColor=0d1117" alt="Offline Install" />
 
 <br />
 
@@ -280,7 +281,7 @@ The installer **auto-detects your hardware**, extracts the right environment, ve
 
 ---
 
-### <img src="https://img.shields.io/badge/Option_A-Windows_EXE-0078D6?style=flat-square&logo=windows11&logoColor=white&labelColor=12121a" alt="Windows" /> &nbsp; Single-EXE Installer *(Recommended)*
+### <img src="https://img.shields.io/badge/hardware-Option_A-Windows_EXE-0078D6?style=flat-square&logo=windows11&logoColor=white&labelColor=12121a" alt="Windows" /> &nbsp; Single-EXE Installer *(Recommended)*
 
 ```powershell
 # Download and run — that's it.
@@ -306,7 +307,7 @@ The installer handles everything automatically — **no internet required:**
 
 ---
 
-### <img src="https://img.shields.io/badge/Option_B-Linux_Packages-FCC624?style=flat-square&logo=linux&logoColor=black&labelColor=12121a" alt="Linux" /> &nbsp; RPM / DEB Installer
+### <img src="https://img.shields.io/badge/hardware-Option_B-Linux_Packages-FCC624?style=flat-square&logo=linux&logoColor=black&labelColor=12121a" alt="Linux" /> &nbsp; RPM / DEB Installer
 
 ```bash
 # ── Fedora / RHEL ──────────────────────────
@@ -344,11 +345,12 @@ The red-themed tkinter GUI auto-detects your GPU (NVIDIA CUDA / AMD ROCm / CPU-o
 
 ---
 
-### <img src="https://img.shields.io/badge/Option_C-Developer_Setup-10B981?style=flat-square&logo=git&logoColor=white&labelColor=12121a" alt="Dev" /> &nbsp; From Source
+### <img src="https://img.shields.io/badge/hardware-Option_C-Developer_Setup-10B981?style=flat-square&logo=git&logoColor=white&labelColor=12121a" alt="Dev" /> &nbsp; From Source
 
 ```bash
 git clone https://github.com/Vikalp-Sharma/DarkMaxxer.git
 cd DarkMaxxer
+python -m venv venv
 
 # Windows
 .\venv\Scripts\activate
@@ -939,7 +941,7 @@ Published by **SMXF**
 
 <br />
 
-<a href="LICENSE"><img src="https://img.shields.io/badge/%20%20License-Proprietary-E10098?style=for-the-badge&logo=gnu-privacy-guard&logoColor=white&labelColor=12121a" alt="License" /></a>
+<a href="LICENSE"><img src="https://img.shields.io/badge/hardware-%20%20License-Proprietary-E10098?style=for-the-badge&logo=gnu-privacy-guard&logoColor=white&labelColor=12121a" alt="License" /></a>
 
 <br />
 <br />
