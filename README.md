@@ -23,7 +23,7 @@
 
 <!-- ═══════════════ PRIMARY BADGES ═══════════════ -->
 
-<a href="https://github.com/Vikalp-Sharma/DarkMaxxer/releases"><img src="https://img.shields.io/badge/hardware-%20%20Release-v3.0.0-6C63FF?style=for-the-badge&logo=github&logoColor=white&labelColor=12121a" alt="Release" /></a>&nbsp;
+<a href="https://github.com/Vikalp-Sharma/DarkMaxxer/releases"><img src="https://img.shields.io/badge/%20%20Release-v3.0.0-6C63FF?style=for-the-badge&logo=github&logoColor=white&labelColor=12121a" alt="Release" /></a>&nbsp;
 <a href="https://python.org"><img src="https://img.shields.io/badge/%20%20Python-3.10%E2%80%943.14-3776AB?style=for-the-badge&logo=python&logoColor=white&labelColor=12121a" alt="Python" /></a>&nbsp;
 <a href="LICENSE"><img src="https://img.shields.io/badge/%20%20License-Proprietary-E10098?style=for-the-badge&logo=gnu-privacy-guard&logoColor=white&labelColor=12121a" alt="License" /></a>
 
