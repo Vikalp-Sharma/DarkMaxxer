@@ -60,13 +60,16 @@ def detect_gpu():
     try:
         lspci = subprocess.check_output(
             ["lspci", "-nn"], stderr=subprocess.STDOUT, text=True).lower()
-        # Find lines with 'vga', '3d', or 'display' to avoid mistaking AMD CPU/Host Bridge for AMD GPU
+        
+        found_amd = False
         for line in lspci.splitlines():
             if "vga" in line or "3d" in line or "display" in line:
                 if "nvidia" in line:
                     return "nvidia"
                 if "amd" in line or "radeon" in line:
-                    return "amd"
+                    found_amd = True
+        if found_amd:
+            return "amd"
     except Exception:
         pass
     return "none"
@@ -621,9 +624,9 @@ class DarkMaxxerSetup:
 
             # Gain write permissions unconditionally when running installer
             import sys, subprocess
-            sudo_cmd = "sudo" if sys.stdout.isatty() else "pkexec"
-            self._append_log(f"Requesting permissions to extract via {sudo_cmd}…")
-            subprocess.run([sudo_cmd, "chown", "-R", f"{os.getuid()}:{os.getgid()}", APP_DIR], check=False)
+            sudo_cmd = ["sudo", "-n"] if sys.stdout.isatty() else ["pkexec"]
+            self._append_log(f"Requesting permissions to extract via {sudo_cmd[0]}…")
+            subprocess.run(sudo_cmd + ["chown", "-R", f"{os.getuid()}:{os.getgid()}", APP_DIR], check=False)
 
             # Remove old venv if exists
             if os.path.isdir(VENV_DIR):
@@ -930,9 +933,7 @@ class DarkMaxxerSetup:
         self.root.after(400, self._begin_install)
 
     def _on_close(self):
-        """Handle window close — trigger full uninstall if incomplete."""
-        if not self.finished and not self.failed:
-            self._trigger_uninstall()
+        """Handle window close — exit cleanly."""
         self.finished = True
         self.failed = True
         try:
@@ -1051,14 +1052,6 @@ def run_terminal_install():
     except Exception as e:
         print(f"{C} ERROR: {e}")
         return 1
-    finally:
-        marker = os.path.join(VENV_DIR, ".setup_complete")
-        if os.path.isdir(VENV_DIR) and not os.path.exists(marker):
-            try:
-                import shutil
-                shutil.rmtree(VENV_DIR, ignore_errors=True)
-            except Exception:
-                pass
 
 
 # ╔════════════════════════════════════════════════════════════╗

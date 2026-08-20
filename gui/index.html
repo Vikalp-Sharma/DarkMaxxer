@@ -3,9 +3,8 @@
 <meta content="width=device-width, initial-scale=1.0" name="viewport">
 <title>DarkMaxxer IDE - Empty Workspace</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script id="tailwind-config">
         tailwind.config = {
             darkMode: "class",
@@ -336,7 +335,7 @@
 <nav class="hidden md:flex gap-lg">
 <a class="text-on-surface-variant font-label-md text-label-md hover:text-primary transition-colors duration-300 cursor-pointer active:scale-95 transition-transform" onclick="openSpaOverlay('models.html')">Models</a>
 <a class="text-primary border-b-2 border-primary pb-1 font-label-md text-label-md hover:text-primary transition-colors duration-300 cursor-pointer active:scale-95 transition-transform" href="#" onclick="return false;">Editor</a>
-<a class="text-on-surface-variant font-label-md text-label-md hover:text-primary transition-colors duration-300 cursor-pointer active:scale-95 transition-transform" onclick="toggleTerminalPopout(); return false;" href="#" onclick="return false;">Terminal</a>
+<a class="text-on-surface-variant font-label-md text-label-md hover:text-primary transition-colors duration-300 cursor-pointer active:scale-95 transition-transform" onclick="toggleTerminalPopout(); return false;" href="#">Terminal</a>
 
 </nav>
 </div>
@@ -436,7 +435,7 @@
 <div class="p-sm border-t border-outline-variant/10">
 <div class="flex items-center bg-surface-container-highest/50 rounded-md px-sm py-xs border border-outline-variant/30 focus-within:border-secondary transition-colors">
 <span class="text-secondary font-mono text-xs mr-2">&gt;</span>
-<input class="bg-transparent border-none text-xs font-mono text-on-surface focus:ring-0 w-full placeholder:text-on-surface-variant/30" placeholder="Enter command..." type="text">
+<input id="terminal-input" onkeypress="if(event.key === 'Enter') { if(window.pywebview && window.pywebview.api) { pywebview.api.run_terminal_command(this.value); this.value=''; } }" class="bg-transparent border-none text-xs font-mono text-on-surface focus:ring-0 w-full placeholder:text-on-surface-variant/30" placeholder="Enter command..." type="text">
 </div>
 </div>
 </div>
@@ -830,7 +829,8 @@
                                     
                                     if ((now - logTime) < 10000 && (now - logTime) >= -10000) {
                                         isToolRunning = true;
-                                        if (activityText) activityText.innerText = log.split(']')[1].substring(0, 40) + '...';
+                                        const cleanLog = log.replace(/<[^>]*>?/gm, '');
+                                        if (activityText) activityText.innerText = (cleanLog.includes(']') ? cleanLog.split(']')[1] : cleanLog).substring(0, 40) + '...';
                                         break;
                                     }
                                 }
@@ -1473,7 +1473,7 @@
         }
     });
 
-    window.showLoading = function(text) {
+    window.showLoading = function(msg) {
         if (!msg) return;
         let container = document.getElementById('top-error-container');
         if (!container) {
@@ -1854,13 +1854,14 @@
         let escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         
         // Step 1: Extract and render code blocks (``` syntax)
+        const codeBlocks = [];
         const codeBlockRegex = /\n*```([a-zA-Z0-9_+\-#.]*)\n?([\s\S]*?)```\n*/g;
         escaped = escaped.replace(codeBlockRegex, (match, lang, codeContent) => {
             const language = (lang || "code").trim().toLowerCase() || "code";
             const cleanCode = codeContent.replace(/\s+$/, "");
             const rawCode = cleanCode.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
-            const encoded = encodeURIComponent(rawCode);
-            return '<div class="bg-[#120a1c]/90 border border-purple-500/30 rounded-xl my-3 overflow-hidden shadow-2xl shadow-purple-950/40 text-left font-sans flex flex-col">' +
+            const encoded = encodeURIComponent(rawCode).replace(/'/g, "%27");
+            const html = '<div class="bg-[#120a1c]/90 border border-purple-500/30 rounded-xl my-3 overflow-hidden shadow-2xl shadow-purple-950/40 text-left font-sans flex flex-col">' +
                 '<div class="flex items-center justify-between px-4 py-2.5 bg-[#1c112b]/95 border-b border-purple-500/25 text-xs font-mono text-purple-200/90 select-none backdrop-blur-md">' +
                     '<span class="flex items-center gap-1.5 font-bold text-sm tracking-wide text-purple-100">' +
                         '<span class="material-symbols-outlined text-sm text-purple-400">terminal</span>' + 
@@ -1873,6 +1874,8 @@
                 '</div>' +
                 '<pre class="p-4 overflow-x-auto text-xs font-mono leading-relaxed m-0 text-purple-100/90 bg-[#0d0714]/80 select-text" style="scrollbar-width: thin; scrollbar-color: rgba(168,85,247,0.3) transparent;"><code>' + cleanCode + '</code></pre>' +
             '</div>';
+            codeBlocks.push(html);
+            return `__CODE_BLOCK_${codeBlocks.length - 1}__`;
         });
 
         // Step 2: Normalize newlines for whitespace-pre-wrap (browser natively handles \n)
@@ -1894,6 +1897,11 @@
 
         // Step 5: Render `inline code`
         escaped = escaped.replace(/`([^`]+)`/g, '<code class="bg-surface-variant/40 text-tertiary px-1.5 py-0.5 rounded text-xs font-mono">$1</code>');
+
+        // Restore code blocks
+        codeBlocks.forEach((html, i) => {
+            escaped = escaped.replace(`__CODE_BLOCK_${i}__`, html);
+        });
 
         return escaped;
     }
@@ -1918,6 +1926,12 @@
         `;
         document.body.appendChild(popup);
         requestAnimationFrame(() => popup.style.transform = "translateX(0)");
+        setTimeout(() => {
+            if (popup.parentNode) {
+                popup.style.transform = "translateX(120%)";
+                setTimeout(() => { if (popup.parentNode) popup.remove(); }, 500);
+            }
+        }, 5000);
     }
 
     function renderSubagents(subagents) {
@@ -2110,153 +2124,6 @@
     }
 
     // --- Settings ---
-    function showSettingsPanel(panelId) {
-        ['panel-preferences', 'panel-about', 'panel-license'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.classList.add('hidden');
-        });
-        const target = document.getElementById(panelId);
-        if (target) target.classList.remove('hidden');
-
-        ['tab-preferences', 'tab-about', 'tab-license'].forEach(id => {
-            const btn = document.getElementById(id);
-            if (!btn) return;
-            if (('panel-' + id.replace('tab-', '')) === panelId) {
-                btn.className = "w-full text-left px-md py-sm rounded-lg bg-secondary-container/30 text-secondary-fixed border-l-2 border-secondary font-label-md text-label-md transition-all flex items-center space-x-sm shadow-[0_0_20px_rgba(189,140,255,0.25)]";
-            } else {
-                btn.className = "w-full text-left px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-variant/20 hover:text-on-surface font-label-md text-label-md transition-all flex items-center space-x-sm border-l-2 border-transparent";
-            }
-        });
-    }
-
-    function loadSettings() {
-        if(!window.pywebview || !window.pywebview.api) return;
-        pywebview.api.get_settings().then(res => {
-            if(res.success && res.settings) {
-                const s = res.settings;
-                const toggles = {
-                    'toggle_local': s.local_inference !== undefined ? s.local_inference : true,
-                    'toggle_gpu': s.gpu_acceleration !== undefined ? s.gpu_acceleration : true,
-                    'toggle_memory': s.context_memory !== undefined ? s.context_memory : true
-                };
-                Object.entries(toggles).forEach(([id, val]) => {
-                    const el = document.getElementById(id);
-                    if (el) el.checked = val;
-                });
-            }
-        });
-    }
-
-    function saveSettings() {
-        const local_inf = document.getElementById('toggle_local') ? document.getElementById('toggle_local').checked : true;
-        const gpu_acc = document.getElementById('toggle_gpu') ? document.getElementById('toggle_gpu').checked : true;
-        const ctx_mem = document.getElementById('toggle_memory') ? document.getElementById('toggle_memory').checked : true;
-
-        const new_settings = {
-            local_inference: local_inf,
-            gpu_acceleration: gpu_acc,
-            context_memory: ctx_mem
-        };
-
-        if(window.pywebview && window.pywebview.api) {
-            pywebview.api.save_settings(new_settings).then(res => {
-                if(res.success) {
-                    const btn = document.querySelector('button[onclick="saveSettings()"]');
-                    if(btn) {
-                        const oldText = btn.innerText;
-                        btn.innerText = '✓ Saved successfully!';
-                        setTimeout(() => { btn.innerText = oldText; }, 2000);
-                    }
-                } else {
-                    alert("Failed to save: " + (res.error || "Unknown error"));
-                }
-            });
-        }
-    }
-
-    function resetSettings() {
-        const defaults = { local_inference: true, gpu_acceleration: true, context_memory: true };
-        if(window.pywebview && window.pywebview.api) {
-            pywebview.api.save_settings(defaults).then(res => {
-                if(res.success) {
-                    loadSettings();
-                    const btn = document.querySelector('button[onclick="resetSettings()"]');
-                    if(btn) {
-                        const oldText = btn.innerText;
-                        btn.innerText = '✓ Reset!';
-                        setTimeout(() => { btn.innerText = oldText; }, 2000);
-                    }
-                }
-            });
-        }
-    }
-
-    function runDiagnostics() {
-        const box = document.getElementById('diag-results');
-        const btn = document.getElementById('run-diag-btn');
-        if(!box || !window.pywebview || !window.pywebview.api) return;
-        if(btn) btn.innerText = "⏳ Running Diagnostics...";
-        pywebview.api.run_diagnostics().then(res => {
-            if(btn) btn.innerText = "✓ System Diagnosed";
-            box.classList.remove('hidden');
-            box.innerHTML = `
-                <div class="grid grid-cols-2 gap-sm text-xs font-mono">
-                    <div class="p-sm rounded bg-surface-container-lowest/50 border border-outline-variant/10"><span class="text-tertiary font-bold">OS:</span> ${res.os}</div>
-                    <div class="p-sm rounded bg-surface-container-lowest/50 border border-outline-variant/10"><span class="text-tertiary font-bold">Python:</span> ${res.python}</div>
-                    <div class="p-sm rounded bg-surface-container-lowest/50 border border-outline-variant/10"><span class="text-tertiary font-bold">GPU / Device:</span> ${res.device}</div>
-                    <div class="p-sm rounded bg-surface-container-lowest/50 border border-outline-variant/10"><span class="text-tertiary font-bold">VRAM:</span> ${res.vram}</div>
-                    <div class="col-span-2 p-sm rounded bg-surface-container-lowest/50 border border-outline-variant/10 truncate"><span class="text-tertiary font-bold">Workspace:</span> ${res.workspace}</div>
-                    <div class="col-span-2 p-sm rounded bg-surface-container-lowest/50 border border-outline-variant/10 truncate"><span class="text-tertiary font-bold">Active Model:</span> ${res.model_path}</div>
-                </div>
-            `;
-            setTimeout(() => { if(btn) btn.innerText = "▶ Run System Diagnostics"; }, 3000);
-        });
-    }
-
-    function verifyWatermarks() {
-        const box = document.getElementById('wm-results');
-        const btn = document.getElementById('run-wm-btn');
-        if(!box || !window.pywebview || !window.pywebview.api) return;
-        if(btn) btn.innerText = "⏳ Auditing Integrity...";
-        pywebview.api.verify_watermarks().then(res => {
-            if(btn) btn.innerText = "✓ Audit Complete";
-            box.classList.remove('hidden');
-            let items = res.files.map(f => `
-                <div class="flex justify-between items-center py-xs border-b border-outline-variant/10 last:border-none">
-                    <span class="font-mono text-xs">${f.file}</span>
-                    <span class="text-xs px-sm py-0.5 rounded ${f.status === 'Passed' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-red-500/20 text-red-300 border border-red-500/30'}">${f.status}</span>
-                </div>
-            `).join('');
-            box.innerHTML = `
-                <div class="p-sm rounded bg-surface-container-lowest/50 border border-outline-variant/10 text-xs font-mono space-y-xs">
-                    <div class="font-bold text-sm ${res.all_passed ? 'text-emerald-400' : 'text-red-400'} mb-sm">${res.all_passed ? '✓ 100% Watermark Integrity Confirmed' : '⚠ Audit Warning Found'}</div>
-                    ${items}
-                </div>
-            `;
-            setTimeout(() => { if(btn) btn.innerText = "🛡 Verify Watermark Integrity"; }, 3000);
-        });
-    }
-
-    function clearCache() {
-        if(!confirm("Are you sure you want to clear the active conversation memory?")) return;
-        if(window.pywebview && window.pywebview.api) {
-            pywebview.api.clear_all_history().then(res => {
-                if(res.success) {
-                    alert("✓ Conversation memory cache cleared successfully.");
-                } else {
-                    alert("Error clearing cache: " + res.error);
-                }
-            });
-        }
-    }
-
-    function openWorkspace() {
-        if(window.pywebview && window.pywebview.api) {
-            pywebview.api.open_workspace_in_explorer().then(res => {
-                if(!res.success) alert("Could not open workspace: " + res.error);
-            });
-        }
-    }
 </script>
 
 </body></html>

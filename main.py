@@ -15,10 +15,15 @@ def _fatal_crash(e):
 try:
     def _ensure_local_site_packages():
         _here = os.path.dirname(os.path.abspath(__file__))
+        _py_ver = f"python3.{sys.version_info.minor}" if hasattr(sys, 'version_info') else "python3.10"
         _cands = [
             os.path.join(_here, "venv", "Lib", "site-packages"),
+            os.path.join(_here, "venv", "lib", _py_ver, "site-packages"),
+            os.path.join(_here, "venv", "lib64", _py_ver, "site-packages"),
             os.path.join(_here, "..", "venv", "Lib", "site-packages"),
+            os.path.join(_here, "..", "venv", "lib", _py_ver, "site-packages"),
             os.path.join(os.path.expanduser("~"), "DarkMaxxer", "venv", "Lib", "site-packages"),
+            os.path.join(os.path.expanduser("~"), "DarkMaxxer", "venv", "lib", _py_ver, "site-packages"),
             os.path.join(os.getenv("LOCALAPPDATA", ""), "Low", "DarkMaxxer", "venv", "Lib", "site-packages"),
             os.path.join(os.getenv("APPDATA", ""), "DarkMaxxer", "venv", "Lib", "site-packages"),
         ]
@@ -154,7 +159,7 @@ def _install_dependencies():
             res = subprocess.run(
                 [pip_python, "-m", "pip", "show", p],
                 capture_output=True, text=True, timeout=30,
-                creationflags=subprocess.CREATE_NO_WINDOW,
+                creationflags=_creationflags,
                 env=_pip_env
             )
             if res.returncode != 0:
@@ -431,8 +436,10 @@ class Api:
             if not self.active_conv_id:
                 self.active_conv_id = self.memory.create_conversation("Global Workspace")
                 self.config.update_config("active_conv_id", self.active_conv_id)
+            if hasattr(self.memory, 'set_conversation_data'):
+                self.memory.set_conversation_data(self.active_conv_id, "workspace_dir", root)
+                self.memory.set_conversation_data(self.active_conv_id, "workspace_mode", "global")
             self._init_file_ops(self.active_conv_id)
-            self.file_ops = FileOpsServer(root)
             self.file_ops.global_mode = True
             self._log_terminal(f"Global workspace mode enabled — root: {root}")
             return {"success": True, "path": root, "mode": "global"}
@@ -530,16 +537,17 @@ class Api:
             except Exception:
                 pass
         
-        if self.active_conv_id:
+        gen_conv_id = getattr(self, "generating_conv_id", self.active_conv_id)
+        if gen_conv_id:
             try:
-                hist = self.memory.get_history(self.active_conv_id)
+                hist = self.memory.get_history(gen_conv_id)
                 popped_prompt = None
                 # Purge pending incomplete user prompts & paused tags from history!
                 while hist and hist[-1].get("role") == "user":
                     popped_prompt = hist.pop().get("content", "")
                 while hist and hist[-1].get("role") == "assistant" and "[Generation paused" in str(hist[-1].get("content", "")):
                     hist.pop()
-                self.memory.save_history(self.active_conv_id, hist)
+                self.memory.save_history(gen_conv_id, hist)
             except Exception:
                 pass
         self._log_terminal("Generation paused by user.")
@@ -575,11 +583,11 @@ class Api:
                     context_files = "\n=== ACTIVE WORKSPACE & FILE SYSTEM CONTEXT ===\n"
                     context_files += f"Root Directory Path: {self.file_ops.base_dir}\n"
                     if folders:
-                        context_files += f"All Workspace Subfolders: {', '.join(folders[:200])}\n"
+                        context_files += f"All Workspace Subfolders: {', '.join([str(f.get('name', f)) if isinstance(f, dict) else str(f) for f in folders[:200]])}\n"
                     else:
                         context_files += "All Workspace Subfolders: (No subfolders)\n"
                     if files:
-                        context_files += f"All Available Workspace Files (to Read, Edit, or Delete): {', '.join(files[:400])}\n"
+                        context_files += f"All Available Workspace Files (to Read, Edit, or Delete): {', '.join([str(f.get('name', f)) if isinstance(f, dict) else str(f) for f in files[:400]])}\n"
                     else:
                         context_files += "All Available Workspace Files: (Workspace folder is currently empty)\n"
                     context_files += "==============================================\n"
@@ -766,13 +774,12 @@ class Api:
                 self._log_terminal("Generation cancelled right before saving history (discarding response).")
                 return
 
-            if use_memory:
-                try:
-                    latest_history = self.memory.get_history(conv_id)
-                except Exception:
-                    latest_history = history
-                latest_history.append({"role": "assistant", "content": response})
-                self.memory.save_history(conv_id, latest_history)
+            try:
+                latest_history = self.memory.get_history(conv_id)
+            except Exception:
+                latest_history = history
+            latest_history.append({"role": "assistant", "content": response})
+            self.memory.save_history(conv_id, latest_history)
 
             # Memory cleanup after generation (in background to avoid blocking UI update)
             def _cleanup():
@@ -794,13 +801,12 @@ class Api:
                 self._log_terminal("Generation was cancelled.")
                 return
             self._log_terminal(f"Generation error: {str(e)}")
-            if use_memory:
-                try:
-                    latest_history = self.memory.get_history(conv_id)
-                except Exception:
-                    latest_history = history
-                latest_history.append({"role": "assistant", "content": f"[Error generating response: {str(e)}]"})
-                self.memory.save_history(conv_id, latest_history)
+            try:
+                latest_history = self.memory.get_history(conv_id)
+            except Exception:
+                latest_history = history
+            latest_history.append({"role": "assistant", "content": f"[Error generating response: {str(e)}]"})
+            self.memory.save_history(conv_id, latest_history)
         finally:
             if self._current_gen_id == gen_id:
                 self.is_generating = False
@@ -849,7 +855,8 @@ class Api:
             if not tools_executed and user_prompt:
                 import re as _re
                 user_fn_match = _re.search(r'\b([a-zA-Z0-9_][a-zA-Z0-9_\-]*\.(?:py|js|html|css|json|txt|md|sh|c|cpp|rs|go|java|ts|tsx|jsx))\b', str(user_prompt), _re.IGNORECASE)
-                if user_fn_match:
+                intent_match = _re.search(r'\b(create|write|make|generate|save|update)\b', str(user_prompt), _re.IGNORECASE)
+                if user_fn_match and intent_match:
                     target_fname = user_fn_match.group(1)
                     code_fences = _re.findall(r'```([a-zA-Z]*)\n(.*?)```', response_text, _re.DOTALL)
                     if code_fences:
@@ -928,8 +935,9 @@ class Api:
             elif action == "READ_FILE":
                 path = m.group(1).strip()
                 try:
+                    content = self.file_ops.read_file(path)
                     self._log_terminal(f"Read file: {path}")
-                    injection = f"\n✅ Read file: **{path}**\n"
+                    injection = f"\n✅ Read file: **{path}**\n```\n{content}\n```\n"
                 except Exception as e:
                     self._log_terminal(f"Error reading {path}: {e}")
                     injection = f"\n❌ Read failed: {str(e)}\n"
@@ -939,17 +947,19 @@ class Api:
                 try:
                     self._log_terminal(f"Running command: {cmd.splitlines()[0] if cmd else ''}...")
                     
+                    import platform
+                    is_win = platform.system() == "Windows"
                     cwd = self.file_ops.base_dir if self.file_ops else None
                     process = subprocess.Popen(
                         cmd,
                         shell=True,
-                        executable='/bin/bash',
+                        executable=None if is_win else '/bin/bash',
                         stdout=subprocess.PIPE,
                         stderr=subprocess.STDOUT,
                         cwd=cwd,
                         text=True
                     )
-                    stdout, _ = process.communicate()
+                    stdout, _ = process.communicate(timeout=60)
                     out_str = stdout if stdout else ""
                     self._last_cmd_output = out_str.strip()[:2000]
                     self._log_terminal(f"Command Output:\n{self._last_cmd_output[:200]}")
@@ -967,7 +977,11 @@ class Api:
                     import json as _json
                     args = _json.loads(args_str) if args_str else {}
                     self._log_terminal(f"MCP call: {server}.{tool_name}")
-                    injection = f"\n✅ MCP Tool Called: **{server}.{tool_name}**\n"
+                    if server in self.mcp_clients and self.mcp_clients[server].is_connected:
+                        mcp_res = self.mcp_clients[server].call_tool(tool_name, args)
+                        injection = f"\n✅ MCP Tool Called: **{server}.{tool_name}**\nResult: {mcp_res}\n"
+                    else:
+                        injection = f"\n❌ MCP Call failed: Server '{server}' not connected\n"
                 except Exception as e:
                     self._log_terminal(f"Error calling MCP: {e}")
                     injection = f"\n❌ MCP Call failed: {str(e)}\n"
@@ -1520,7 +1534,8 @@ if __name__ == '__main__':
             with open(start_html, 'w', encoding='utf-8') as f:
                 f.write("<html><body><h1>DarkMaxxer GUI missing. Ensure gui/index.html and models.html are present.</h1></body></html>")
 
-        start_html_url = f"file:///{os.path.abspath(start_html).replace('\\', '/')}"
+        start_html_abs = os.path.abspath(start_html).replace('\\', '/')
+        start_html_url = f"file://{start_html_abs}" if start_html_abs.startswith('/') else f"file:///{start_html_abs}"
 
         # Generate splash screen with dark background and spinning logo
         _splash_path = os.path.join(gui_dir, 'splash.html')
@@ -1577,7 +1592,8 @@ if __name__ == '__main__':
             _splash_path = os.path.join(_fallback_dir, 'splash.html')
             with open(_splash_path, 'w', encoding='utf-8') as _sf:
                 _sf.write(_splash_html)
-        _splash_url = 'file:///' + os.path.abspath(_splash_path).replace(os.sep, '/')
+        _splash_abs = os.path.abspath(_splash_path).replace(os.sep, '/')
+        _splash_url = f"file://{_splash_abs}" if _splash_abs.startswith('/') else f"file:///{_splash_abs}"
 
         # Resolve icon path BEFORE any windows are created
         logo_path = os.path.join(script_dir, "gui", "logo_highres.ico")

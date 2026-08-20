@@ -29,7 +29,7 @@ class MCPClient:
             cmd = [self.command] + self.args
             self.process = subprocess.Popen(
                 cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE, env=full_env,
+                stderr=subprocess.DEVNULL, env=full_env,
                 bufsize=0, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0)
             )
             # Send initialize request
@@ -70,6 +70,8 @@ class MCPClient:
                 "name": tool_name,
                 "arguments": arguments or {}
             }, timeout=30)
+            if result is None:
+                return {"error": "Request timed out or failed"}
             if result and "content" in result:
                 # Extract text from content array
                 texts = []
@@ -104,19 +106,31 @@ class MCPClient:
             # Read response with timeout
             deadline = time.time() + timeout
             buffer = ""
+            import selectors
+            sel = selectors.DefaultSelector()
+            sel.register(self.process.stdout, selectors.EVENT_READ)
+            
             while time.time() < deadline:
                 if self.process.poll() is not None:
                     self._connected = False
                     return None
                 try:
-                    self.process.stdout.settimeout = timeout
-                    line = self.process.stdout.readline()
-                    if not line:
-                        time.sleep(0.05)
+                    events = sel.select(timeout=0.1)
+                    if not events:
                         continue
-                    buffer += line.decode("utf-8", errors="replace")
+                    
+                    data = os.read(self.process.stdout.fileno(), 4096)
+                    if not data:
+                        continue
+                        
+                    buffer += data.decode("utf-8", errors="replace")
+                    
                     # Try to parse each complete line
-                    for json_line in buffer.strip().split("\n"):
+                    lines = buffer.split("\n")
+                    # Keep the last element as the new buffer (might be partial or empty)
+                    buffer = lines.pop()
+                    
+                    for json_line in lines:
                         json_line = json_line.strip()
                         if not json_line:
                             continue
@@ -127,10 +141,11 @@ class MCPClient:
                                     return None
                                 return resp.get("result")
                         except json.JSONDecodeError:
+                            # if it failed to decode, it was malformed, skip
                             continue
-                    buffer = ""
                 except Exception:
                     time.sleep(0.05)
+            sel.close()
             return None
 
     def _send_notification(self, method, params):
@@ -195,8 +210,8 @@ class FileOpsServer:
         """Resolve a relative path safely within the base directory."""
         if self.global_mode and os.path.isabs(rel_path):
             return rel_path
-        full = os.path.normpath(os.path.join(self.base_dir, rel_path))
-        if not full.startswith(self.base_dir):
+        full = os.path.abspath(os.path.join(self.base_dir, rel_path))
+        if os.path.commonpath([full, self.base_dir]) != self.base_dir:
             raise ValueError(f"Path traversal blocked: '{rel_path}' escapes workspace.")
         return full
 
@@ -247,7 +262,7 @@ class FileOpsServer:
                     continue
                 full = os.path.join(current_dir, name)
                 rel = (rel_prefix + '/' + name) if rel_prefix else name
-                if os.path.isdir(full):
+                if os.path.isdir(full) and not os.path.islink(full):
                     base_lower = name.lower()
                     if base_lower in skip_dirs or base_lower.endswith('.egg-info'):
                         continue
