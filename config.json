@@ -1,1 +1,12 @@
-{}
+{
+  "settings": {
+    "local_inference": true,
+    "gpu_acceleration": true,
+    "context_memory": true
+  },
+  "ai_path": null,
+  "active_conv_id": null,
+  "active_workspace_dir": null,
+  "workspace_mode": "local",
+  "active_sidebar_tab": "chats"
+}

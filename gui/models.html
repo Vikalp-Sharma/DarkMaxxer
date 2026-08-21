@@ -325,7 +325,7 @@
             input.addEventListener('keypress', function (e) {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
-                    sendPrompt();
+                    if (typeof sendPrompt === 'function') sendPrompt();
                 }
             });
         }
@@ -417,8 +417,8 @@
                 window._lastHistoryLen = (res.history && Array.isArray(res.history)) ? res.history.length : 0;
                 activateWorkspace();
                 if(typeof switchSidebarTab === 'function') switchSidebarTab('chats');
-                renderChat(res.history || []);
-                refreshFileTree();
+                if (typeof renderChat === 'function') renderChat(res.history || []);
+                if (typeof refreshFileTree === 'function') refreshFileTree();
                 refreshConversations();
                 appendTerminal("Opened conversation: " + id.substring(0, 8) + "...");
             }
@@ -537,7 +537,7 @@
 
     // --- Model Selection ---
     function browseModelFolder() {
-        pywebview.api.select_model_folder().then(res => {
+        pywebview.api.browse_model_folder().then(res => {
             if(res.success) {
                 const el = document.getElementById('model-folder-path');
                 if(el) el.value = res.path;
@@ -555,7 +555,7 @@
     }
 
     function browseModelFile() {
-        pywebview.api.select_model_file().then(res => {
+        pywebview.api.browse_model_folder().then(res => {
             if(res.success) {
                 const el = document.getElementById('model-folder-path');
                 if(el) el.value = res.path;
@@ -571,7 +571,6 @@
             alert("Error: " + err);
         });
     }
-
     function loadModelDirectly() {
         const pathEl = document.getElementById('model-folder-path');
         const path = pathEl ? pathEl.value : '';
@@ -601,46 +600,45 @@
             loadModal.classList.remove('hidden');
             loadModal.style.display = 'flex';
         }
-        if (loadModalStatus) loadModalStatus.innerText = "Loading " + path.split(/[\\/]/).pop() + "...";
-
-        setTimeout(() => {
-            pywebview.api.load_model(path).then(loadRes => {
-                window.isModelLoading = false;
-                const modalEl = document.getElementById('loading-modal');
-                if (modalEl) {
-                    modalEl.classList.add('hidden');
-                    modalEl.style.display = 'none';
-                }
-                if(loadRes.success) {
-                    if (statusEl) statusEl.innerText = "✓ Active Model: " + path.split(/[\\/]/).pop();
-                    if (window.parent && window.parent.postMessage) {
-                        window.parent.postMessage('closeSpaOverlay', '*');
-                    } else if (window.location.pathname.includes('models.html')) {
-                        window.location.href = "index.html";
-                    } else {
-                        const modal = document.getElementById('first-run-modal');
-                        if(modal) modal.classList.add('hidden');
-                    }
+        if (loadModalStatus) loadModalStatus.innerText = "Loading " + path.split(/[\\\/]/).pop() + "...";
+        // load_model runs synchronously and returns the result directly
+        pywebview.api.load_model(path, "").then(loadRes => {
+            window.isModelLoading = false;
+            const modalEl = document.getElementById('loading-modal');
+            if (modalEl) {
+                modalEl.classList.add('hidden');
+                modalEl.style.display = 'none';
+            }
+            if(loadRes.success) {
+                if (statusEl) statusEl.innerText = "✓ Active Model: " + path.split(/[\\/]/).pop();
+                if (window.parent && window.parent.postMessage) {
+                    window.parent.postMessage('closeSpaOverlay', '*');
+                } else if (window.location.pathname.includes('models.html')) {
+                    window.location.href = "index.html";
                 } else {
-                    if (statusEl) {
-                        statusEl.innerText = "Error: " + (loadRes.error || "Unknown error");
-                        statusEl.classList.add('text-error');
-                    }
+                    const modal = document.getElementById('first-run-modal');
+                    if(modal) modal.classList.add('hidden');
                 }
-            }).catch(err => {
-                window.isModelLoading = false;
-                const modalEl = document.getElementById('loading-modal');
-                if (modalEl) {
-                    modalEl.classList.add('hidden');
-                    modalEl.style.display = 'none';
-                }
+            } else {
                 if (statusEl) {
-                    statusEl.innerText = "Exception: " + err;
+                    statusEl.innerText = "Error: " + (loadRes.error || "Unknown error");
                     statusEl.classList.add('text-error');
                 }
-            });
-        }, 100);
-    }
+            }
+        }).catch(err => {
+            window.isModelLoading = false;
+            const modalEl = document.getElementById('loading-modal');
+            if (modalEl) {
+                modalEl.classList.add('hidden');
+                modalEl.style.display = 'none';
+            }
+            if (statusEl) {
+                statusEl.innerText = "Exception: " + err;
+                statusEl.classList.add('text-error');
+            }
+        });
+    }   
+
 
 
 </script>

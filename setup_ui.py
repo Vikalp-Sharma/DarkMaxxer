@@ -166,6 +166,11 @@ class DarkMaxxerSetup:
         self.finished    = False
         self.failed      = False
 
+        self.logo_img = None
+        self.pending_logs = []
+        self.pending_logs_lock = threading.Lock()
+        self.root.after(100, self._flush_logs)
+
         # Bar dimensions
         self.bar_w  = self.W - 80
         self.bar_h  = 20
@@ -488,16 +493,10 @@ class DarkMaxxerSetup:
         return ("MB" in text or "kB" in text or "B/s" in text or "eta" in text or "%" in text) and ("/" in text or "%" in text)
 
     def _append_log(self, text):
-        if not hasattr(self, 'pending_logs'):
-            self.pending_logs = []
-            self.pending_logs_lock = threading.Lock()
-            self.root.after(100, self._flush_logs)
         with self.pending_logs_lock:
             self.pending_logs.append(text)
 
     def _flush_logs(self):
-        if not hasattr(self, 'pending_logs'):
-            return
             
         with self.pending_logs_lock:
             if not self.pending_logs:
@@ -624,7 +623,7 @@ class DarkMaxxerSetup:
 
             # Gain write permissions unconditionally when running installer
             import sys, subprocess
-            sudo_cmd = ["sudo", "-n"] if sys.stdout.isatty() else ["pkexec"]
+            sudo_cmd = ["sudo", "-n"] if sys.stdout and sys.stdout.isatty() else ["pkexec"]
             self._append_log(f"Requesting permissions to extract via {sudo_cmd[0]}…")
             subprocess.run(sudo_cmd + ["chown", "-R", f"{os.getuid()}:{os.getgid()}", APP_DIR], check=False)
 

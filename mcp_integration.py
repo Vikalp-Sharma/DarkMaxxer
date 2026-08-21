@@ -5,6 +5,7 @@ import json
 import subprocess
 import threading
 import time
+import selectors
 
 
 class MCPClient:
@@ -20,6 +21,7 @@ class MCPClient:
         self._lock = threading.Lock()
         self._request_id = 0
         self._connected = False
+        self._buffer = ""
 
     def connect(self, timeout=10):
         """Start the MCP server subprocess and initialize the connection."""
@@ -46,7 +48,7 @@ class MCPClient:
                 self._discover_tools()
                 return True
             return False
-        except Exception as e:
+        except Exception:
             self._connected = False
             return False
 
@@ -54,7 +56,7 @@ class MCPClient:
         """Fetch available tools from the MCP server."""
         try:
             result = self._send_request("tools/list", {})
-            if result and "tools" in result:
+            if isinstance(result, dict) and "tools" in result:
                 self.tools = result["tools"]
             elif isinstance(result, list):
                 self.tools = result
@@ -72,14 +74,18 @@ class MCPClient:
             }, timeout=30)
             if result is None:
                 return {"error": "Request timed out or failed"}
-            if result and "content" in result:
+            if isinstance(result, dict) and "content" in result:
                 # Extract text from content array
                 texts = []
-                for item in result["content"]:
-                    if isinstance(item, dict) and item.get("type") == "text":
-                        texts.append(item.get("text", ""))
-                    elif isinstance(item, str):
-                        texts.append(item)
+                content = result["content"]
+                if isinstance(content, list):
+                    for item in content:
+                        if isinstance(item, dict) and item.get("type") == "text":
+                            texts.append(item.get("text", ""))
+                        elif isinstance(item, str):
+                            texts.append(item)
+                elif isinstance(content, str):
+                    texts.append(content)
                 return {"success": True, "result": "\n".join(texts) if texts else str(result)}
             return {"success": True, "result": str(result) if result else "OK"}
         except Exception as e:
@@ -105,48 +111,47 @@ class MCPClient:
 
             # Read response with timeout
             deadline = time.time() + timeout
-            buffer = ""
-            import selectors
-            sel = selectors.DefaultSelector()
-            sel.register(self.process.stdout, selectors.EVENT_READ)
             
-            while time.time() < deadline:
-                if self.process.poll() is not None:
-                    self._connected = False
-                    return None
-                try:
-                    events = sel.select(timeout=0.1)
-                    if not events:
-                        continue
-                    
-                    data = os.read(self.process.stdout.fileno(), 4096)
-                    if not data:
-                        continue
+            with selectors.DefaultSelector() as sel:
+                sel.register(self.process.stdout, selectors.EVENT_READ)
+                
+                while time.time() < deadline:
+                    if self.process.poll() is not None:
+                        self._connected = False
+                        return None
+                    try:
+                        events = sel.select(timeout=0.1)
+                        if not events:
+                            continue
                         
-                    buffer += data.decode("utf-8", errors="replace")
-                    
-                    # Try to parse each complete line
-                    lines = buffer.split("\n")
-                    # Keep the last element as the new buffer (might be partial or empty)
-                    buffer = lines.pop()
-                    
-                    for json_line in lines:
-                        json_line = json_line.strip()
-                        if not json_line:
-                            continue
-                        try:
-                            resp = json.loads(json_line)
-                            if resp.get("id") == req_id:
-                                if "error" in resp:
-                                    return None
-                                return resp.get("result")
-                        except json.JSONDecodeError:
-                            # if it failed to decode, it was malformed, skip
-                            continue
-                except Exception:
-                    time.sleep(0.05)
-            sel.close()
-            return None
+                        data = os.read(self.process.stdout.fileno(), 4096)
+                        if not data:
+                            self._connected = False
+                            return None
+                            
+                        self._buffer += data.decode("utf-8", errors="replace")
+                        
+                        # Try to parse each complete line
+                        lines = self._buffer.split("\n")
+                        # Keep the last element as the new buffer (might be partial or empty)
+                        self._buffer = lines.pop()
+                        
+                        for json_line in lines:
+                            json_line = json_line.strip()
+                            if not json_line:
+                                continue
+                            try:
+                                resp = json.loads(json_line)
+                                if resp.get("id") == req_id:
+                                    if "error" in resp:
+                                        return None
+                                    return resp.get("result")
+                            except json.JSONDecodeError:
+                                # if it failed to decode, it was malformed, skip
+                                continue
+                    except Exception:
+                        time.sleep(0.05)
+                return None
 
     def _send_notification(self, method, params):
         """Send a JSON-RPC notification (no response expected)."""
@@ -255,7 +260,7 @@ class FileOpsServer:
                 return
             try:
                 entries = sorted(os.listdir(current_dir))
-            except PermissionError:
+            except OSError:
                 return
             for name in entries:
                 if name.startswith('.') and name not in ('.env',):
@@ -317,9 +322,9 @@ class FileOpsServer:
     def delete_file(self, rel_path: str) -> dict:
         """Delete a file."""
         full = self._safe_path(rel_path)
-        if not os.path.exists(full):
+        if not os.path.lexists(full):
             raise FileNotFoundError(f"File not found: '{rel_path}'")
-        if os.path.isfile(full):
+        if os.path.islink(full) or os.path.isfile(full):
             os.remove(full)
         elif os.path.isdir(full):
             shutil.rmtree(full)
@@ -329,8 +334,8 @@ class FileOpsServer:
         """Rename / move a file within the workspace."""
         old_full = self._safe_path(old_path)
         new_full = self._safe_path(new_path)
-        if not os.path.exists(old_full):
+        if not os.path.lexists(old_full):
             raise FileNotFoundError(f"Source not found: '{old_path}'")
         os.makedirs(os.path.dirname(new_full), exist_ok=True)
-        os.rename(old_full, new_full)
+        shutil.move(old_full, new_full)
         return {"success": True, "old": old_path, "new": new_path}

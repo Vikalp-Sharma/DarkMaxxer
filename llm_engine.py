@@ -115,14 +115,6 @@ class LLMEngine:
             if self.current_model_id == model_id and self.model is not None:
                 return  # Already loaded
             
-            if self.model is not None:
-                del self.model
-                self.model = None
-                self._cached_tokenizer = None
-                self._empty_cache()
-                import gc
-                gc.collect()
-            
             import os
             if not os.path.exists(model_id):
                 raise ValueError(f"Local model folder or file not found: '{model_id}'. Remote model downloading has been disabled per strict offline security policy.")
@@ -240,7 +232,7 @@ class LLMEngine:
                         gguf_dir,
                         gguf_file=gguf_filename,
                         device_map="auto",
-                        torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+                        torch_dtype=torch.float16,
                         low_cpu_mem_usage=True,
                         offload_folder=offload_dir,
                         local_files_only=True
@@ -364,10 +356,11 @@ class LLMEngine:
                     target_path = model_id
                 if callback:
                     callback(f"Attempting fallback load via transformers from {target_path}...")
+                is_local = os.path.exists(target_path)
                 try:
-                    self.model = AutoModelForCausalLM.from_pretrained(target_path, local_files_only=True, device_map="auto", low_cpu_mem_usage=True)
+                    self.model = AutoModelForCausalLM.from_pretrained(target_path, local_files_only=is_local, device_map="auto", low_cpu_mem_usage=True)
                 except Exception:
-                    self.model = AutoModelForCausalLM.from_pretrained(target_path, local_files_only=True, device_map="auto", low_cpu_mem_usage=True)
+                    self.model = AutoModelForCausalLM.from_pretrained(target_path, device_map="auto", low_cpu_mem_usage=True)
                 try:
                     self.model.tokenizer = AutoTokenizer.from_pretrained(target_path, local_files_only=is_local)
                 except Exception:
@@ -508,15 +501,14 @@ class LLMEngine:
             if input_ids.shape[1] == 0:
                 raise RuntimeError("Tokenizer returned 0 tokens. This usually happens if you loaded a model weight file (.safetensors, .bin, .pth) but forgot to add 'config.json' and 'tokenizer.json' into the same folder.")
 
-            has_device_map = hasattr(self.model, "hf_device_map")
             if use_gpu and device != "cpu":
-                if hasattr(self.model, "to") and not hasattr(self.model, "is_airllm") and not has_device_map:
+                if hasattr(self.model, "to") and not hasattr(self.model, "is_airllm"):
                     try:
                         self.model.to(device)
                     except Exception:
                         pass
             else:
-                if hasattr(self.model, "to") and not hasattr(self.model, "is_airllm") and not has_device_map:
+                if hasattr(self.model, "to") and not hasattr(self.model, "is_airllm"):
                     try:
                         self.model.to("cpu")
                     except Exception:
@@ -533,11 +525,11 @@ class LLMEngine:
             if hasattr(self.model, "generate"):
                 gen_kwargs = {
                     "input_ids": input_ids,
-                    "max_new_tokens": max_new_tokens if max_new_tokens > 0 else 4096,
+                    "max_new_tokens": max_new_tokens if max_new_tokens > 0 else 131072,
                     "use_cache": True,
                     "return_dict_in_generate": True,
                     "repetition_penalty": 1.18,
-                    "do_sample": True,
+                    "do_sample": False,
                     "temperature": 0.7,
                     "top_p": 0.9,
                 }
@@ -562,7 +554,7 @@ class LLMEngine:
                     # Fallback if specific kwargs are rejected by custom generate methods
                     generation_output = self.model.generate(
                         input_ids,
-                        max_new_tokens=max_new_tokens if max_new_tokens > 0 else 4096,
+                        max_new_tokens=max_new_tokens if max_new_tokens > 0 else 131072,
                         use_cache=True,
                         return_dict_in_generate=True
                     )
@@ -597,7 +589,7 @@ class LLMEngine:
             
             # Stop generation if model echoes conversation markers or special turn-end tokens
             stop_markers = [
-                "\nuser:", "\nUser:", "\nassistant:", "\nAssistant:", "\nAssista:", "\nassista:",
+                "\nuser:", "\nUser:", "\nassistant:", "\nAssistant:", "user:", "User:", "assistant:", "Assistant:", "Assista:", "assista:",
                 "<end_of_turn>", "<|eot_id|>", "<|im_end|>", "</s>", "<|end|>", "<|endoftext|>", "<|start_header_id|>", "<|im_start|>",
                 "</end_of_turn>", "<end_of_turn/>"
             ]

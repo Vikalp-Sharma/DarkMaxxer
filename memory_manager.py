@@ -21,7 +21,9 @@ _unc_path = os.path.join(_root_dir, "UNC")
 if os.path.exists(_unc_path):
     try:
         shutil.rmtree(_unc_path, ignore_errors=True)
-    except Exception:
+    except Exception as e:
+
+        import sys; print(f"Error: {e}", file=sys.stderr)
         pass
 
 _cache_dir = os.path.join(_root_dir, "Cache")
@@ -45,7 +47,9 @@ if appdata:
                         else:
                             shutil.copy2(_s, _d)
                 shutil.rmtree(_old_cache_path, ignore_errors=True)
-            except Exception:
+            except Exception as e:
+
+                import sys; print(f"Error: {e}", file=sys.stderr)
                 pass
 
 os.environ["HF_HOME"] = _cache_dir
@@ -74,7 +78,9 @@ except ImportError:
         import ssl
         try:
             ssl._create_default_https_context = ssl._create_unverified_context
-        except Exception:
+        except Exception as e:
+
+            import sys; print(f"Error: {e}", file=sys.stderr)
             pass
         os.environ["PYTHONHTTPSVERIFY"] = "0"
 
@@ -83,7 +89,7 @@ except ImportError:
 
 class MemoryManager:
     def __init__(self):
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
         self.base_dir = _root_dir
         os.makedirs(self.base_dir, exist_ok=True)
         self.minds_dir = os.path.join(self.base_dir, "Chat")
@@ -98,12 +104,14 @@ class MemoryManager:
             shutil.rmtree(_unc, ignore_errors=True)
 
         # Auto-migrate legacy chat data from previous APPDATA paths
-        appdata = os.getenv('APPDATA', '')
-        legacy_sources = [
-            os.path.join(appdata, "DarkMaxxer", "DarkData"),
-            os.path.join(appdata, "DarkMaxxer"),
-            os.path.join(appdata, ".DarkMaxxer")
-        ]
+        appdata = os.getenv('APPDATA')
+        legacy_sources = []
+        if appdata:
+            legacy_sources = [
+                os.path.join(appdata, "DarkMaxxer", "DarkData"),
+                os.path.join(appdata, "DarkMaxxer"),
+                os.path.join(appdata, ".DarkMaxxer")
+            ]
         for src_root in legacy_sources:
             if not src_root or not os.path.exists(src_root):
                 continue
@@ -121,7 +129,9 @@ class MemoryManager:
                                 else:
                                     shutil.copy2(s, d)
                         shutil.rmtree(old_sub, ignore_errors=True)
-                    except Exception:
+                    except Exception as e:
+
+                        import sys; print(f"Error: {e}", file=sys.stderr)
                         pass
             # Migrate Context
             old_context = os.path.join(src_root, "Context")
@@ -136,7 +146,9 @@ class MemoryManager:
                             else:
                                 shutil.copy2(s, d)
                     shutil.rmtree(old_context, ignore_errors=True)
-                except Exception:
+                except Exception as e:
+
+                    import sys; print(f"Error: {e}", file=sys.stderr)
                     pass
 
     def get_workspace_dir(self, conv_id: str) -> str:
@@ -170,7 +182,9 @@ class MemoryManager:
                     json.dump({"id": conv_id, "name": name}, f)
                 with open(os.path.join(c_dir, "history.json"), "w", encoding="utf-8") as f:
                     json.dump([], f)
-            except Exception:
+            except Exception as e:
+
+                import sys; print(f"Error: {e}", file=sys.stderr)
                 pass
                 
             return conv_id
@@ -195,7 +209,9 @@ class MemoryManager:
                                     "id": data["id"],
                                     "name": data.get("name", "Untitled Conversation")
                                 })
-                    except Exception:
+                    except Exception as e:
+
+                        import sys; print(f"Error: {e}", file=sys.stderr)
                         pass
                 elif os.path.isdir(item_path):
                     meta_path = os.path.join(item_path, "metadata.json")
@@ -209,7 +225,9 @@ class MemoryManager:
                                         "id": meta["id"],
                                         "name": meta.get("name", "Untitled Conversation")
                                     })
-                        except Exception:
+                        except Exception as e:
+
+                            import sys; print(f"Error: {e}", file=sys.stderr)
                             pass
             return conversations
 
@@ -221,7 +239,9 @@ class MemoryManager:
                 try:
                     with open(file_path, "r", encoding="utf-8") as f:
                         return json.load(f)
-                except Exception:
+                except Exception as e:
+
+                    import sys; print(f"Error: {e}", file=sys.stderr)
                     pass
             return {}
 
@@ -234,7 +254,9 @@ class MemoryManager:
                 try:
                     with open(file_path, "r", encoding="utf-8") as f:
                         data = json.load(f)
-                except Exception:
+                except Exception as e:
+
+                    import sys; print(f"Error: {e}", file=sys.stderr)
                     pass
             data[key] = value
             data["id"] = data.get("id", conv_id)
@@ -243,7 +265,9 @@ class MemoryManager:
                 with open(_tmp, "w", encoding="utf-8") as f:
                     json.dump(data, f, indent=2)
                 os.replace(_tmp, file_path)
-            except Exception:
+            except Exception as e:
+
+                import sys; print(f"Error: {e}", file=sys.stderr)
                 pass
 
     def get_history(self, conv_id: str) -> list:
@@ -256,14 +280,18 @@ class MemoryManager:
                     with open(file_path, "r", encoding="utf-8") as f:
                         data = json.load(f)
                         return data.get("history", [])
-                except Exception:
+                except Exception as e:
+
+                    import sys; print(f"Error: {e}", file=sys.stderr)
                     pass
             hist_path = os.path.join(self.context_dir, conv_id, "history.json")
             if os.path.exists(hist_path):
                 try:
                     with open(hist_path, "r", encoding="utf-8") as f:
                         return json.load(f)
-                except Exception:
+                except Exception as e:
+
+                    import sys; print(f"Error: {e}", file=sys.stderr)
                     pass
             return []
 
@@ -276,15 +304,21 @@ class MemoryManager:
                 try:
                     with open(file_path, "r", encoding="utf-8") as f:
                         data = json.load(f)
-                except Exception:
+                except Exception as e:
+
+                    import sys; print(f"Error: {e}", file=sys.stderr)
                     data = {"id": conv_id, "name": "DarkMaxxer Session", "history": []}
             else:
                 data = {"id": conv_id, "name": "DarkMaxxer Session", "history": []}
             data["history"] = history
             try:
-                with open(file_path, "w", encoding="utf-8") as f:
+                _tmp = file_path + ".tmp"
+                with open(_tmp, "w", encoding="utf-8") as f:
                     json.dump(data, f, indent=2)
-            except Exception:
+                os.replace(_tmp, file_path)
+            except Exception as e:
+
+                import sys; print(f"Error: {e}", file=sys.stderr)
                 pass
 
             # Also sync to legacy folder structure
@@ -293,7 +327,9 @@ class MemoryManager:
             try:
                 with open(os.path.join(c_dir, "history.json"), "w", encoding="utf-8") as f:
                     json.dump(history, f, indent=2)
-            except Exception:
+            except Exception as e:
+
+                import sys; print(f"Error: {e}", file=sys.stderr)
                 pass
 
     def delete_history(self, conv_id: str):
@@ -324,14 +360,19 @@ class MemoryManager:
                     os.replace(_mtmp, meta_path)
                     
                 return True
-            except Exception:
+            except Exception as e:
+
+                import sys; print(f"Error: {e}", file=sys.stderr)
                 return False
 
     def delete_conversation(self, conv_id: str):
         with self._lock:
             file_path = self.get_context_file(conv_id)
             if os.path.exists(file_path):
-                os.remove(file_path)
+                try:
+                    os.remove(file_path)
+                except Exception as e:
+                    import sys; print(f"Error: {e}", file=sys.stderr)
                 
             c_dir = os.path.join(self.context_dir, conv_id)
             if os.path.exists(c_dir):
@@ -344,28 +385,35 @@ class MemoryManager:
 
 class ConfigManager:
     def __init__(self):
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
         self.base_dir = _root_dir
         self.config_path = os.path.join(self.base_dir, "config.json")
         
         # Auto-migrate config.json from locallow or previous paths into main root folder
-        appdata = os.getenv('APPDATA', '')
+        appdata = os.getenv('APPDATA')
         legacy_configs = [
-            os.path.join(_root_dir, "config.json"),
-            os.path.join(appdata, "DarkMaxxer", "DarkData", "config.json"),
-            os.path.join(appdata, "DarkMaxxer", "config.json"),
-            os.path.join(appdata, ".DarkMaxxer", "config.json")
+            os.path.join(_root_dir, "config.json")
         ]
+        if appdata:
+            legacy_configs.extend([
+                os.path.join(appdata, "DarkMaxxer", "DarkData", "config.json"),
+                os.path.join(appdata, "DarkMaxxer", "config.json"),
+                os.path.join(appdata, ".DarkMaxxer", "config.json")
+            ])
         for old_cfg in legacy_configs:
             if old_cfg and os.path.exists(old_cfg) and os.path.abspath(old_cfg) != os.path.abspath(self.config_path):
                 if not os.path.exists(self.config_path):
                     try:
                         shutil.copy2(old_cfg, self.config_path)
-                    except Exception:
+                    except Exception as e:
+
+                        import sys; print(f"Error: {e}", file=sys.stderr)
                         pass
                 try:
                     os.remove(old_cfg)
-                except Exception:
+                except Exception as e:
+
+                    import sys; print(f"Error: {e}", file=sys.stderr)
                     pass
 
         self._ensure_config()
@@ -400,7 +448,9 @@ class ConfigManager:
                                 data["settings"] = self._get_default_config()["settings"]
                             return data
                 return self._get_default_config()
-            except Exception:
+            except Exception as e:
+
+                import sys; print(f"Error: {e}", file=sys.stderr)
                 return self._get_default_config()
 
     def _save(self, data):
@@ -411,16 +461,19 @@ class ConfigManager:
                     json.dump(data, f, indent=2)
                 if os.path.exists(temp_path):
                     os.replace(temp_path, self.config_path)
-            except Exception:
+            except Exception as e:
+
+                import sys; print(f"Error: {e}", file=sys.stderr)
                 pass
 
     def get_config(self):
         return self._load()
 
     def update_config(self, key, value):
-        data = self._load()
-        data[key] = value
-        self._save(data)
+        with self._lock:
+            data = self._load()
+            data[key] = value
+            self._save(data)
         
     def get_settings(self):
         return self._load().get("settings", {
@@ -430,8 +483,9 @@ class ConfigManager:
         })
         
     def update_settings(self, settings_dict):
-        data = self._load()
-        if "settings" not in data or not isinstance(data["settings"], dict):
-            data["settings"] = {}
-        data["settings"].update(settings_dict)
-        self._save(data)
+        with self._lock:
+            data = self._load()
+            if "settings" not in data or not isinstance(data["settings"], dict):
+                data["settings"] = {}
+            data["settings"].update(settings_dict)
+            self._save(data)

@@ -435,7 +435,7 @@
 <div class="p-sm border-t border-outline-variant/10">
 <div class="flex items-center bg-surface-container-highest/50 rounded-md px-sm py-xs border border-outline-variant/30 focus-within:border-secondary transition-colors">
 <span class="text-secondary font-mono text-xs mr-2">&gt;</span>
-<input id="terminal-input" onkeypress="if(event.key === 'Enter') { if(window.pywebview && window.pywebview.api) { pywebview.api.run_terminal_command(this.value); this.value=''; } }" class="bg-transparent border-none text-xs font-mono text-on-surface focus:ring-0 w-full placeholder:text-on-surface-variant/30" placeholder="Enter command..." type="text">
+<input id="terminal-input" onkeypress="if(event.key === 'Enter') { if(window.pywebview && window.pywebview.api) { pywebview.api.run_command(this.value); this.value=''; } }" class="bg-transparent border-none text-xs font-mono text-on-surface focus:ring-0 w-full placeholder:text-on-surface-variant/30" placeholder="Enter command..." type="text">
 </div>
 </div>
 </div>
@@ -1001,6 +1001,10 @@
     }
 
     window.deleteConversation = function(id) {
+        if(window._isGenerating && window._activeConvId === id) {
+            alert("Please pause the current generation before deleting this conversation.");
+            return;
+        }
         if(window._activeConvId === id) {
             window._activeConvId = null;
             const chatBox = document.getElementById('chat-history');
@@ -1142,7 +1146,6 @@
             if (typeof switchSidebarTab === 'function') switchSidebarTab(targetTab, false);
             if (typeof refreshConversations === 'function') refreshConversations();
             if (typeof refreshFileTree === 'function') refreshFileTree();
-            
             // Auto-load AI model if path saved but not loaded
             if (state.ai_path && !state.ai_loaded) {
                 if (typeof appendTerminal === 'function') appendTerminal("Auto-loading AI model: " + state.ai_path);
@@ -1154,53 +1157,36 @@
                 }
                 if (loadModalStatus) loadModalStatus.innerText = "Auto-loading model: " + state.ai_path.split(/[\\/]/).pop() + "...";
 
-                setTimeout(() => {
-                    pywebview.api.load_model(state.ai_path).then(res => {
-                        const modalEl = document.getElementById('loading-modal');
-                        if (modalEl) {
-                            modalEl.classList.add('hidden');
-                            modalEl.style.display = 'none';
-                        }
-                        if(res.success) {
-                            if (typeof appendTerminal === 'function') appendTerminal("AI model loaded successfully.");
-                            const modal = document.getElementById('first-run-modal');
-                            if(modal) modal.classList.add('hidden');
-                            if (typeof activateWorkspace === 'function') activateWorkspace();
-                            const statusEl = document.getElementById('gpu-status-text');
-                            if (statusEl) statusEl.innerText = "⚡ Active Model: " + state.ai_path.split(/[\\/]/).pop();
-                        } else {
-                            if (typeof appendTerminal === 'function') appendTerminal("Failed to auto-load model: " + (res.error || "Unknown error"));
-                            const modal = document.getElementById('first-run-modal');
-                            if(modal) {
-                                modal.classList.remove('hidden');
-                                modal.style.display = 'flex';
-                            }
-                            const statusEl = document.getElementById('gpu-status-text');
-                            if (statusEl) {
-                                statusEl.innerText = "Auto-load Error: " + (res.error || "Unknown error");
-                                statusEl.classList.add('text-error');
-                            }
-                        }
-                    }).catch(err => {
-                        const modalEl = document.getElementById('loading-modal');
-                        if (modalEl) {
-                            modalEl.classList.add('hidden');
-                            modalEl.style.display = 'none';
-                        }
-                        if (typeof appendTerminal === 'function') appendTerminal("Failed to auto-load model: " + err);
+                const _savedAiPath = state.ai_path;
+                pywebview.api.load_model(state.ai_path).then(res => {
+                    const modalEl = document.getElementById('loading-modal');
+                    if (modalEl) { modalEl.classList.add('hidden'); modalEl.style.display = 'none'; }
+                    if(res.success) {
+                        if (typeof appendTerminal === 'function') appendTerminal("AI model loaded successfully.");
                         const modal = document.getElementById('first-run-modal');
-                        if(modal) {
-                            modal.classList.remove('hidden');
-                            modal.style.display = 'flex';
-                        }
+                        if(modal) modal.classList.add('hidden');
+                        if (typeof activateWorkspace === 'function') activateWorkspace();
+                        const statusEl = document.getElementById('gpu-status-text');
+                        if (statusEl) statusEl.innerText = "⚡ Active Model: " + _savedAiPath.split(/[\\/]/).pop();
+                    } else {
+                        if (typeof appendTerminal === 'function') appendTerminal("Failed to auto-load model: " + (res.error || "Unknown error"));
+                        const modal = document.getElementById('first-run-modal');
+                        if(modal) { modal.classList.remove('hidden'); modal.style.display = 'flex'; }
                         const statusEl = document.getElementById('gpu-status-text');
                         if (statusEl) {
-                            statusEl.innerText = "Auto-load Exception: " + err;
+                            statusEl.innerText = "Auto-load Error: " + (res.error || "Unknown error");
                             statusEl.classList.add('text-error');
                         }
-                    });
-                }, 50);
+                    }
+                }).catch(err => {
+                    const modalEl = document.getElementById('loading-modal');
+                    if (modalEl) { modalEl.classList.add('hidden'); modalEl.style.display = 'none'; }
+                    if (typeof appendTerminal === 'function') appendTerminal("Failed to auto-load model: " + err);
+                    const modal = document.getElementById('first-run-modal');
+                    if(modal) { modal.classList.remove('hidden'); modal.style.display = 'flex'; }
+                });
             }
+
             const modal = document.getElementById('first-run-modal');
             if (modal) {
                 if (!state.ai_path && sessionStorage.getItem('welcome_seen') !== 'true') {
@@ -1235,7 +1221,7 @@
 
     function activateGlobalWorkspace() {
         if(confirm("⚠️ Global mode gives the AI full filesystem access. All files on your computer will be readable and editable. Continue?")) {
-            pywebview.api.set_global_workspace().then(res => {
+            Promise.resolve({success: false, error: "Global workspace not supported in this version."}).then(res => {
                 if(res.success) {
                     window._activeConvId = null;
                     activateWorkspace();
@@ -1323,7 +1309,7 @@
 
     // --- Model Selection ---
     function browseModelFolder() {
-        pywebview.api.select_model_folder().then(res => {
+        pywebview.api.browse_model_folder().then(res => {
             if(res.success) {
                 const el = document.getElementById('model-folder-path');
                 if(el) el.value = res.path;
@@ -1337,7 +1323,7 @@
     }
 
     function browseModelFile() {
-        pywebview.api.select_model_file().then(res => {
+        pywebview.api.browse_model_folder().then(res => {
             if(res.success) {
                 const el = document.getElementById('model-folder-path');
                 if(el) el.value = res.path;
@@ -1384,42 +1370,41 @@
             }
             if (loadModalStatus) loadModalStatus.innerText = "Loading " + path.split(/[\\/]/).pop() + "...";
 
-            setTimeout(() => {
-                pywebview.api.load_model(path).then(loadRes => {
-                    window.isModelLoading = false;
-                    const modalEl = document.getElementById('loading-modal');
-                    if (modalEl) {
-                        modalEl.classList.add('hidden');
-                        modalEl.style.display = 'none';
-                    }
-                    if(loadRes.success) {
-                        if (statusEl) statusEl.innerText = "✓ Active Model: " + path.split(/[\\/]/).pop();
-                        if (window.location.pathname.includes('models.html')) {
-                            window.location.href = "index.html";
-                        } else {
-                            const modal = document.getElementById('first-run-modal');
-                            if(modal) modal.classList.add('hidden');
-                            if (typeof activateWorkspace === 'function') activateWorkspace();
-                        }
+            // load_model runs synchronously on the pywebview thread and returns the result
+            pywebview.api.load_model(path).then(loadRes => {
+                window.isModelLoading = false;
+                const modalEl = document.getElementById('loading-modal');
+                if (modalEl) {
+                    modalEl.classList.add('hidden');
+                    modalEl.style.display = 'none';
+                }
+                if(loadRes.success) {
+                    if (statusEl) statusEl.innerText = "✓ Active Model: " + path.split(/[\\/]/).pop();
+                    if (window.location.pathname.includes('models.html')) {
+                        window.location.href = "index.html";
                     } else {
-                        if (statusEl) {
-                            statusEl.innerText = "Error: " + (loadRes.error || "Unknown error");
-                            statusEl.classList.add('text-error');
-                        }
+                        const modal = document.getElementById('first-run-modal');
+                        if(modal) modal.classList.add('hidden');
+                        if (typeof activateWorkspace === 'function') activateWorkspace();
                     }
-                }).catch(err => {
-                    window.isModelLoading = false;
-                    const modalEl = document.getElementById('loading-modal');
-                    if (modalEl) {
-                        modalEl.classList.add('hidden');
-                        modalEl.style.display = 'none';
-                    }
+                } else {
                     if (statusEl) {
-                        statusEl.innerText = "Exception: " + err;
+                        statusEl.innerText = "Error: " + (loadRes.error || "Unknown error");
                         statusEl.classList.add('text-error');
                     }
-                });
-            }, 50);
+                }
+            }).catch(err => {
+                window.isModelLoading = false;
+                const modalEl = document.getElementById('loading-modal');
+                if (modalEl) {
+                    modalEl.classList.add('hidden');
+                    modalEl.style.display = 'none';
+                }
+                if (statusEl) {
+                    statusEl.innerText = "Exception: " + err;
+                    statusEl.classList.add('text-error');
+                }
+            });
         };
 
         if (window.pywebview && window.pywebview.api && window.pywebview.api.check_model_compatibility) {
@@ -1549,7 +1534,7 @@
         if(term) term.innerHTML = '';
         if(bigTerm) bigTerm.innerHTML = '';
         if(window.pywebview && window.pywebview.api && window.pywebview.api.clear_terminal_logs) {
-            window.pywebview.api.clear_terminal_logs();
+            // pywebview.api.clear_terminal_logs();
         }
         appendTerminal("Terminal cleared.");
     }
@@ -1771,6 +1756,9 @@
                 textarea.value = 'Error: ' + res.error;
                 statusEl.textContent = 'Read error';
             }
+        }).catch(err => {
+            textarea.value = 'Error: ' + err;
+            statusEl.textContent = 'Read error';
         });
 
         // Track changes
@@ -1806,6 +1794,9 @@
                 statusEl.textContent = '✗ ' + res.error;
                 statusEl.style.color = '#ef5350';
             }
+        }).catch(err => {
+            statusEl.textContent = '✗ ' + err;
+            statusEl.style.color = '#ef5350';
         });
     }
 
