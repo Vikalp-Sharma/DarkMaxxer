@@ -32,7 +32,7 @@
 
 <!-- ═══════════════ PLATFORM BADGES ═══════════════ -->
 
-<a href="#-quick-start"><img src="https://img.shields.io/badge/Windows_10_%2F_11-0078D6?style=flat-square&logo=windows11&logoColor=white&labelColor=0d1117" alt="Windows" /></a>&nbsp;
+
 <a href="#-quick-start"><img src="https://img.shields.io/badge/Fedora_%2F_RHEL-51A2DA?style=flat-square&logo=fedora&logoColor=white&labelColor=0d1117" alt="Fedora" /></a>&nbsp;
 <a href="#-quick-start"><img src="https://img.shields.io/badge/Debian_%2F_Ubuntu-A81D33?style=flat-square&logo=debian&logoColor=white&labelColor=0d1117" alt="Debian" /></a>&nbsp;
 <a href="#-quick-start"><img src="https://img.shields.io/badge/Arch_Linux-1793D1?style=flat-square&logo=archlinux&logoColor=white&labelColor=0d1117" alt="Arch" /></a>
@@ -77,7 +77,7 @@
 
 ## 🌌 What is DarkMaxxer?
 
-**DarkMaxxer** is a fully air-gapped, local-first AI coding IDE for **Windows** and **Linux** that puts enterprise-class large language models directly on your desktop — with zero cloud dependencies, zero API keys, and zero telemetry.
+**DarkMaxxer** is a fully air-gapped, local-first AI coding IDE for **Linux** that puts enterprise-class large language models directly on your desktop — with zero cloud dependencies, zero API keys, and zero telemetry.
 
 While cloud IDEs like Cursor, Copilot, and Windsurf pipe your proprietary code through remote servers, DarkMaxxer keeps **everything on your hardware**. Using AirLLM's revolutionary layer-wise GPU offloading, it runs **70B+ parameter models** on consumer GPUs that would traditionally require **140GB+ of VRAM**.
 
@@ -178,7 +178,7 @@ The installer **auto-detects your hardware**, extracts the right environment, ve
 | | | |
 | 🔧 **Agentic Tools** | | |
 | | 7 File Operations | CREATE, EDIT, READ, DELETE, RENAME, APPEND, MKDIR |
-| | Terminal Commands | Platform-aware bash (Linux) and cmd (Windows) execution |
+| | Terminal Commands | Platform-aware bash execution |
 | | Global Workspace | Unrestricted filesystem access mode with security bypass |
 | | External MCP | Connect any MCP-compatible server via stdio JSON-RPC |
 | | Sandboxed Workspace | All file ops scoped to active project directory |
@@ -203,12 +203,10 @@ The installer **auto-detects your hardware**, extracts the right environment, ve
 | | Air-Gapped | Zero network calls during operation |
 | | Code-Signed | SMXF certificate with LocalMachine trust |
 | | Mark-of-the-Web | Post-build `Zone.Identifier` stripping for SAC bypass |
-| | Defender Exclusion | Auto-whitelists install directory on Windows |
 | | Built-in Uninstaller | Full cleanup from Settings → About |
 | | | |
 | 📦 **Distribution** | | |
 | | 3-Venv Bundling | Pre-built CPU / ROCm / NVIDIA venvs compressed with zstd |
-| | Single-EXE Installer | Self-extracting setup with embedded payload (Windows) |
 | | RPM / DEB Packages | Native Linux packages with first-run GUI setup |
 | | GPU Auto-Detection | Automatically selects NVIDIA CUDA, AMD ROCm, or CPU |
 | | Offline Install | **No internet required** — all dependencies pre-bundled |
@@ -221,7 +219,6 @@ The installer **auto-detects your hardware**, extracts the right environment, ve
 | | Terminal Fallback | Headless install mode for SSH / no-display environments |
 | | Multi-Distro | Fedora, RHEL, Debian, Ubuntu, Arch, Mint, Pop!_OS |
 | | | |
-| 🪟 **Windows** | | |
 | | UAC Admin Install | Dynamic self-elevation via Win32 `ShellExecuteW` |
 | | Auto Python Setup | Downloads Python 3.11 if missing (fallback only) |
 | | Desktop Shortcuts | Start Menu + Desktop with high-res 256×256 ICO |
@@ -251,8 +248,8 @@ The installer **auto-detects your hardware**, extracts the right environment, ve
 </tr>
 <tr>
 <td><b>Operating System</b></td>
-<td>Windows 10+ / Linux (any major distro)</td>
-<td>Windows 11 or Fedora 40+</td>
+<td>Linux (any major distro)</td>
+<td>Fedora 40+</td>
 </tr>
 <tr>
 <td><b>Python</b></td>
@@ -280,33 +277,7 @@ The installer **auto-detects your hardware**, extracts the right environment, ve
 
 ---
 
-### <img src="https://img.shields.io/badge/Option_A-Windows_EXE-0078D6?style=flat-square&logo=windows11&logoColor=white&labelColor=12121a" alt="Windows" /> &nbsp; Single-EXE Installer *(Recommended)*
-
-```powershell
-# Download and run — that's it.
-.\DarkMaxxerSetup.exe
-```
-
-The installer handles everything automatically — **no internet required:**
-
-<table>
-<tr><td>✅</td><td>UAC elevation for certificate installation</td></tr>
-<tr><td>✅</td><td>SMXF certificate → <code>LocalMachine\Root</code> + <code>TrustedPublisher</code></td></tr>
-<tr><td>✅</td><td>GPU auto-detection (NVIDIA CUDA / AMD / CPU)</td></tr>
-<tr><td>✅</td><td>Pre-built venv extraction — <b>no pip downloads</b></td></tr>
-<tr><td>✅</td><td>Package verification (torch, airllm, transformers, etc.)</td></tr>
-<tr><td>✅</td><td>Desktop shortcut + Start Menu entry + high-res icon</td></tr>
-<tr><td>✅</td><td>Windows Defender exclusion</td></tr>
-<tr><td>✅</td><td>Mark-of-the-Web (<code>Zone.Identifier</code>) removal</td></tr>
-</table>
-
-> **💡 Smart App Control:** If Windows blocks the installer, temporarily disable Smart App Control in **Windows Security → App & Browser Control**.
-
-<br />
-
----
-
-### <img src="https://img.shields.io/badge/Option_B-Linux_Packages-FCC624?style=flat-square&logo=linux&logoColor=black&labelColor=12121a" alt="Linux" /> &nbsp; RPM / DEB Installer
+### <img src="https://img.shields.io/badge/Linux_Setup-FCC624?style=flat-square&logo=linux&logoColor=black" alt="Linux" /> &nbsp; Linux Installer *(Recommended)*
 
 ```bash
 # ── Fedora / RHEL ──────────────────────────
@@ -351,552 +322,6 @@ git clone https://github.com/Vikalp-Sharma/DarkMaxxer.git
 cd DarkMaxxer
 python -m venv venv
 
-# Windows
-.\venv\Scripts\activate
-
-# Linux
-source venv/bin/activate
-
-pip install -r requirements.txt
-python main.py
-```
-
-<br />
-
-### First Launch
-
-```powershell
-.\DarkMaxxer.exe    # Windows — from install directory
-darkmaxxer          # Linux   — system-wide command
-python main.py      # Any OS  — from source
-```
-
-> **📌 On first startup:** A centered splash screen displays while the engine initializes. You'll then be prompted to select a local AI model folder or weight file (`.gguf`, `.safetensors`, `.bin`, `.pth`).
-
-<br />
-
----
-
-<br />
-
-<!-- ═══════════════════════════════════════════════════════════════════ -->
-<!-- ░░░░░░░░░░░░░░░░░░░░░░░░  ARCHITECTURE  ░░░░░░░░░░░░░░░░░░░░░░░ -->
-<!-- ═══════════════════════════════════════════════════════════════════ -->
-
-## 🏗 Architecture
-
-<br />
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                    DARKMAXXER GUI  (Chromium / WebView)             │
-│  ┌───────────────┐  ┌──────────────────┐  ┌──────────────────────┐ │
-│  │   Explorer     │  │   Nebula Chat    │  │    Terminal          │ │
-│  │   File Tree    │  │   + Starfield    │  │    Streaming Logs    │ │
-│  └───────┬───────┘  └────────┬─────────┘  └──────────┬───────────┘ │
-└──────────┼───────────────────┼───────────────────────┼─────────────┘
-           │                   │                       │
-           ▼                   ▼                       ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│              PYTHON BRIDGE API  (main.py / pywebview)               │
-│                                                                     │
-│  ┌─────────────────┐ ┌──────────────┐ ┌──────────────────────────┐ │
-│  │ memory_manager  │ │  llm_engine  │ │    mcp_integration       │ │
-│  │  ─ Chats        │ │  ─ AirLLM    │ │  ─ FileOpsServer (local) │ │
-│  │  ─ Config       │ │  ─ GGUF      │ │  ─ MCPClient (external)  │ │
-│  │  ─ State        │ │  ─ HF Router │ │  ─ JSON-RPC over stdio   │ │
-│  └─────────────────┘ └──────┬───────┘ └──────────────────────────┘ │
-└──────────────────────────────┼──────────────────────────────────────┘
-                               │
-                               ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│              HARDWARE EXECUTION LAYER  (CUDA / ROCm / CPU)          │
-│                                                                     │
-│   GPU VRAM ◄══ Layer-by-Layer Dynamic Offloading (AirLLM) ══► RAM  │
-│                                                                     │
-│   ┌─ Layer 0 ──► GPU ──► Output ──► Unload ──► Layer 1 ──► ... ─┐ │
-│   └──────────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-<br />
-
-### Component Breakdown
-
-| Module | File | Responsibility |
-|:---|:---|:---|
-| **Application Controller** | `main.py` | PyWebView bridge, window management, JS↔Python API |
-| **AI Engine** | `llm_engine.py` | Hybrid router: AirLLM (layer-wise) + GGUF + HuggingFace |
-| **Memory Manager** | `memory_manager.py` | Persistent chat history, config, workspace state |
-| **MCP Integration** | `mcp_integration.py` | Built-in file ops server + external MCP client |
-| **Setup UI** | `setup_ui.py` | First-run tkinter GUI with GPU detection + venv extraction |
-| **GUI Frontend** | `gui/*.html` | Chromium-rendered Nebula theme with starfield animations |
-
-<br />
-
----
-
-<br />
-
-<!-- ═══════════════════════════════════════════════════════════════════ -->
-<!-- ░░░░░░░░░░░░░░░░░░░░░░░░░  INSTALLER  ░░░░░░░░░░░░░░░░░░░░░░░░░ -->
-<!-- ═══════════════════════════════════════════════════════════════════ -->
-
-## 📦 Installer Architecture
-
-DarkMaxxer uses a **3-venv offline bundling** strategy for true zero-download installation.
-
-<br />
-
-### Build → Install Pipeline
-
-```
-  BUILD TIME  (developer machine)               INSTALL TIME  (user machine)
-  ════════════════════════════════               ═════════════════════════════
-
-  ┌────────────────────────────┐                ┌────────────────────────────┐
-  │                            │                │                            │
-  │   build_linux.sh           │                │   setup_ui.py              │
-  │   build_exe.py             │                │   setup_engine.py          │
-  │                            │                │                            │
-  │   1. Create 3 venvs:       │   .tar.zst     │   1. Detect GPU hardware   │
-  │      ├─ dm_venv_cpu        │ ═══ bundled ══►│   2. Select correct venv   │
-  │      ├─ dm_venv_rocm       │   in package   │   3. Extract with zstd     │
-  │      └─ dm_venv_nvidia     │                │   4. Rename → venv/        │
-  │                            │                │   5. Verify 14 packages    │
-  │   2. Compress each with    │                │   6. Delete unused archs   │
-  │      zstd level 19         │                │   7. Launch! 🚀            │
-  │      (~200 MB – 2 GB)      │                │                            │
-  │                            │                │   ┌──────────────────────┐ │
-  │   3. Bundle into .deb /    │                │   │ No pip.              │ │
-  │      .rpm / .exe package   │                │   │ No internet.         │ │
-  │                            │                │   │ No downloads.  ⚡    │ │
-  └────────────────────────────┘                │   └──────────────────────┘ │
-                                                └────────────────────────────┘
-```
-
-<br />
-
-### Venv Archives
-
-<table>
-<tr>
-<th>Archive</th>
-<th>GPU Target</th>
-<th>Size</th>
-<th>PyTorch Build</th>
-<th>Platform</th>
-</tr>
-<tr>
-<td><code>venv_cpu.tar.zst</code></td>
-<td>🖥️ CPU-only</td>
-<td align="center">~200 MB</td>
-<td>PyTorch CPU</td>
-<td>Linux + Windows</td>
-</tr>
-<tr>
-<td><code>venv_rocm.tar.zst</code></td>
-<td>🔴 AMD ROCm</td>
-<td align="center">~1.5 GB</td>
-<td>PyTorch ROCm 6.4</td>
-<td>Linux only</td>
-</tr>
-<tr>
-<td><code>venv_nvidia.tar.zst</code></td>
-<td>🟢 NVIDIA CUDA</td>
-<td align="center">~2.0 GB</td>
-<td>PyTorch CUDA</td>
-<td>Linux + Windows</td>
-</tr>
-</table>
-
-<br />
-
-### Build Commands
-
-```bash
-# ── Linux (.deb + .rpm) ───────────────────────
-cd DarkMaxxer
-bash DarkLinux/build_linux.sh
-# → DarkLinux/dist/DarkMaxxer-Linux.deb
-# → DarkLinux/dist/DarkMaxxer-Linux.rpm
-
-# ── Windows (.exe) ────────────────────────────
-cd DarkMaxxer
-python DarkEXE/build_exe.py
-# → DarkEXE/DarkMaxxerSetup.exe
-```
-
-> **🔧 Build resilience:** pip uses a stable cache directory (`DarkArchives/.pip_cache`) instead of `/tmp`, with `--retries 10` and `--timeout 120`. Builds are **resumable** — if an archive already exists, it's automatically skipped.
-
-<br />
-
----
-
-<br />
-
-<!-- ═══════════════════════════════════════════════════════════════════ -->
-<!-- ░░░░░░░░░░░░░░░░░░░░░░░░░░  MODELS  ░░░░░░░░░░░░░░░░░░░░░░░░░░░ -->
-<!-- ═══════════════════════════════════════════════════════════════════ -->
-
-## 💾 Supported Models
-
-DarkMaxxer's hybrid routing engine automatically detects model format and selects the optimal inference backend.
-
-<br />
-
-### Model Formats
-
-<table>
-<tr>
-<th>Format</th>
-<th>Engine</th>
-<th>Best For</th>
-<th>Example Models</th>
-</tr>
-<tr>
-<td><b>AirLLM</b></td>
-<td>Layer-wise GPU offloading</td>
-<td>70B+ models on consumer GPUs</td>
-<td><code>Llama-3-70B</code>, <code>Platypus2-70B</code>, <code>Mixtral-8x7B</code></td>
-</tr>
-<tr>
-<td><b>GGUF</b></td>
-<td>Native quantized loader</td>
-<td>Fast inference on mid-range hardware</td>
-<td><code>Llama-3-8B-Q4_K_M.gguf</code>, <code>Phi-3-mini-Q5.gguf</code></td>
-</tr>
-<tr>
-<td><b>HuggingFace</b></td>
-<td>Transformers + Accelerate</td>
-<td>Custom fine-tuned checkpoints</td>
-<td><code>.safetensors</code>, <code>.bin</code>, <code>.pth</code> files</td>
-</tr>
-</table>
-
-<br />
-
-### VRAM Requirements — DarkMaxxer vs Traditional
-
-<table>
-<tr>
-<th>Model Size</th>
-<th>Traditional VRAM</th>
-<th>DarkMaxxer VRAM</th>
-<th>Savings</th>
-<th>System RAM</th>
-</tr>
-<tr>
-<td><b>7B – 8B</b></td>
-<td align="center">16 GB</td>
-<td align="center"><b>4 – 6 GB</b></td>
-<td align="center">🟢 <b>62–75%</b></td>
-<td align="center">16 GB</td>
-</tr>
-<tr>
-<td><b>13B – 14B</b></td>
-<td align="center">28 GB</td>
-<td align="center"><b>6 – 8 GB</b></td>
-<td align="center">🟢 <b>71–78%</b></td>
-<td align="center">16 GB</td>
-</tr>
-<tr>
-<td><b>34B – 40B</b></td>
-<td align="center">80 GB</td>
-<td align="center"><b>2 GB</b></td>
-<td align="center">🟢 <b>97%</b></td>
-<td align="center">32 GB</td>
-</tr>
-<tr>
-<td><b>70B – 72B</b></td>
-<td align="center">140+ GB</td>
-<td align="center"><b>8 – 12 GB ⚡</b></td>
-<td align="center">🟢 <b>91–94%</b></td>
-<td align="center">32–64 GB</td>
-</tr>
-</table>
-
-<br />
-
----
-
-<br />
-
-<!-- ═══════════════════════════════════════════════════════════════════ -->
-<!-- ░░░░░░░░░░░░░░░░░░░░░░░░░░░  TOOLS  ░░░░░░░░░░░░░░░░░░░░░░░░░░░ -->
-<!-- ═══════════════════════════════════════════════════════════════════ -->
-
-## 🛠 Autonomous Tool Protocols
-
-### Built-in File Operations
-
-The AI autonomously manages your workspace through structured tool calls:
-
-```
-User: Create a Flask web server and save it as app.py
-
-DarkMaxxer AI: I'll create a Flask web server for you right now.
-
-[TOOL: CREATE_FILE app.py
-from flask import Flask
-
-app = Flask(__name__)
-
-@app.route('/')
-def home():
-    return "DarkMaxxer IDE Active!"
-
-if __name__ == '__main__':
-    app.run(port=5000)
-]
-
-✅ Created: app.py
-```
-
-<br />
-
-<table>
-<tr>
-<th>Tool</th>
-<th>Syntax</th>
-<th>Description</th>
-</tr>
-<tr><td><code>CREATE_FILE</code></td><td><code>[TOOL: CREATE_FILE path\ncontent]</code></td><td>Create new files with content</td></tr>
-<tr><td><code>EDIT_FILE</code></td><td><code>[TOOL: EDIT_FILE path\ncontent]</code></td><td>Overwrite existing files</td></tr>
-<tr><td><code>READ_FILE</code></td><td><code>[TOOL: READ_FILE path]</code></td><td>Read file contents into AI context</td></tr>
-<tr><td><code>DELETE_FILE</code></td><td><code>[TOOL: DELETE_FILE path]</code></td><td>Remove files from workspace</td></tr>
-<tr><td><code>RENAME_FILE</code></td><td><code>[TOOL: RENAME_FILE old new]</code></td><td>Rename or move files</td></tr>
-<tr><td><code>APPEND_FILE</code></td><td><code>[TOOL: APPEND_FILE path\ncontent]</code></td><td>Append content to existing files</td></tr>
-<tr><td><code>CREATE_DIRECTORY</code></td><td><code>[TOOL: CREATE_DIRECTORY path]</code></td><td>Create nested subdirectories</td></tr>
-</table>
-
-<br />
-
-### External MCP Servers
-
-Connect any MCP-compatible server from **Settings → MCP Servers**:
-
-```json
-{
-  "name": "github-mcp",
-  "command": "npx",
-  "args": ["-y", "@modelcontextprotocol/server-github"],
-  "env": { "GITHUB_TOKEN": "ghp_..." }
-}
-```
-
-The AI discovers tools automatically and calls them via:
-```
-[TOOL: MCP_CALL server=github-mcp tool=search_repositories args={"query": "darkmaxxer"}]
-```
-
-<br />
-
----
-
-<br />
-
-<!-- ═══════════════════════════════════════════════════════════════════ -->
-<!-- ░░░░░░░░░░░░░░░░░░░░░░  PROJECT STRUCTURE  ░░░░░░░░░░░░░░░░░░░░░ -->
-<!-- ═══════════════════════════════════════════════════════════════════ -->
-
-## 📂 Project Structure
-
-```
-DarkMaxxer/
-│
-├── main.py                  # Application controller & PyWebView bridge
-├── setup_ui.py              # First-run setup UI (red-themed tkinter)
-├── llm_engine.py            # AI router: AirLLM + GGUF + HuggingFace
-├── memory_manager.py        # Persistent storage: chats, config, state
-├── mcp_integration.py       # File ops server + external MCP client
-├── requirements.txt         # Python dependencies
-├── config.json              # Runtime configuration
-├── LICENSE                  # Proprietary license
-├── README.md                # You are here
-│
-├── gui/                     # ── Frontend (Chromium WebView) ──
-│   ├── index.html           #    Main IDE workspace & chat
-│   ├── settings.html        #    Configuration & MCP management
-│   ├── models.html          #    Model loading center
-│   ├── splash.html          #    Startup splash screen
-│   └── logo.png             #    Application logo
-│
-├── DarkArchives/            # ── Pre-built venv archives ──
-│   ├── venv_cpu.tar.zst     #    CPU-only PyTorch + all deps
-│   ├── venv_rocm.tar.zst    #    AMD ROCm PyTorch + all deps
-│   └── venv_nvidia.tar.zst  #    NVIDIA CUDA PyTorch + all deps
-│
-├── DarkLinux/               # ── Linux packaging ──
-│   ├── build_linux.sh       #    RPM / DEB builder (3-venv pipeline)
-│   ├── launcher.sh          #    System launcher (/usr/local/bin/darkmaxxer)
-│   ├── darkmaxxer.spec      #    RPM spec file
-│   ├── control              #    DEB control metadata
-│   ├── postinst             #    DEB post-install script
-│   ├── prerm                #    DEB pre-remove script
-│   ├── install.sh           #    Standalone installer script
-│   ├── uninstall.sh         #    Standalone uninstaller script
-│   └── darkmaxxer.desktop   #    XDG desktop entry
-│
-└── DarkEXE/                 # ── Windows packaging ──
-    ├── build_exe.py          #    PyInstaller build + SMXF code-signing
-    ├── setup_engine.py       #    Installer UI + venv extraction + shortcuts
-    ├── launcher.py           #    EXE launcher & subprocess manager
-    ├── DarkMaxxer.manifest   #    Windows app manifest (DPI, compat)
-    ├── DarkMaxxer.exe        #    Pre-built launcher executable
-    ├── DarkMaxxerSetup.exe   #    Self-extracting master installer
-    ├── SMXF.cer              #    Code-signing certificate
-    └── logo.ico              #    Application icon (256×256 multi-res)
-```
-
-<br />
-
----
-
-<br />
-
-<!-- ═══════════════════════════════════════════════════════════════════ -->
-<!-- ░░░░░░░░░░░░░░░░░░░░░░░░░░░░  FAQ  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░ -->
-<!-- ═══════════════════════════════════════════════════════════════════ -->
-
-## ❓ FAQ
-
-<details>
-<summary><b>⚡ How does DarkMaxxer run 70B models on an 8 GB GPU?</b></summary>
-
-<br />
-
-AirLLM's layer-wise offloading works by loading **one transformer layer at a time** into GPU VRAM, running the forward pass, then swapping it out for the next layer. This means your peak VRAM usage equals the size of the single largest layer (~200 MB – 1 GB) rather than the entire model (~140 GB).
-
-The tradeoff is speed — inference is slower than having the full model in VRAM — but it makes previously impossible model sizes accessible on consumer hardware. A 70B model that would need a $15,000 A100 GPU now runs on a $300 RTX 3060.
-
-</details>
-
-<details>
-<summary><b>🔒 Is my code really 100% private?</b></summary>
-
-<br />
-
-Yes. DarkMaxxer makes **zero network calls** during operation. There are no telemetry endpoints, no usage analytics, no crash reporters, and no "phone home" features. The AI model runs entirely in your local GPU/CPU. Your code never leaves your machine.
-
-You can verify this by running it with your network adapter disabled — DarkMaxxer works identically offline.
-
-</details>
-
-<details>
-<summary><b>📦 Does the installer require internet?</b></summary>
-
-<br />
-
-**No.** DarkMaxxer v3.0 bundles pre-built Python virtual environments for each GPU type. The installer auto-detects your GPU, extracts the matching archive using Python-native `zstandard` decompression, verifies all 14 packages, and you're ready to go — completely offline.
-
-Internet is only needed if you're doing a developer setup from source (`pip install -r requirements.txt`).
-
-</details>
-
-<details>
-<summary><b>⏸ Can I pause / cancel the AI mid-generation?</b></summary>
-
-<br />
-
-Yes. Click the glowing **⏸ Pause** button in the chat bar. This sends an async interruption signal (`cancel_generation`) to the inference thread, halting it within the current token step and freeing GPU compute immediately.
-
-</details>
-
-<details>
-<summary><b>🔌 How do I connect external MCP servers?</b></summary>
-
-<br />
-
-Go to **Settings → MCP Servers → Add Server**. Enter the server name, command (e.g., `npx`), arguments (e.g., `-y @modelcontextprotocol/server-github`), and any environment variables. Click "Save & Connect" — the AI will automatically discover available tools and inject them into its system prompt.
-
-</details>
-
-<details>
-<summary><b>🛡️ Why does Smart App Control / SmartScreen block the app?</b></summary>
-
-<br />
-
-DarkMaxxer is code-signed with the SMXF self-signed certificate. The installer requests admin elevation and installs this certificate into your system's trusted stores.
-
-**To resolve:**
-1. Run `DarkMaxxerSetup.exe` first — it handles certificate trust automatically
-2. If still blocked — temporarily disable Smart App Control in **Windows Security → App & Browser Control**
-3. The installed SMXF certificate ensures all future launches are trusted
-
-</details>
-
-<details>
-<summary><b>🎵 What tokenizer does DarkMaxxer use for GGUF files?</b></summary>
-
-<br />
-
-DarkMaxxer extracts tokenizer definitions directly from the GGUF header metadata. If the GGUF file contains embedded tokenizer data, it's used natively — no separate `tokenizer.json` needed. For models without embedded tokenizers, it falls back to a compatible tokenizer from the same model family.
-
-</details>
-
-<details>
-<summary><b>🔴 Does DarkMaxxer support AMD GPUs?</b></summary>
-
-<br />
-
-Yes! DarkMaxxer supports AMD ROCm GPUs natively on Linux. The installer auto-detects your GPU vendor and extracts the correct pre-built environment:
-
-| GPU | Environment | Platform |
-|:---|:---|:---|
-| NVIDIA (any CUDA-capable) | `venv_nvidia.tar.zst` | Linux + Windows |
-| AMD (RX 5000+ / Vega / Pro) | `venv_rocm.tar.zst` | Linux only |
-| No GPU / Unsupported AMD | `venv_cpu.tar.zst` | All platforms |
-
-On Windows, AMD GPUs without ROCm support fall back to CPU mode automatically.
-
-</details>
-
-<details>
-<summary><b>🐧 Which Linux distros are supported?</b></summary>
-
-<br />
-
-DarkMaxxer provides both `.deb` and `.rpm` packages:
-
-| Package | Distros |
-|:---|:---|
-| **RPM** | Fedora, RHEL, CentOS, openSUSE |
-| **DEB** | Ubuntu, Debian, Linux Mint, Pop!_OS |
-
-The launcher script also auto-installs missing GUI dependencies (GTK3, WebKit2, PyGObject) using your distro's package manager. Wayland compositors (GNOME, KDE, Hyprland, Sway) are fully supported.
-
-</details>
-
-<details>
-<summary><b>🔨 How do I build from source?</b></summary>
-
-<br />
-
-**Linux packages:**
-```bash
-cd DarkMaxxer
-bash DarkLinux/build_linux.sh
-# → DarkLinux/dist/DarkMaxxer-Linux.deb
-# → DarkLinux/dist/DarkMaxxer-Linux.rpm
-```
-
-**Windows EXE:**
-```powershell
-cd DarkMaxxer
-python DarkEXE\build_exe.py
-# → DarkEXE\DarkMaxxerSetup.exe
-```
-
-Both build scripts create GPU-specific venvs, compress them with zstd level 19, and bundle them into the final package. Builds are resumable — if an archive already exists, it's skipped.
-
-</details>
-
-<details>
-<summary><b>🗑️ How do I uninstall DarkMaxxer?</b></summary>
-
-<br />
-
 **Linux:**
 ```bash
 # Package manager (recommended)
@@ -910,7 +335,6 @@ sudo rm -rf /opt/darkmaxxer /usr/local/bin/darkmaxxer \
   /var/lib/darkmaxxer
 ```
 
-**Windows:** Use the built-in uninstaller in **Settings → About**, or manually delete the install directory and shortcuts from Start Menu + Desktop.
 
 </details>
 
