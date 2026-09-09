@@ -41,6 +41,39 @@ def _drop_pages(arr):
         import traceback
         traceback.print_exc()
 
+# ---------------------------------------------------------------------------
+# Patch AirLLMBaseModel._post_hook: prevent module.to('meta') from wiping buffers
+# ---------------------------------------------------------------------------
+try:
+    import airllm.airllm_base
+    from accelerate.utils.modeling import set_module_tensor_to_device
+
+    def _airllm_safe_post_hook(self, module, args, output):
+        # Evict only parameters moved by AirLLM; NEVER call module.to('meta')
+        # as module.to('meta') converts persistent buffers (rotary inv_freq,
+        # layernorm caches, etc.) to meta device, causing
+        # "Tensor on device meta is not on the expected device cpu!" on subsequent tokens.
+        for param_name in getattr(module, '_airllm_moved', []):
+            try:
+                set_module_tensor_to_device(self.model, param_name, 'meta')
+            except Exception:
+                pass
+        module._airllm_moved = []
+        airllm.airllm_base.clean_memory()
+        return output
+
+    airllm.airllm_base.AirLLMBaseModel._post_hook = _airllm_safe_post_hook
+except Exception:
+    pass
+
+# Ensure CPU inference never starves the system of CPU threads (keeps PC smooth)
+try:
+    if not torch.cuda.is_available():
+        safe_threads = max(1, min(4, (os.cpu_count() or 4) - 2))
+        torch.set_num_threads(safe_threads)
+except Exception:
+    pass
+
 # ---- GGUFTensor result type (same namedtuple transformers uses) ----
 try:
     from transformers.modeling_gguf_pytorch_utils import GGUFTensor
@@ -609,6 +642,16 @@ def _load_qwen35_via_airllm(gguf_path, callback=None):
     except Exception:
         pass
 
+    # Ensure all persistent model-level and layer-level buffers (rotary inv_freq, norms, etc.)
+    # are materialized on running_device and NEVER left on meta device
+    try:
+        from accelerate.utils.modeling import set_module_tensor_to_device
+        for buf_name, buf in model.model.named_buffers():
+            if buf is not None and buf.device.type == 'meta':
+                set_module_tensor_to_device(model.model, buf_name, dev, torch.zeros(buf.shape, dtype=buf.dtype))
+    except Exception:
+        pass
+
     # ---- safety-net: keep Conv1d module hyper-params in sync after shape adoption ----
     _orig_adopt = model._adopt_checkpoint_shape
 
@@ -777,6 +820,20 @@ def load_gguf_via_airllm(gguf_path, callback=None):
     gc.collect()  # free everything before AirLLM allocates its own skeleton
     dev = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     model = AutoModel.from_pretrained(dummy_dir, device=dev)
+    try:
+        setattr(model, 'is_airllm', True)
+    except Exception:
+        pass
+
+    # Ensure all persistent model-level and layer-level buffers (rotary inv_freq, norms, etc.)
+    # are materialized on running_device and NEVER left on meta device
+    try:
+        from accelerate.utils.modeling import set_module_tensor_to_device
+        for buf_name, buf in model.model.named_buffers():
+            if buf is not None and buf.device.type == 'meta':
+                set_module_tensor_to_device(model.model, buf_name, dev, torch.zeros(buf.shape, dtype=buf.dtype))
+    except Exception:
+        pass
 
     # Safety-net: monkey-patch _adopt_checkpoint_shape so that when a Conv1d
     # weight is resized, the module's .groups / .in_channels / .out_channels

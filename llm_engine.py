@@ -332,6 +332,21 @@ class LLMEngine:
                 except Exception as e:
                     pytorch_err = str(e)
 
+            # Safety Guard: For models larger than 2GB, never attempt whole-model RAM load
+            # which exhausts system memory and causes severe PC lag/freezes. AirLLM is mandatory.
+            file_size_gb = 0.0
+            if os.path.isfile(model_id):
+                file_size_gb = os.path.getsize(model_id) / (1024**3)
+            elif resolved_gguf_path and os.path.exists(resolved_gguf_path):
+                file_size_gb = os.path.getsize(resolved_gguf_path) / (1024**3)
+
+            if file_size_gb > 2.0 and not (hasattr(self.model, 'is_airllm') or 'airllm' in str(type(self.model)).lower()):
+                raise RuntimeError(
+                    f"Model '{os.path.basename(model_id)}' ({file_size_gb:.1f} GB) requires AirLLM layer-wise offloading "
+                    "to prevent system memory exhaustion. Loading failed with: "
+                    f"{gguf_err or air_err or 'AirLLM layer streaming could not initialize.'}"
+                )
+
             # 5. Fallback try transformers AutoModelForCausalLM directly offline/local
             try:
                 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -548,20 +563,25 @@ class LLMEngine:
                 import torch
                 torch.backends.cuda.matmul.allow_tf32 = True
                 torch.backends.cudnn.allow_tf32 = True
+                if not use_gpu or not torch.cuda.is_available():
+                    # Keep CPU threads bounded so host UI and desktop never freeze or lag
+                    safe_threads = max(1, min(4, (os.cpu_count() or 4) - 2))
+                    torch.set_num_threads(safe_threads)
             except Exception:
                 pass
 
             if hasattr(self.model, "generate"):
                 gen_kwargs = {
                     "input_ids": input_ids,
-                    "max_new_tokens": max_new_tokens if max_new_tokens > 0 else 131072,
+                    "max_new_tokens": max_new_tokens if max_new_tokens > 0 else 1024,
                     "use_cache": True,
                     "return_dict_in_generate": True,
                     "repetition_penalty": 1.18,
                     "do_sample": False,
-                    "temperature": 0.7,
-                    "top_p": 0.9,
                 }
+                if hasattr(input_ids, "shape"):
+                    import torch
+                    gen_kwargs["attention_mask"] = torch.ones_like(input_ids)
                 if hasattr(tokenizer, "eos_token_id") and tokenizer.eos_token_id is not None:
                     gen_kwargs["eos_token_id"] = tokenizer.eos_token_id
                     gen_kwargs["pad_token_id"] = getattr(tokenizer, "pad_token_id", None) or tokenizer.eos_token_id

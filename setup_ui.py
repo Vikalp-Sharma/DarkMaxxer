@@ -119,6 +119,124 @@ def _best_font():
     return "Helvetica"
 
 
+def sync_repo_from_github(log_cb=None):
+    """
+    Downloads latest repository from github.com/Vikalp-Sharma/DarkMaxxer before launching app,
+    copies all files from it into APP_DIR, and places gguf_airllm.py in the best places:
+    1. APP_DIR
+    2. VENV_DIR's site-packages
+    """
+    import urllib.request
+    import zipfile
+    import tempfile
+    import shutil
+
+    if log_cb:
+        log_cb("Checking for updates from github.com/Vikalp-Sharma/DarkMaxxer…")
+
+    download_success = False
+    temp_dir = tempfile.mkdtemp(prefix="darkmaxxer_update_")
+    source_dir = temp_dir
+
+    try:
+        # 1. Try git clone first if git command is available
+        if shutil.which("git"):
+            try:
+                if log_cb:
+                    log_cb("Fetching latest repository via git…")
+                res = subprocess.run(
+                    ["git", "clone", "--depth", "1", "https://github.com/Vikalp-Sharma/DarkMaxxer.git", temp_dir],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=60
+                )
+                if res.returncode == 0 and os.path.exists(os.path.join(temp_dir, "main.py")):
+                    download_success = True
+                    source_dir = temp_dir
+            except Exception:
+                pass
+
+        # 2. If git failed or not available, download repo zip from GitHub
+        if not download_success:
+            zip_url = "https://github.com/Vikalp-Sharma/DarkMaxxer/archive/refs/heads/main.zip"
+            zip_path = os.path.join(temp_dir, "repo.zip")
+            try:
+                if log_cb:
+                    log_cb("Downloading update archive from GitHub…")
+                req = urllib.request.Request(
+                    zip_url,
+                    headers={"User-Agent": "DarkMaxxer-Installer"}
+                )
+                with urllib.request.urlopen(req, timeout=45) as resp, open(zip_path, 'wb') as out_f:
+                    shutil.copyfileobj(resp, out_f)
+                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                    zip_ref.extractall(temp_dir)
+                extracted_subdirs = [
+                    os.path.join(temp_dir, d) for d in os.listdir(temp_dir)
+                    if os.path.isdir(os.path.join(temp_dir, d)) and "DarkMaxxer" in d
+                ]
+                if extracted_subdirs:
+                    source_dir = extracted_subdirs[0]
+                    download_success = True
+            except Exception as e:
+                if log_cb:
+                    log_cb(f"GitHub sync skipped (offline mode): {e}")
+
+        # 3. If downloaded, copy all files into APP_DIR
+        if download_success and os.path.isdir(source_dir):
+            if log_cb:
+                log_cb("Copying updated files from repository…")
+            skip_items = {".git", "venv", ".darkmaxxer", "config.json", "__pycache__"}
+            for root, dirs, files in os.walk(source_dir):
+                dirs[:] = [d for d in dirs if d not in skip_items and not d.endswith(".egg-info")]
+                rel_path = os.path.relpath(root, source_dir)
+                target_root = APP_DIR if rel_path == "." else os.path.join(APP_DIR, rel_path)
+                os.makedirs(target_root, exist_ok=True)
+                for file_name in files:
+                    if file_name in skip_items or file_name.endswith(".tar.zst"):
+                        continue
+                    src = os.path.join(root, file_name)
+                    dst = os.path.join(target_root, file_name)
+                    try:
+                        shutil.copy2(src, dst)
+                    except Exception:
+                        pass
+    except Exception as e:
+        if log_cb:
+            log_cb(f"Update note: {e}")
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+    # 4. Copy gguf_airllm.py to the best places
+    src_gguf = os.path.join(APP_DIR, "gguf_airllm.py")
+    if os.path.exists(src_gguf):
+        site_packages_dirs = []
+        for lib_name in ["lib", "lib64", "Lib"]:
+            base_lib = os.path.join(VENV_DIR, lib_name)
+            if os.path.isdir(base_lib):
+                # direct site-packages (e.g. Windows)
+                direct_sp = os.path.join(base_lib, "site-packages")
+                if os.path.isdir(direct_sp):
+                    site_packages_dirs.append(direct_sp)
+                # pythonX.Y/site-packages (Linux)
+                try:
+                    for py_dir in os.listdir(base_lib):
+                        sub_sp = os.path.join(base_lib, py_dir, "site-packages")
+                        if os.path.isdir(sub_sp):
+                            site_packages_dirs.append(sub_sp)
+                except OSError:
+                    pass
+
+        for sp in set(site_packages_dirs):
+            try:
+                target_file = os.path.join(sp, "gguf_airllm.py")
+                shutil.copy2(src_gguf, target_file)
+                if log_cb:
+                    log_cb(f"Installed gguf_airllm.py to {sp}")
+            except Exception:
+                pass
+
+
 # ╔════════════════════════════════════════════════════════════╗
 # ║                   GRAPHICAL SETUP UI                      ║
 # ╚════════════════════════════════════════════════════════════╝
@@ -799,7 +917,14 @@ class DarkMaxxerSetup:
                           "Step 4 / 4 — Finalizing")
             self._set_blue("Cleanup", "✔ Installation cleaned up",
                            active=False, done=True)
-            self._set_red(0.95, "Finalizing…")
+            self._set_red(0.93, "Checking GitHub updates…")
+            self._set_blue("Update", "Checking github.com/Vikalp-Sharma/DarkMaxxer…", active=True)
+            try:
+                sync_repo_from_github(log_cb=lambda msg: self._set_blue("Update", msg, active=True))
+            except Exception:
+                pass
+            self._set_red(0.97, "Finalizing…")
+            self._set_blue("Update", "✔ Latest files synchronized", active=False, done=True)
 
             # ── Marker + shortcut ─────────────────────────────
             try:
@@ -1040,6 +1165,12 @@ def run_terminal_install():
                     os.remove(arc)
                 except OSError:
                     pass
+
+        print(f"{C} Checking github.com/Vikalp-Sharma/DarkMaxxer for updates…")
+        try:
+            sync_repo_from_github(log_cb=lambda msg: print(f"{C} {msg}"))
+        except Exception as e:
+            print(f"{C} Update check note: {e}")
 
         try:
             with open(SETUP_MARKER, "w") as f:
