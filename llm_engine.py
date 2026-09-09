@@ -2,6 +2,9 @@
 import sys, os
 def _ensure_local_site_packages():
     _here = os.path.dirname(os.path.abspath(__file__))
+    # Ensure our own directory is importable (for gguf_airllm, etc.)
+    if _here not in sys.path:
+        sys.path.insert(0, _here)
     _cands = [
         os.path.join(_here, "venv", "Lib", "site-packages"),
         os.path.join(_here, "..", "venv", "Lib", "site-packages"),
@@ -218,42 +221,34 @@ class LLMEngine:
                                     except OSError:
                                         target_path = resolved_gguf_path
 
+
                     gguf_dir = os.path.dirname(target_path)
                     gguf_filename = os.path.basename(target_path)
                     
-                    # Set up offload folder to prevent device_map failures
-                    offload_dir = os.path.join(os.path.expanduser("~"), ".darkmaxxer_build", "offload")
-                    os.makedirs(offload_dir, exist_ok=True)
-                    
                     if callback:
-                        callback(f"Loading GGUF model: {gguf_filename}...")
+                        callback(f"Loading GGUF model via AirLLM memory wrapper: {gguf_filename}...")
                     
-                    self.model = AutoModelForCausalLM.from_pretrained(
-                        gguf_dir,
-                        gguf_file=gguf_filename,
-                        device_map="auto",
-                        torch_dtype=torch.float16,
-                        low_cpu_mem_usage=True,
-                        offload_folder=offload_dir,
-                        local_files_only=True
-                    )
+                    try:
+                        from gguf_airllm import load_gguf_via_airllm
+                        self.model = load_gguf_via_airllm(target_path, callback=callback)
+                        try:
+                            setattr(self.model, 'is_airllm', True)
+                        except Exception:
+                            pass
+                    except ImportError as e:
+                        if callback: callback("gguf_airllm wrapper not found. Please ensure it is present.")
+                        raise e
+                    
                     self.loaded_gguf_path = target_path
                     self.current_model_id = model_id
                     self.model_path = model_id
                     self.model_type = "gguf"
                     
-                    # Try to load tokenizer from the GGUF file
-                    try:
-                        tok = AutoTokenizer.from_pretrained(
-                            gguf_dir, gguf_file=gguf_filename, local_files_only=True
-                        )
-                        self.model.tokenizer = tok
-                        self._cached_tokenizer = tok
-                    except Exception:
-                        pass
+                    if hasattr(self.model, "tokenizer"):
+                        self._cached_tokenizer = self.model.tokenizer
                     
                     if callback:
-                        callback("GGUF model loaded successfully -> Ready for User.")
+                        callback("GGUF AirLLM wrapper loaded successfully -> Ready for User.")
                     try:
                         import gc; gc.collect()
                         self._empty_cache()
@@ -396,10 +391,44 @@ class LLMEngine:
         """Immediately aborts any ongoing generation."""
         self._cancel_requested = True
 
-    def generate(self, prompt: str, max_new_tokens: int = 131072, use_gpu: bool = True) -> str:
+    def _auto_max_new_tokens(self) -> int:
+        """Pick a RAM-safe generation budget when the caller did not specify one.
+
+        AirLLM streams one layer at a time but the KV / recurrent cache and the
+        decoded sequence still live in system RAM and grow with every generated
+        token.  A fixed ceiling of 131072 tokens (as used before) fills the RAM of a
+        normal desktop long before the model stops, so we budget from the RAM the
+        machine actually has available ("auto" mode).
+        """
+        try:
+            free_gb = 0.0
+            with open("/proc/meminfo", "r", encoding="utf-8") as _f:
+                for _line in _f:
+                    if _line.startswith("MemAvailable:") or _line.startswith("MemFree:"):
+                        free_gb = float(_line.split()[1]) / (1024.0 ** 2)
+                        break
+            if free_gb <= 0.0:
+                free_gb = 4.0  # unknown -> assume a small machine
+            # Rough heuristic: a token costs a few KB of RAM for cache + activations
+            # across all layers; even a generous model eats ~2 KB/token.
+            budget = int(free_gb * 1024 / 4)
+        except Exception:
+            budget = 2048
+        return max(512, min(16384, budget))
+
+    def generate(self, prompt: str, max_new_tokens: int = None, use_gpu: bool = True) -> str:
         """
         Generate text from the loaded model object (AirLLM, GGUF, Transformers, or PyTorch custom object).
+
+        ``max_new_tokens`` defaults to ``None`` = AUTO: a token budget is chosen from
+        the free system RAM so long generations never fill up the machine.
         """
+        if max_new_tokens is None:
+            max_new_tokens = self._auto_max_new_tokens()
+        elif max_new_tokens <= 0:
+            max_new_tokens = self._auto_max_new_tokens()
+        else:
+            max_new_tokens = min(max_new_tokens, 131072)
         if not self.model:
             raise ValueError("No model loaded.")
             
@@ -548,16 +577,19 @@ class LLMEngine:
                 except Exception:
                     pass
                 
-                try:
-                    generation_output = self.model.generate(**gen_kwargs)
-                except TypeError:
-                    # Fallback if specific kwargs are rejected by custom generate methods
-                    generation_output = self.model.generate(
-                        input_ids,
-                        max_new_tokens=max_new_tokens if max_new_tokens > 0 else 131072,
-                        use_cache=True,
-                        return_dict_in_generate=True
-                    )
+                import contextlib
+                grad_ctx = torch.no_grad() if 'torch' in locals() and hasattr(torch, 'no_grad') else contextlib.nullcontext()
+                with grad_ctx:
+                    try:
+                        generation_output = self.model.generate(**gen_kwargs)
+                    except TypeError:
+                        # Fallback if specific kwargs are rejected by custom generate methods
+                        generation_output = self.model.generate(
+                            input_ids,
+                            max_new_tokens=max_new_tokens if max_new_tokens > 0 else 2048,
+                            use_cache=True,
+                            return_dict_in_generate=True
+                        )
                 if hasattr(generation_output, "sequences"):
                     out_tokens = generation_output.sequences[0]
                 elif torch is not None and isinstance(generation_output, torch.Tensor):
@@ -587,11 +619,18 @@ class LLMEngine:
             
             output_text = output_text.strip()
             
+            # Strip Qwen 3.5+ <think>...</think> reasoning blocks (keep content AFTER them)
+            import re
+            output_text = re.sub(r'<think>.*?</think>\s*', '', output_text, flags=re.DOTALL)
+            # Handle unclosed <think> blocks (model still reasoning when max_tokens hit)
+            if '<think>' in output_text and '</think>' not in output_text:
+                output_text = re.sub(r'<think>.*', '', output_text, flags=re.DOTALL)
+            
             # Stop generation if model echoes conversation markers or special turn-end tokens
             stop_markers = [
                 "\nuser:", "\nUser:", "\nassistant:", "\nAssistant:", "user:", "User:", "assistant:", "Assistant:", "Assista:", "assista:",
                 "<end_of_turn>", "<|eot_id|>", "<|im_end|>", "</s>", "<|end|>", "<|endoftext|>", "<|start_header_id|>", "<|im_start|>",
-                "</end_of_turn>", "<end_of_turn/>"
+                "</end_of_turn>", "<end_of_turn/>",
             ]
             for stop_marker in stop_markers:
                 if stop_marker in output_text:

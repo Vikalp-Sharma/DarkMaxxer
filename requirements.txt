@@ -1,8 +1,13 @@
 # DarkMaxxer Local AI IDE - Offline Inference Dependencies
 # Note: All models must be loaded from local path on disk (`.gguf`, `.safetensors`, `.bin`, `.pth`)
+#
+# Qwen3.5 / Qwen3.6 (llama.cpp GGUF architecture tag: "qwen35") needs:
+#   - transformers >= 5.2   (ships Qwen3_5TextConfig / Qwen3_5TextForCausalLM)
+#   - airllm (recent)       (generic hook-based AirLLMBaseModel streams hybrid SSM layers)
+#   - gguf (recent)         (GGUFReader + llama.cpp tensor metadata)
 airllm
 pywebview
-transformers
+transformers>=5.2.0
 torch
 accelerate
 huggingface_hub

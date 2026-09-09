@@ -251,32 +251,36 @@ class Api:
     # --- Setup & Model Selection ---
 
     def select_model_folder(self):
-        if not self._window:
-            return {"success": False, "error": "Window not initialized"}
-        if webview is None:
-            return {"success": False, "error": "pywebview not available"}
         try:
-            folder_dlg = getattr(webview.FileDialog, "FOLDER", getattr(webview, "FOLDER_DIALOG", 1))
-            result = self._window.create_file_dialog(folder_dlg)
-            if result and len(result) > 0:
-                self.config.update_config("ai_path", result[0])
-                return {"success": True, "path": result[0]}
+            import tkinter as tk
+            from tkinter import filedialog
+            root = tk.Tk()
+            root.withdraw()
+            root.attributes('-topmost', True)
+            path = filedialog.askdirectory(title="Select Model Folder")
+            root.destroy()
+            if path:
+                self.config.update_config("ai_path", path)
+                return {"success": True, "path": path}
             return {"success": False, "error": "No folder selected"}
         except Exception as e:
             return {"success": False, "error": str(e)}
 
     def select_model_file(self):
-        if not self._window:
-            return {"success": False, "error": "Window not initialized"}
-        if webview is None:
-            return {"success": False, "error": "pywebview not available"}
         try:
-            open_dlg = getattr(webview.FileDialog, "OPEN", getattr(webview, "OPEN_DIALOG", 10))
-            file_types = ('Model Files (*.gguf;*.safetensors;*.bin;*.pth;*.pt;*.pkl;*.json)', 'All files (*.*)')
-            result = self._window.create_file_dialog(open_dlg, file_types=file_types)
-            if result and len(result) > 0:
-                self.config.update_config("ai_path", result[0])
-                return {"success": True, "path": result[0]}
+            import tkinter as tk
+            from tkinter import filedialog
+            root = tk.Tk()
+            root.withdraw()
+            root.attributes('-topmost', True)
+            path = filedialog.askopenfilename(
+                title="Select Model File",
+                filetypes=[("Model Files", "*.gguf *.safetensors *.bin *.pth *.pt *.pkl *.json"), ("All Files", "*.*")]
+            )
+            root.destroy()
+            if path:
+                self.config.update_config("ai_path", path)
+                return {"success": True, "path": path}
             return {"success": False, "error": "No file selected"}
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -388,15 +392,15 @@ class Api:
         self.config.update_config("workspace_mode", "local")
 
     def open_external_folder(self):
-        if not self._window:
-            return {"success": False, "error": "Window not initialized"}
-        if webview is None:
-            return {"success": False, "error": "pywebview not available"}
         try:
-            folder_dlg = getattr(webview.FileDialog, "FOLDER", getattr(webview, "FOLDER_DIALOG", 1))
-            result = self._window.create_file_dialog(folder_dlg)
-            if result and len(result) > 0:
-                selected_dir = result[0]
+            import tkinter as tk
+            from tkinter import filedialog
+            root = tk.Tk()
+            root.withdraw()
+            root.attributes('-topmost', True)
+            selected_dir = filedialog.askdirectory(title="Open External Folder")
+            root.destroy()
+            if selected_dir:
                 folder_name = os.path.basename(selected_dir.rstrip(os.sep)) or "Workspace"
                 self.file_ops = FileOpsServer(selected_dir)
                 self.config.update_config("active_workspace_dir", selected_dir)
@@ -752,6 +756,12 @@ class Api:
 
             self._log_terminal(f"4. Output returned from {engine_name} (Length: {len(response)} chars)")
             self._log_terminal("5. Delivering response back to User UI.")
+
+            # Strip Qwen 3.5/3.6+ <think>...</think> reasoning blocks (keep content AFTER them)
+            import re as _re
+            response = _re.sub(r'<think>.*?</think>\s*', '', response, flags=_re.DOTALL)
+            if '<think>' in response and '</think>' not in response:
+                response = _re.sub(r'<think>.*', '', response, flags=_re.DOTALL)
 
             # Strip any lingering turn-end tokens
             for stop_token in ["<end_of_turn>", "<|eot_id|>", "<|im_end|>", "</s>", "<|end|>", "<|endoftext|>", "</end_of_turn>", "<end_of_turn/>"]:

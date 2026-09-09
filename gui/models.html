@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en" class="dark"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=block" rel="stylesheet"><script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script><script id="tailwind-config">try{
+<!DOCTYPE html><html lang="en" class="dark"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><link href="css/fonts.css" rel="stylesheet"><script src="css/tailwind_full.js"></script><script id="tailwind-config">try{
       tailwind.config = {
         darkMode: "class",
         theme: {
@@ -537,7 +537,7 @@
 
     // --- Model Selection ---
     function browseModelFolder() {
-        pywebview.api.browse_model_folder().then(res => {
+        pywebview.api.select_model_folder().then(res => {
             if(res.success) {
                 const el = document.getElementById('model-folder-path');
                 if(el) el.value = res.path;
@@ -555,7 +555,7 @@
     }
 
     function browseModelFile() {
-        pywebview.api.browse_model_folder().then(res => {
+        pywebview.api.select_model_file().then(res => {
             if(res.success) {
                 const el = document.getElementById('model-folder-path');
                 if(el) el.value = res.path;

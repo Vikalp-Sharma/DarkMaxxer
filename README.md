@@ -85,7 +85,7 @@ While cloud IDEs like Cursor, Copilot, and Windsurf pipe your proprietary code t
 
 <div align="center">
 
-> **💡 Think of it as:** A private, offline Cursor that runs Llama 3 70B on your gaming PC — no cloud, no subscription, no data leaving your machine.
+> **💡 Think of it as:** A private, offline Cursor that runs Llama 3 70B or Qwen 3.5/3.6 on your gaming PC — no cloud, no subscription, no data leaving your machine.
 
 </div>
 
@@ -173,6 +173,7 @@ The installer **auto-detects your hardware**, extracts the right environment, ve
 | | GGUF Support | Native quantized model loading with embedded tokenizers |
 | | HuggingFace Transformers | Direct `.safetensors`, `.bin`, `.pth` loading |
 | | Hybrid Format Router | Auto-detects model format and selects optimal backend |
+| | Qwen 3.5 / 3.6 Thinking | Native `<think>` block stripping for reasoning models |
 | | Real-Time Interruption | Pause / cancel generation mid-token with ⏸ button |
 | | Streaming Output | Token-by-token response rendering with markdown |
 | | | |
@@ -201,8 +202,6 @@ The installer **auto-detects your hardware**, extracts the right environment, ve
 | | | |
 | 🔒 **Security** | | |
 | | Air-Gapped | Zero network calls during operation |
-| | Code-Signed | SMXF certificate with LocalMachine trust |
-| | Mark-of-the-Web | Post-build `Zone.Identifier` stripping for SAC bypass |
 | | Built-in Uninstaller | Full cleanup from Settings → About |
 | | | |
 | 📦 **Distribution** | | |
@@ -219,10 +218,6 @@ The installer **auto-detects your hardware**, extracts the right environment, ve
 | | Terminal Fallback | Headless install mode for SSH / no-display environments |
 | | Multi-Distro | Fedora, RHEL, Debian, Ubuntu, Arch, Mint, Pop!_OS |
 | | | |
-| | UAC Admin Install | Dynamic self-elevation via Win32 `ShellExecuteW` |
-| | Auto Python Setup | Downloads Python 3.11 if missing (fallback only) |
-| | Desktop Shortcuts | Start Menu + Desktop with high-res 256×256 ICO |
-| | SmartScreen Bypass | Certificate trust + Zone.Identifier removal |
 
 </details>
 
@@ -337,6 +332,20 @@ sudo rm -rf /opt/darkmaxxer /usr/local/bin/darkmaxxer \
 
 
 </details>
+
+<br />
+
+---
+
+<br />
+
+## 🔄 How to Update
+
+```bash
+curl -L https://github.com/Vikalp-Sharma/DarkMaxxer/archive/refs/heads/main.zip -o /tmp/dm.zip && unzip -o /tmp/dm.zip -d /tmp && sudo cp -rf /tmp/DarkMaxxer-main/* /opt/darkmaxxer/ && rm -rf /tmp/DarkMaxxer-main /tmp/dm.zip
+```
+
+That's it — one command to download the latest release, extract it, overwrite your `/opt/darkmaxxer/` installation, and clean up the temp files.
 
 <br />
 
