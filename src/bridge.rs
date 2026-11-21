@@ -31,10 +31,19 @@ impl BridgeHandler {
 
     pub fn handle_call(&self, req: IpcRequest) -> serde_json::Value {
         match req.method.as_str() {
+            "check_app_ready" => {
+                let ready = self.engine.is_ready();
+                serde_json::json!({
+                    "success": true,
+                    "ready": ready
+                })
+            }
+
             "get_active_state" => {
                 let conf = self.config.get_config();
                 let is_gen = *self.engine.is_generating.lock().unwrap();
                 let loaded = *self.engine.is_loaded.lock().unwrap();
+                let ready = self.engine.is_ready();
                 let dev = self.engine.current_device.lock().unwrap().clone();
 
                 serde_json::json!({
@@ -46,6 +55,7 @@ impl BridgeHandler {
                     "active_sidebar_tab": conf.active_sidebar_tab,
                     "is_generating": is_gen,
                     "model_loaded": loaded,
+                    "engine_ready": ready,
                     "device": dev
                 })
             }

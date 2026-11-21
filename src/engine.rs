@@ -36,6 +36,7 @@ pub struct EngineSupervisor {
     stdin_writer: Arc<Mutex<Option<ChildStdin>>>,
     pub is_generating: Arc<Mutex<bool>>,
     pub is_loaded: Arc<Mutex<bool>>,
+    pub is_engine_ready: Arc<Mutex<bool>>,
     pub active_model: Arc<Mutex<Option<String>>>,
     pub current_device: Arc<Mutex<String>>,
     pub latest_logs: Arc<Mutex<Vec<String>>>,
@@ -48,6 +49,7 @@ impl EngineSupervisor {
             stdin_writer: Arc::new(Mutex::new(None)),
             is_generating: Arc::new(Mutex::new(false)),
             is_loaded: Arc::new(Mutex::new(false)),
+            is_engine_ready: Arc::new(Mutex::new(false)),
             active_model: Arc::new(Mutex::new(None)),
             current_device: Arc::new(Mutex::new("cpu".to_string())),
             latest_logs: Arc::new(Mutex::new(Vec::new())),
@@ -98,6 +100,7 @@ impl EngineSupervisor {
         // Spawn reader thread
         let is_gen_clone = Arc::clone(&self.is_generating);
         let is_loaded_clone = Arc::clone(&self.is_loaded);
+        let is_ready_clone = Arc::clone(&self.is_engine_ready);
         let active_model_clone = Arc::clone(&self.active_model);
         let device_clone = Arc::clone(&self.current_device);
         let logs_clone = Arc::clone(&self.latest_logs);
@@ -107,6 +110,9 @@ impl EngineSupervisor {
             for line in reader.lines().flatten() {
                 if let Ok(evt) = serde_json::from_str::<EngineEvent>(&line) {
                     match evt.event.as_str() {
+                        "ready" => {
+                            *is_ready_clone.lock().unwrap() = true;
+                        }
                         "status" => {
                             if let Some(ref m) = evt.message {
                                 let mut l = logs_clone.lock().unwrap();
@@ -139,6 +145,10 @@ impl EngineSupervisor {
         });
 
         Ok(())
+    }
+
+    pub fn is_ready(&self) -> bool {
+        *self.is_engine_ready.lock().unwrap()
     }
 
     pub fn send_command(&self, cmd: serde_json::Value) -> Result<(), String> {

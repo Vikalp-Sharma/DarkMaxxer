@@ -172,7 +172,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .unwrap()
             }
         })
-        .with_url("darkmaxxer://localhost/index.html")
+        .with_background_color((10, 10, 15, 255))
+        .with_url("darkmaxxer://localhost/splash.html")
         .with_ipc_handler(move |req: wry::http::Request<String>| {
             let body = req.body().clone();
             let _ = proxy_for_ipc.send_event(UserEvent::IpcMessage(body));
