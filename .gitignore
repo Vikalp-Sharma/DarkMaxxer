@@ -5,3 +5,4 @@ __pycache__/
 *.rpm
 *.deb
 .DS_Store
+/models

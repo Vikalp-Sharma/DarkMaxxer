@@ -1,0 +1,24 @@
+[ req ]
+default_bits        = 4096
+distinguished_name  = req_distinguished_name
+prompt              = no
+
+[ req_distinguished_name ]
+C   = IN
+ST  = Delhi
+L   = New Delhi
+O   = DarkMaxxer AI Technologies
+OU  = Autonomous Engineering
+CN  = Vikalp Sharma (DarkMaxxer Code Signing)
+
+[ codesign_ext ]
+basicConstraints        = critical, CA:FALSE
+keyUsage                = critical, digitalSignature, keyEncipherment
+extendedKeyUsage        = critical, codeSigning, 1.3.6.1.5.5.7.3.3
+subjectKeyIdentifier    = hash
+authorityKeyIdentifier  = keyid,issuer
+subjectAltName          = @alt_names
+
+[ alt_names ]
+DNS.1 = darkmaxxer.local
+DNS.2 = github.com/Vikalp-Sharma/DarkMaxxer
