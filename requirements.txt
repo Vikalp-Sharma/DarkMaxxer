@@ -1,21 +1,14 @@
-# DarkMaxxer Local AI IDE - Offline Inference Dependencies
-# Note: All models must be loaded from local path on disk (`.gguf`, `.safetensors`, `.bin`, `.pth`)
-#
-# Qwen3.5 / Qwen3.6 (llama.cpp GGUF architecture tag: "qwen35") needs:
-#   - transformers >= 5.2   (ships Qwen3_5TextConfig / Qwen3_5TextForCausalLM)
-#   - airllm (recent)       (generic hook-based AirLLMBaseModel streams hybrid SSM layers)
-#   - gguf (recent)         (GGUFReader + llama.cpp tensor metadata)
-airllm
-pywebview
-transformers>=5.2.0
+# DarkMaxxer 2.0 Universal AI Engine Dependencies (Dynamic Pip Installation)
+# Note: Core desktop GUI and Installer are 100% native Rust.
+# Python is strictly used as the local AI inference runtime engine.
+
 torch
+transformers>=5.2.0
+airllm
 accelerate
-huggingface_hub
 gguf
-pillow
-pyinstaller
-sentencepiece
 safetensors
+sentencepiece
 protobuf
 numpy
 certifi
