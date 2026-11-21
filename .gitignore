@@ -4,5 +4,11 @@
 __pycache__/
 *.rpm
 *.deb
+*.exe
+*.zip
 .DS_Store
 /models
+/test_models
+/dist/
+/Installers/
+
