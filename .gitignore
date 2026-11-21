@@ -11,4 +11,10 @@ __pycache__/
 /test_models
 /dist/
 /Installers/
-
+/installer/
+/scripts/
+main.py
+llm_engine.py
+mcp_integration.py
+memory_manager.py
+setup_ui.py

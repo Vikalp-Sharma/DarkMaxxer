@@ -9,9 +9,6 @@ description = "The Ultimate Local AI Workspace in Rust"
 name = "darkmaxxer"
 path = "src/main.rs"
 
-[[bin]]
-name = "darkmaxxer-installer"
-path = "installer/main.rs"
 
 [dependencies]
 wry = "0.47"
