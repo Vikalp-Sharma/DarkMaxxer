@@ -236,7 +236,7 @@ fn configure_app(app_dir: &Path, mode: GpuMode) {
     }
 }
 
-fn configure_launcher(app_dir: &Path) -> Result<(), String> {
+fn configure_launcher(_app_dir: &Path) -> Result<(), String> {
     println!("[5/5] Configuring system launcher...");
 
     #[cfg(not(target_os = "windows"))]

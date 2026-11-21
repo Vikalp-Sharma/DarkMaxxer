@@ -241,20 +241,41 @@ class UniversalAIEngine:
                 if self.device != "cpu":
                     inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
-                input_len = inputs["input_ids"].shape[1]
-                with torch.no_grad():
-                    outputs = self.model.generate(
+                try:
+                    from transformers import TextIteratorStreamer
+                    streamer = TextIteratorStreamer(tok, skip_prompt=True, skip_special_tokens=True)
+                    gen_kwargs = dict(
                         **inputs,
+                        streamer=streamer,
                         max_new_tokens=max_new_tokens,
                         temperature=max(temperature, 0.01),
                         do_sample=(temperature > 0),
                         pad_token_id=tok.pad_token_id or tok.eos_token_id
                     )
+                    gen_thread = threading.Thread(target=self.model.generate, kwargs=gen_kwargs)
+                    gen_thread.start()
 
-                new_tokens = outputs[0][input_len:]
-                generated_text = tok.decode(new_tokens, skip_special_tokens=True)
-                token_count = len(new_tokens)
-                emit({"event": "token", "token": generated_text})
+                    for new_text in streamer:
+                        if self._cancel_requested:
+                            break
+                        generated_text += new_text
+                        token_count += 1
+                        emit({"event": "token", "token": new_text})
+                    gen_thread.join(timeout=2.0)
+                except Exception:
+                    input_len = inputs["input_ids"].shape[1]
+                    with torch.no_grad():
+                        outputs = self.model.generate(
+                            **inputs,
+                            max_new_tokens=max_new_tokens,
+                            temperature=max(temperature, 0.01),
+                            do_sample=(temperature > 0),
+                            pad_token_id=tok.pad_token_id or tok.eos_token_id
+                        )
+                    new_tokens = outputs[0][input_len:]
+                    generated_text = tok.decode(new_tokens, skip_special_tokens=True)
+                    token_count = len(new_tokens)
+                    emit({"event": "token", "token": generated_text})
 
             elapsed = time.time() - start_time
             emit({

@@ -197,7 +197,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 event: WindowEvent::CloseRequested,
                 ..
             } => {
-                let _ = bridge.engine.cancel();
+                bridge.engine.stop();
                 *control_flow = ControlFlow::Exit;
             }
 
@@ -232,10 +232,54 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             }
                         }
                     }
+                    "loaded" => {
+                        let success = evt.success.unwrap_or(false);
+                        let dev = evt.device.clone().unwrap_or_else(|| "CPU".to_string());
+                        let msg = if success {
+                            format!("Model loaded successfully on {}!", dev)
+                        } else {
+                            evt.error.clone().unwrap_or_else(|| "Failed to load model".to_string())
+                        };
+                        if let Ok(safe_msg) = serde_json::to_string(&msg) {
+                            let js = format!(
+                                "if(window.updateLoadStatus) window.updateLoadStatus({}, 100); if(window.restoreState) window.restoreState();",
+                                safe_msg
+                            );
+                            let _ = webview.evaluate_script(&js);
+                        }
+                    }
                     "generation_complete" => {
                         if let Some(ref txt) = evt.text {
+                            // Persist assistant message to active conversation
+                            let conf = bridge.config.get_config();
+                            if let Some(ref conv_id) = conf.active_conv_id {
+                                if let Some(mut conv) = bridge.config.get_conversation(conv_id) {
+                                    conv.history.push(crate::config::ChatMessage {
+                                        role: "assistant".to_string(),
+                                        content: txt.clone(),
+                                        timestamp: Some(chrono::Utc::now().to_rfc3339()),
+                                    });
+                                    bridge.config.save_conversation(&conv);
+                                }
+                            }
+
                             if let Ok(safe_txt) = serde_json::to_string(txt) {
-                                let js = format!("if(window.onGenerationComplete) window.onGenerationComplete({});", safe_txt);
+                                let js = format!(
+                                    "if(window.onGenerationComplete) window.onGenerationComplete({}); if(window.restoreState) window.restoreState();",
+                                    safe_txt
+                                );
+                                let _ = webview.evaluate_script(&js);
+                            }
+                        }
+                    }
+                    "cancelled" => {
+                        let js = "if(window.restoreState) window.restoreState();";
+                        let _ = webview.evaluate_script(js);
+                    }
+                    "error" => {
+                        if let Some(ref m) = evt.message {
+                            if let Ok(safe_m) = serde_json::to_string(m) {
+                                let js = format!("if(window.appendTerminal) window.appendTerminal('Engine Error: ' + {}); if(window.restoreState) window.restoreState();", safe_m);
                                 let _ = webview.evaluate_script(&js);
                             }
                         }

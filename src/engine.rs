@@ -58,13 +58,19 @@ impl EngineSupervisor {
 
     pub fn start(&self, app_dir: &Path, on_event: Arc<dyn Fn(EngineEvent) + Send + Sync + 'static>) -> Result<(), String> {
         // Resolve Python binary: prefer user PyEnv, then local venv, then /opt, then system
-        let candidates = [
+        let mut candidates = vec![
             PathBuf::from("/run/media/kairo/S-M-X-F/Da-Ta/PyEnv/bin/python3"),
             app_dir.join("venv/bin/python3"),
             PathBuf::from("/opt/darkmaxxer/venv/bin/python3"),
             app_dir.join("venv/Scripts/python.exe"),
             PathBuf::from("python3"),
+            PathBuf::from("python"),
         ];
+
+        if let Some(home) = dirs::home_dir() {
+            candidates.push(home.join(".darkmaxxer/venv/bin/python3"));
+            candidates.push(home.join(".darkmaxxer/venv/Scripts/python.exe"));
+        }
 
         let python_bin = candidates.iter()
             .find(|p| p.exists())
@@ -196,5 +202,22 @@ impl EngineSupervisor {
             "action": "compatibility_check",
             "model_path": model_path
         }))
+    }
+
+    pub fn stop(&self) {
+        let _ = self.cancel();
+        let mut proc_guard = self.process.lock().unwrap();
+        if let Some(mut child) = proc_guard.take() {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+        let mut writer_guard = self.stdin_writer.lock().unwrap();
+        *writer_guard = None;
+    }
+}
+
+impl Drop for EngineSupervisor {
+    fn drop(&mut self) {
+        self.stop();
     }
 }

@@ -46,17 +46,39 @@ impl BridgeHandler {
                 let ready = self.engine.is_ready();
                 let dev = self.engine.current_device.lock().unwrap().clone();
 
+                let (conv_id, history) = if let Some(ref id) = conf.active_conv_id {
+                    if let Some(conv) = self.config.get_conversation(id) {
+                        (Some(id.clone()), conv.history)
+                    } else {
+                        (Some(id.clone()), vec![])
+                    }
+                } else {
+                    (None, vec![])
+                };
+
+                let ws_path = conf.active_workspace_dir.clone();
+                let ws_name = ws_path.as_ref().and_then(|p| {
+                    std::path::Path::new(p).file_name().map(|n| n.to_string_lossy().to_string())
+                });
+
                 serde_json::json!({
                     "settings": conf.settings,
                     "ai_path": conf.ai_path,
-                    "active_conv_id": conf.active_conv_id,
+                    "ai_loaded": loaded,
+                    "model_loaded": loaded,
+                    "conv_id": conv_id,
+                    "active_conv_id": conv_id,
+                    "history": history,
+                    "workspace_path": ws_path,
+                    "workspace_name": ws_name,
                     "active_workspace_dir": conf.active_workspace_dir,
                     "workspace_mode": conf.workspace_mode,
                     "active_sidebar_tab": conf.active_sidebar_tab,
                     "is_generating": is_gen,
-                    "model_loaded": loaded,
                     "engine_ready": ready,
-                    "device": dev
+                    "device": dev,
+                    "terminal_logs": *self.engine.latest_logs.lock().unwrap(),
+                    "file_ops_active": true
                 })
             }
 
@@ -155,8 +177,18 @@ impl BridgeHandler {
             }
 
             "load_model" => {
-                let path = req.args.first().and_then(|v| v.as_str()).unwrap_or_default();
                 let conf = self.config.get_config();
+                let path_arg = req.args.first().and_then(|v| v.as_str()).unwrap_or_default();
+                let path = if path_arg.is_empty() {
+                    conf.ai_path.as_deref().unwrap_or_default()
+                } else {
+                    path_arg
+                };
+
+                if path.is_empty() {
+                    return serde_json::json!({ "success": false, "error": "No model path specified" });
+                }
+
                 let use_gpu = conf.settings.gpu_acceleration;
                 let compute_mode = conf.settings.compute_mode;
 

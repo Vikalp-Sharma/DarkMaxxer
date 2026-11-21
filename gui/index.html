@@ -749,6 +749,51 @@
         }
     };
 
+    window.renderStreamedToken = function(token) {
+        const chatBox = document.getElementById('chat-history');
+        if (!chatBox) return;
+        
+        let streamingBubble = document.getElementById('streaming-ai-bubble');
+        if (!streamingBubble) {
+            const loadingEls = chatBox.querySelectorAll('.loading-dots');
+            loadingEls.forEach(el => {
+                const parent = el.closest('.p-md');
+                if (parent) parent.remove();
+            });
+
+            const el = document.createElement('div');
+            el.className = "p-md rounded-lg mb-sm bg-surface-variant/30 border border-secondary/20 mr-12";
+            el.innerHTML = `<div class="font-label-sm mb-xs text-secondary">${window._aiName || "UserAI"}</div><div id="streaming-ai-bubble" class="whitespace-pre-wrap font-body-md text-on-surface leading-normal"></div>`;
+            chatBox.appendChild(el);
+            streamingBubble = document.getElementById('streaming-ai-bubble');
+        }
+        
+        if (streamingBubble) {
+            streamingBubble.innerText += token;
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+    };
+
+    window.onGenerationComplete = function(fullText) {
+        window._isGenerating = false;
+        const input = document.getElementById('chat-input');
+        const sendBtn = document.getElementById('send-btn');
+        const pauseBtn = document.getElementById('pause-btn');
+        if (input) { input.disabled = false; input.focus(); }
+        if (sendBtn) { sendBtn.disabled = false; sendBtn.classList.remove('hidden'); sendBtn.innerText = '▶'; }
+        if (pauseBtn) { pauseBtn.classList.add('hidden'); }
+
+        const streamingBubble = document.getElementById('streaming-ai-bubble');
+        if (streamingBubble) {
+            streamingBubble.removeAttribute('id');
+            if (fullText) streamingBubble.innerText = fullText;
+        }
+
+        if (typeof window.restoreState === 'function') {
+            window.restoreState();
+        }
+    };
+
     window.switchSidebarTab = function(tab, save = true) {
         if (save && window.pywebview && window.pywebview.api && window.pywebview.api.save_setting) {
             window.pywebview.api.save_setting('active_sidebar_tab', tab);

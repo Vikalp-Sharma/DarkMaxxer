@@ -185,6 +185,11 @@ impl ConfigManager {
                     conf.active_sidebar_tab = s.to_string();
                 }
             }
+            "workspace_mode" => {
+                if let Some(s) = value.as_str() {
+                    conf.workspace_mode = s.to_string();
+                }
+            }
             _ => {}
         }
         drop(conf);
