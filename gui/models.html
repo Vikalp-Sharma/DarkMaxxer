@@ -287,9 +287,18 @@
         window.isModelLoading = false;
         const loadModal = document.getElementById('loading-modal');
         const loadModalStatus = document.getElementById('loading-modal-status');
+        const statusEl = document.getElementById('gpu-status-text');
+        const pathEl = document.getElementById('model-folder-path');
+        const modelName = pathEl && pathEl.value ? pathEl.value.split(/[\\/]/).pop() : "Model";
+
+        if (statusEl) {
+            statusEl.innerText = "✓ Active Model: " + modelName;
+            statusEl.classList.remove('text-error');
+        }
         if (loadModalStatus) {
             loadModalStatus.classList.remove('text-error');
             loadModalStatus.classList.add('text-secondary');
+            loadModalStatus.innerText = "✓ Model Loaded Successfully: " + modelName;
         }
         setTimeout(() => {
             if (loadModal) {
@@ -298,6 +307,8 @@
             }
             if (window.parent && window.parent.postMessage) {
                 window.parent.postMessage('closeSpaOverlay', '*');
+            } else if (window.location.pathname.includes('models.html')) {
+                window.location.href = "index.html";
             }
         }, 1200);
     };
@@ -547,7 +558,9 @@
                     if (statusEl) statusEl.innerText = "✓ Active Model: " + state.ai_path.split(/[\\/]/).pop();
                 } else {
                     const statusEl = document.getElementById('gpu-status-text');
-                    if (statusEl && statusEl.innerText.indexOf('Loaded') === -1) statusEl.innerText = "Selected: " + state.ai_path.split(/[\\/]/).pop();
+                    if (statusEl && statusEl.innerText.indexOf('Loaded') === -1 && statusEl.innerText.indexOf('Loading') === -1) {
+                        statusEl.innerText = "Ready to load: " + state.ai_path.split(/[\\/]/).pop();
+                    }
                 }
             }
 
@@ -624,7 +637,7 @@
     // --- Model Selection ---
     function browseModelFolder() {
         pywebview.api.select_model_folder().then(res => {
-            if(res.success) {
+            if(res.success && res.path) {
                 const el = document.getElementById('model-folder-path');
                 if(el) el.value = res.path;
                 if(window.pywebview && window.pywebview.api && window.pywebview.api.save_setting) {
@@ -632,7 +645,10 @@
                 }
                 const statusEl = document.getElementById('gpu-status-text');
                 if (statusEl) statusEl.innerText = "Selected: " + res.path.split(/[\\/]/).pop();
-            } else if (res.error && res.error !== "No file selected") {
+
+                // Automatically begin loading selected model directory
+                loadModelDirectly(res.path);
+            } else if (res.error && res.error !== "No folder selected" && res.error !== "No file selected") {
                 alert("Error selecting folder: " + res.error);
             }
         }).catch(err => {
@@ -642,7 +658,7 @@
 
     function browseModelFile() {
         pywebview.api.select_model_file().then(res => {
-            if(res.success) {
+            if(res.success && res.path) {
                 const el = document.getElementById('model-folder-path');
                 if(el) el.value = res.path;
                 if(window.pywebview && window.pywebview.api && window.pywebview.api.save_setting) {
@@ -650,6 +666,9 @@
                 }
                 const statusEl = document.getElementById('gpu-status-text');
                 if (statusEl) statusEl.innerText = "Selected: " + res.path.split(/[\\/]/).pop();
+
+                // Automatically begin loading selected model file
+                loadModelDirectly(res.path);
             } else if(res.error && res.error !== "No file selected") {
                 alert("Error selecting file: " + res.error);
             }
@@ -657,71 +676,79 @@
             alert("Error: " + err);
         });
     }
-    function loadModelDirectly() {
+
+    function loadModelDirectly(customPath) {
         const pathEl = document.getElementById('model-folder-path');
-        const path = pathEl ? pathEl.value : '';
-        if(!path) { alert("Please browse and select a local model directory or file (.file, .pkl, .bin, etc.) first."); return; }
+        const path = (typeof customPath === 'string' && customPath.trim() ? customPath.trim() : (pathEl ? pathEl.value.trim() : '')).trim();
+        if(!path) { alert("Please browse and select a local model directory or file (.gguf, .safetensors, etc.) first."); return; }
 
-        try {
-            localStorage.setItem('welcome_seen', 'true');
-            sessionStorage.setItem('welcome_seen', 'true');
-        } catch(e) {}
+        if (pathEl) pathEl.value = path;
 
-        if(window.pywebview && window.pywebview.api && window.pywebview.api.save_setting) {
-            window.pywebview.api.save_setting('ai_path', path);
-        }
+        const proceedWithLoad = () => {
+            try {
+                localStorage.setItem('welcome_seen', 'true');
+                sessionStorage.setItem('welcome_seen', 'true');
+            } catch(e) {}
 
-        const statusEl = document.getElementById('gpu-status-text');
-        if (statusEl) statusEl.innerText = "Loading model weights...";
+            if(window.pywebview && window.pywebview.api && window.pywebview.api.save_setting) {
+                window.pywebview.api.save_setting('ai_path', path);
+            }
 
-        const loadModal = document.getElementById('loading-modal');
-        const loadModalStatus = document.getElementById('loading-modal-status');
-        window.isModelLoading = true;
-        
-        // Clear old logs
-        const logsEl = document.getElementById('loading-logs');
-        if(logsEl) logsEl.innerHTML = '';
+            const statusEl = document.getElementById('gpu-status-text');
+            if (statusEl) statusEl.innerText = "Loading " + path.split(/[\\/]/).pop() + "...";
 
-        if (loadModal) {
-            loadModal.classList.remove('hidden');
-            loadModal.style.display = 'flex';
-        }
-        if (loadModalStatus) loadModalStatus.innerText = "Loading " + path.split(/[\\\/]/).pop() + "...";
-        // load_model runs synchronously and returns the result directly
-        pywebview.api.load_model(path, "").then(loadRes => {
-            window.isModelLoading = false;
-            if(loadRes.success) {
-                const modalEl = document.getElementById('loading-modal');
-                if (modalEl) {
-                    modalEl.classList.add('hidden');
-                    modalEl.style.display = 'none';
-                }
-                if (statusEl) statusEl.innerText = "✓ Active Model: " + path.split(/[\\/]/).pop();
-                if (window.parent && window.parent.postMessage) {
-                    window.parent.postMessage('closeSpaOverlay', '*');
-                } else if (window.location.pathname.includes('models.html')) {
-                    window.location.href = "index.html";
+            const loadModal = document.getElementById('loading-modal');
+            const loadModalStatus = document.getElementById('loading-modal-status');
+            window.isModelLoading = true;
+            
+            // Clear old logs
+            const logsEl = document.getElementById('loading-logs');
+            if(logsEl) logsEl.innerHTML = '';
+
+            if (loadModal) {
+                loadModal.classList.remove('hidden');
+                loadModal.style.display = 'flex';
+            }
+            if (loadModalStatus) loadModalStatus.innerText = "Loading " + path.split(/[\\/]/).pop() + "...";
+
+            // load_model initiates background loading in the engine runner
+            pywebview.api.load_model(path).then(loadRes => {
+                if(!loadRes.success) {
+                    window.isModelLoading = false;
+                    if (typeof window.onModelLoadedError === 'function') {
+                        window.onModelLoadedError(loadRes.error || "Failed to load model");
+                    } else if (statusEl) {
+                        statusEl.innerText = "Error: " + (loadRes.error || "Unknown error");
+                        statusEl.classList.add('text-error');
+                    }
                 } else {
-                    const modal = document.getElementById('first-run-modal');
-                    if(modal) modal.classList.add('hidden');
+                    // Load command dispatched to engine. Keep modal open until onModelLoadedSuccess event fires!
+                    if (statusEl) statusEl.innerText = "Loading " + path.split(/[\\/]/).pop() + "...";
                 }
-            } else {
+            }).catch(err => {
+                window.isModelLoading = false;
                 if (typeof window.onModelLoadedError === 'function') {
-                    window.onModelLoadedError(loadRes.error || "Failed to load model");
+                    window.onModelLoadedError("" + err);
                 } else if (statusEl) {
-                    statusEl.innerText = "Error: " + (loadRes.error || "Unknown error");
+                    statusEl.innerText = "Exception: " + err;
                     statusEl.classList.add('text-error');
                 }
-            }
-        }).catch(err => {
-            window.isModelLoading = false;
-            if (typeof window.onModelLoadedError === 'function') {
-                window.onModelLoadedError("" + err);
-            } else if (statusEl) {
-                statusEl.innerText = "Exception: " + err;
-                statusEl.classList.add('text-error');
-            }
-        });
+            });
+        };
+
+        if (window.pywebview && window.pywebview.api && window.pywebview.api.check_model_compatibility) {
+            window.pywebview.api.check_model_compatibility(path).then(compRes => {
+                if (compRes && compRes.compatible === false) {
+                    alert("GPU / VRAM Incompatible:\n" + (compRes.message || "Hardware incompatibility detected.") + "\nPlease select a compatible model or lower VRAM alternative.");
+                    return;
+                }
+                proceedWithLoad();
+            }).catch(() => {
+                proceedWithLoad();
+            });
+        } else {
+            proceedWithLoad();
+        }
     }   
 
 

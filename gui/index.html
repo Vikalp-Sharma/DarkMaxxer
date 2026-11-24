@@ -737,12 +737,24 @@
     window.onModelLoadedSuccess = function() {
         window.isModelLoading = false;
         window._autoLoadAttempted = true;
+
+        const notice = document.getElementById('pending-load-notice');
+        if (notice) notice.remove();
+
         const loadModal = document.getElementById('loading-modal');
         const loadModalStatus = document.getElementById('loading-modal-status');
         if (loadModalStatus) {
             loadModalStatus.classList.remove('text-error');
             loadModalStatus.classList.add('text-secondary');
+            loadModalStatus.innerText = "Model loaded successfully!";
         }
+
+        // Forward success event to active iframe if models.html is open
+        const iframe = document.getElementById('spa-iframe');
+        if (iframe && iframe.contentWindow && typeof iframe.contentWindow.onModelLoadedSuccess === 'function') {
+            try { iframe.contentWindow.onModelLoadedSuccess(); } catch(e) {}
+        }
+
         setTimeout(() => {
             if (loadModal) {
                 loadModal.classList.add('hidden');
@@ -750,12 +762,31 @@
             }
             if (typeof activateWorkspace === 'function') activateWorkspace();
             if (typeof closeSpaOverlay === 'function') closeSpaOverlay();
+
+            // If a prompt was queued while the model was loading, automatically execute it now!
+            if (window._pendingPrompt) {
+                const pending = window._pendingPrompt;
+                window._pendingPrompt = null;
+                const input = document.getElementById('chat-input');
+                if (input) input.value = pending;
+                if (typeof sendPrompt === 'function') sendPrompt();
+            }
         }, 1200);
     };
 
     window.onModelLoadedError = function(errMsg) {
         window.isModelLoading = false;
         window._autoLoadAttempted = true;
+
+        const notice = document.getElementById('pending-load-notice');
+        if (notice) notice.remove();
+
+        if (window._pendingPrompt) {
+            window._pendingPrompt = null;
+            if (typeof appendTerminal === 'function') {
+                appendTerminal("Queued prompt cancelled: model load failed.");
+            }
+        }
 
         const loadModal = document.getElementById('loading-modal');
         if (loadModal) {
@@ -788,6 +819,12 @@
         if (typeof window.appendTerminal === 'function') {
             window.appendTerminal("[ERROR] Model Load Failed: " + errMsg);
         }
+
+        // Forward error event to active iframe
+        const iframe = document.getElementById('spa-iframe');
+        if (iframe && iframe.contentWindow && typeof iframe.contentWindow.onModelLoadedError === 'function') {
+            try { iframe.contentWindow.onModelLoadedError(errMsg); } catch(e) {}
+        }
     };
 
     window.updateLoadStatus = function(msg, pct) {
@@ -817,6 +854,12 @@
         }
         if (typeof window.appendTerminal === 'function') {
             window.appendTerminal("AI Status: " + text);
+        }
+
+        // Forward status updates to active iframe
+        const iframe = document.getElementById('spa-iframe');
+        if (iframe && iframe.contentWindow && typeof iframe.contentWindow.updateLoadStatus === 'function') {
+            try { iframe.contentWindow.updateLoadStatus(msg, pct); } catch(e) {}
         }
     };
 
@@ -1224,7 +1267,9 @@
                     if (statusEl) statusEl.innerText = "✓ Active Model: " + state.ai_path.split(/[\\/]/).pop();
                 } else {
                     const statusEl = document.getElementById('gpu-status-text');
-                    if (statusEl && statusEl.innerText.indexOf('Loaded') === -1) statusEl.innerText = "Selected: " + state.ai_path.split(/[\\/]/).pop();
+                    if (statusEl && statusEl.innerText.indexOf('Loaded') === -1 && statusEl.innerText.indexOf('Loading') === -1) {
+                        statusEl.innerText = "Ready to load: " + state.ai_path.split(/[\\/]/).pop();
+                    }
                 }
             }
 
@@ -1280,22 +1325,14 @@
                     loadModalStatus.innerText = "Auto-loading model: " + state.ai_path.split(/[\\/]/).pop() + "...";
                 }
 
-                const _savedAiPath = state.ai_path;
                 pywebview.api.load_model(state.ai_path).then(res => {
-                    window.isModelLoading = false;
-                    if(res.success) {
-                        const modalEl = document.getElementById('loading-modal');
-                        if (modalEl) { modalEl.classList.add('hidden'); modalEl.style.display = 'none'; }
-                        if (typeof appendTerminal === 'function') appendTerminal("AI model loaded successfully.");
-                        const modal = document.getElementById('first-run-modal');
-                        if(modal) modal.classList.add('hidden');
-                        if (typeof activateWorkspace === 'function') activateWorkspace();
-                        const statusEl = document.getElementById('gpu-status-text');
-                        if (statusEl) statusEl.innerText = "⚡ Active Model: " + _savedAiPath.split(/[\\/]/).pop();
-                    } else {
+                    if(!res.success) {
+                        window.isModelLoading = false;
                         if (typeof window.onModelLoadedError === 'function') {
                             window.onModelLoadedError(res.error || "Failed to auto-load model");
                         }
+                    } else {
+                        // Successfully dispatched; modal stays open until onModelLoadedSuccess fires from engine
                     }
                 }).catch(err => {
                     window.isModelLoading = false;
@@ -1429,7 +1466,7 @@
     // --- Model Selection ---
     function browseModelFolder() {
         pywebview.api.select_model_folder().then(res => {
-            if(res.success) {
+            if(res.success && res.path) {
                 const el = document.getElementById('model-folder-path');
                 if(el) el.value = res.path;
                 if(window.pywebview && window.pywebview.api && window.pywebview.api.save_setting) {
@@ -1437,13 +1474,18 @@
                 }
                 const statusEl = document.getElementById('gpu-status-text');
                 if (statusEl) statusEl.innerText = "Selected: " + res.path.split(/[\\/]/).pop();
+
+                // Automatically begin loading selected model directory
+                loadModelDirectly(res.path);
+            } else if (res.error && res.error !== "No folder selected" && res.error !== "No file selected") {
+                alert("Error selecting folder: " + res.error);
             }
         });
     }
 
     function browseModelFile() {
         pywebview.api.select_model_file().then(res => {
-            if(res.success) {
+            if(res.success && res.path) {
                 const el = document.getElementById('model-folder-path');
                 if(el) el.value = res.path;
                 if(window.pywebview && window.pywebview.api && window.pywebview.api.save_setting) {
@@ -1451,16 +1493,21 @@
                 }
                 const statusEl = document.getElementById('gpu-status-text');
                 if (statusEl) statusEl.innerText = "Selected: " + res.path.split(/[\\/]/).pop();
+
+                // Automatically begin loading selected model file
+                loadModelDirectly(res.path);
             } else if(res.error && res.error !== "No file selected") {
                 alert("Error selecting file: " + res.error);
             }
         });
     }
 
-    function loadModelDirectly() {
+    function loadModelDirectly(customPath) {
         const pathEl = document.getElementById('model-folder-path');
-        const path = pathEl ? pathEl.value.trim() : '';
+        const path = (typeof customPath === 'string' && customPath.trim() ? customPath.trim() : (pathEl ? pathEl.value.trim() : '')).trim();
         if(!path) { alert("Please select or browse a local model folder or weight file on disk first."); return; }
+
+        if (pathEl) pathEl.value = path;
 
         const proceedWithLoad = () => {
             try {
@@ -1473,7 +1520,7 @@
             }
 
             const statusEl = document.getElementById('gpu-status-text');
-            if (statusEl) statusEl.innerText = "Loading model weights...";
+            if (statusEl) statusEl.innerText = "Loading " + path.split(/[\\/]/).pop() + "...";
 
             const loadModal = document.getElementById('loading-modal');
             const loadModalStatus = document.getElementById('loading-modal-status');
@@ -1489,27 +1536,16 @@
             }
             if (loadModalStatus) loadModalStatus.innerText = "Loading " + path.split(/[\\/]/).pop() + "...";
 
-            // load_model runs synchronously on the pywebview thread and returns the result
+            // load_model initiates background loading in the engine runner
             pywebview.api.load_model(path).then(loadRes => {
-                window.isModelLoading = false;
-                if(loadRes.success) {
-                    const modalEl = document.getElementById('loading-modal');
-                    if (modalEl) {
-                        modalEl.classList.add('hidden');
-                        modalEl.style.display = 'none';
-                    }
-                    if (statusEl) statusEl.innerText = "✓ Active Model: " + path.split(/[\\/]/).pop();
-                    if (window.location.pathname.includes('models.html')) {
-                        window.location.href = "index.html";
-                    } else {
-                        const modal = document.getElementById('first-run-modal');
-                        if(modal) modal.classList.add('hidden');
-                        if (typeof activateWorkspace === 'function') activateWorkspace();
-                    }
-                } else {
+                if(!loadRes.success) {
+                    window.isModelLoading = false;
                     if (typeof window.onModelLoadedError === 'function') {
                         window.onModelLoadedError(loadRes.error || "Failed to load model");
                     }
+                } else {
+                    // Load command dispatched to engine. Keep modal open until onModelLoadedSuccess event fires!
+                    if (statusEl) statusEl.innerText = "Loading " + path.split(/[\\/]/).pop() + "...";
                 }
             }).catch(err => {
                 window.isModelLoading = false;
@@ -1522,10 +1558,12 @@
 
         if (window.pywebview && window.pywebview.api && window.pywebview.api.check_model_compatibility) {
             window.pywebview.api.check_model_compatibility(path).then(compRes => {
-                if (compRes && !compRes.compatible) {
-                    alert("GPU / VRAM Incompatible:\n" + compRes.message + "\nPlease select a compatible model or lower VRAM alternative.");
+                if (compRes && compRes.compatible === false) {
+                    alert("GPU / VRAM Incompatible:\n" + (compRes.message || "Hardware incompatibility detected.") + "\nPlease select a compatible model or lower VRAM alternative.");
                     return;
                 }
+                proceedWithLoad();
+            }).catch(() => {
                 proceedWithLoad();
             });
         } else {
@@ -2122,9 +2160,55 @@
         pywebview.api.get_active_state().then(state => {
             if (!state.ai_loaded) {
                 const chatBox = document.getElementById('chat-history');
+
+                // Case 1: Model is currently being loaded into memory
+                if (window.isModelLoading) {
+                    window._pendingPrompt = prompt;
+                    input.value = "";
+                    appendTerminal("Prompt queued: Waiting for AI model to finish initializing...");
+                    if (chatBox) {
+                        const placeholder = chatBox.querySelector('.text-center');
+                        if(placeholder) placeholder.remove();
+                        let noticeEl = document.getElementById('pending-load-notice');
+                        if (!noticeEl) {
+                            noticeEl = document.createElement('div');
+                            noticeEl.id = "pending-load-notice";
+                            noticeEl.className = "p-md rounded-lg mb-sm bg-secondary-container/30 border border-secondary/40 mr-12 text-secondary font-body-sm flex items-center gap-sm animate-pulse";
+                            noticeEl.innerHTML = `<span class="material-symbols-outlined text-secondary animate-spin text-lg">sync</span><span>AI model is initializing into RAM... Your message is queued and will send automatically once loading completes.</span>`;
+                            chatBox.appendChild(noticeEl);
+                        }
+                        chatBox.scrollTop = chatBox.scrollHeight;
+                    }
+                    return;
+                }
+
+                // Case 2: A model has been selected (state.ai_path exists), but is not in memory yet
+                if (state.ai_path) {
+                    window._pendingPrompt = prompt;
+                    input.value = "";
+                    const modelName = state.ai_path.split(/[\\/]/).pop();
+                    appendTerminal("Auto-loading selected model before prompt execution: " + state.ai_path);
+                    if (chatBox) {
+                        const placeholder = chatBox.querySelector('.text-center');
+                        if(placeholder) placeholder.remove();
+                        let noticeEl = document.getElementById('pending-load-notice');
+                        if (!noticeEl) {
+                            noticeEl = document.createElement('div');
+                            noticeEl.id = "pending-load-notice";
+                            noticeEl.className = "p-md rounded-lg mb-sm bg-secondary-container/30 border border-secondary/40 mr-12 text-secondary font-body-sm flex items-center gap-sm animate-pulse";
+                            noticeEl.innerHTML = `<span class="material-symbols-outlined text-secondary animate-spin text-lg">sync</span><span>Loading selected model <b>${modelName}</b>... Your message is queued and will send automatically.</span>`;
+                            chatBox.appendChild(noticeEl);
+                        }
+                        chatBox.scrollTop = chatBox.scrollHeight;
+                    }
+                    loadModelDirectly(state.ai_path);
+                    return;
+                }
+
+                // Case 3: No model file or folder has ever been selected
                 const errEl = document.createElement('div');
                 errEl.className = "p-md rounded-lg mb-sm bg-error-container/30 border border-error/30 mr-12";
-                errEl.innerHTML = `<div class="font-label-sm mb-xs text-error">⚠️ No AI Model Loaded</div><div class="whitespace-pre-wrap font-body-md text-on-error-container">You must select and load a local AI model from the Models page (📦) before you can prompt or talk with ${window._aiName || "UserAI"}.</div>`;
+                errEl.innerHTML = `<div class="font-label-sm mb-xs text-error">⚠️ No AI Model Selected</div><div class="whitespace-pre-wrap font-body-md text-on-error-container mb-sm">No local AI model is currently selected. Please choose a model file (.gguf/.safetensors) on disk to begin chatting.</div><button onclick="browseModelFile()" class="px-md py-xs bg-secondary/20 hover:bg-secondary/40 border border-secondary/50 rounded text-secondary font-label-md flex items-center gap-xs cursor-pointer"><span class="material-symbols-outlined text-sm">folder_open</span> Select Model File</button>`;
                 if(chatBox) {
                     const placeholder = chatBox.querySelector('.text-center');
                     if(placeholder) placeholder.remove();
@@ -2136,7 +2220,7 @@
                         }
                     }, 10000);
                 }
-                appendTerminal("Prompt blocked: No AI Model loaded.");
+                appendTerminal("Prompt blocked: No AI Model selected.");
                 return;
             }
 
