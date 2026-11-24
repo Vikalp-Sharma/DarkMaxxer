@@ -661,9 +661,10 @@
         <div class="w-full bg-surface-container-highest/80 rounded-full h-2.5 overflow-hidden border border-outline-variant/30">
             <div id="loading-modal-bar" class="bg-gradient-to-r from-secondary via-tertiary to-secondary h-full w-1/3 animate-pulse rounded-full transition-all duration-300 shadow-[0_0_12px_rgba(189,140,255,0.8)]"></div>
         </div>
-        <button onclick="document.getElementById('loading-modal').classList.add('hidden'); document.getElementById('loading-modal').style.display='none'; window.isModelLoading=false;" class="mt-xs py-2 px-6 rounded-lg font-label-md bg-surface-container hover:bg-surface-variant text-on-surface-variant hover:text-error transition-colors border border-outline-variant/30">
+        <button id="loading-modal-cancel-btn" onclick="window.cancelModelLoad()" class="mt-xs py-2 px-6 rounded-lg font-label-md bg-surface-container hover:bg-surface-variant text-on-surface-variant hover:text-error transition-colors border border-outline-variant/30 cursor-pointer z-[210] relative">
             Cancel / Go Back
         </button>
+
     </div>
 </div>
 
@@ -709,6 +710,86 @@
         t.scrollTop = t.scrollHeight;
     };
 
+    window.cancelModelLoad = function() {
+        window.isModelLoading = false;
+        window._autoLoadAttempted = true;
+        const loadModal = document.getElementById('loading-modal');
+        if (loadModal) {
+            loadModal.classList.add('hidden');
+            loadModal.style.display = 'none';
+        }
+        const cancelBtn = document.getElementById('loading-modal-cancel-btn');
+        if (cancelBtn) {
+            cancelBtn.innerText = "Cancel / Go Back";
+            cancelBtn.classList.remove('bg-error/30', 'text-error', 'border-error/50');
+        }
+        const loadModalStatus = document.getElementById('loading-modal-status');
+        if (loadModalStatus) {
+            loadModalStatus.classList.remove('text-error');
+            loadModalStatus.classList.add('text-secondary');
+            loadModalStatus.innerText = "Operation cancelled.";
+        }
+        if (window.pywebview && window.pywebview.api && window.pywebview.api.cancel_generation) {
+            window.pywebview.api.cancel_generation();
+        }
+    };
+
+    window.onModelLoadedSuccess = function() {
+        window.isModelLoading = false;
+        window._autoLoadAttempted = true;
+        const loadModal = document.getElementById('loading-modal');
+        const loadModalStatus = document.getElementById('loading-modal-status');
+        if (loadModalStatus) {
+            loadModalStatus.classList.remove('text-error');
+            loadModalStatus.classList.add('text-secondary');
+        }
+        setTimeout(() => {
+            if (loadModal) {
+                loadModal.classList.add('hidden');
+                loadModal.style.display = 'none';
+            }
+            if (typeof activateWorkspace === 'function') activateWorkspace();
+            if (typeof closeSpaOverlay === 'function') closeSpaOverlay();
+        }, 1200);
+    };
+
+    window.onModelLoadedError = function(errMsg) {
+        window.isModelLoading = false;
+        window._autoLoadAttempted = true;
+
+        const loadModal = document.getElementById('loading-modal');
+        if (loadModal) {
+            loadModal.classList.remove('hidden');
+            loadModal.style.display = 'flex';
+        }
+
+        const loadModalStatus = document.getElementById('loading-modal-status');
+        if (loadModalStatus) {
+            loadModalStatus.innerText = errMsg;
+            loadModalStatus.classList.remove('text-secondary');
+            loadModalStatus.classList.add('text-error');
+        }
+        const logsEl = document.getElementById('loading-logs');
+        if (logsEl) {
+            const time = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            logsEl.innerHTML += `<div class="mb-[2px] text-error font-bold"><span class="text-white/40 mr-1">[${time}]</span> [FAILURE] ${errMsg}</div>`;
+            logsEl.scrollTop = logsEl.scrollHeight;
+        }
+        const cancelBtn = document.getElementById('loading-modal-cancel-btn');
+        if (cancelBtn) {
+            cancelBtn.innerText = "✕ Close & Select Another Model";
+            cancelBtn.classList.add('bg-error/30', 'text-error', 'border-error/50');
+        }
+        const statusEl = document.getElementById('gpu-status-text');
+        if (statusEl) {
+            statusEl.innerText = "Model Load Failed: " + (errMsg.length > 50 ? errMsg.substring(0, 50) + "..." : errMsg);
+            statusEl.classList.add('text-error');
+        }
+        if (typeof window.appendTerminal === 'function') {
+            window.appendTerminal("[ERROR] Model Load Failed: " + errMsg);
+        }
+    };
+
     window.updateLoadStatus = function(msg, pct) {
         if (window.isModelLoading === false) return; // Prevent race conditions
         let text = msg;
@@ -718,36 +799,27 @@
         const loadModalStatus = document.getElementById('loading-modal-status');
         if (loadModalStatus) loadModalStatus.innerText = text;
         
-        // Append to logs
+        // Append to logs (capped to prevent DOM explosion)
         const logsEl = document.getElementById('loading-logs');
         if (logsEl) {
             const time = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
             logsEl.innerHTML += `<div class="mb-[2px] opacity-90"><span class="text-white/40 mr-1">[${time}]</span> ${text}</div>`;
+            if (logsEl.children.length > 200) {
+                logsEl.removeChild(logsEl.children[0]);
+            }
             logsEl.scrollTop = logsEl.scrollHeight;
         }
 
         const loadModal = document.getElementById('loading-modal');
-        if (loadModal && loadModal.classList.contains('hidden')) {
+        if (loadModal && loadModal.classList.contains('hidden') && window.isModelLoading) {
             loadModal.classList.remove('hidden');
             loadModal.style.display = 'flex';
         }
         if (typeof window.appendTerminal === 'function') {
             window.appendTerminal("AI Status: " + text);
         }
-
-        if (text.toLowerCase().includes('successfully') || text.toLowerCase().includes('ready')) {
-            window.isModelLoading = false;
-            setTimeout(() => {
-                if (loadModal) {
-                    loadModal.classList.add('hidden');
-                    loadModal.style.display = 'none';
-                }
-                if (typeof closeSpaOverlay === 'function') {
-                    closeSpaOverlay();
-                }
-            }, 5000);
-        }
     };
+
 
     window.renderStreamedToken = function(token) {
         const chatBox = document.getElementById('chat-history');
@@ -1191,8 +1263,10 @@
             if (typeof switchSidebarTab === 'function') switchSidebarTab(targetTab, false);
             if (typeof refreshConversations === 'function') refreshConversations();
             if (typeof refreshFileTree === 'function') refreshFileTree();
-            // Auto-load AI model if path saved but not loaded
-            if (state.ai_path && !state.ai_loaded) {
+            // Auto-load AI model if path saved but not loaded (Only attempt ONCE per session!)
+            if (state.ai_path && !state.ai_loaded && !window._autoLoadAttempted && !window.isModelLoading) {
+                window._autoLoadAttempted = true;
+                window.isModelLoading = true;
                 if (typeof appendTerminal === 'function') appendTerminal("Auto-loading AI model: " + state.ai_path);
                 const loadModal = document.getElementById('loading-modal');
                 const loadModalStatus = document.getElementById('loading-modal-status');
@@ -1200,13 +1274,18 @@
                     loadModal.classList.remove('hidden');
                     loadModal.style.display = 'flex';
                 }
-                if (loadModalStatus) loadModalStatus.innerText = "Auto-loading model: " + state.ai_path.split(/[\\/]/).pop() + "...";
+                if (loadModalStatus) {
+                    loadModalStatus.classList.remove('text-error');
+                    loadModalStatus.classList.add('text-secondary');
+                    loadModalStatus.innerText = "Auto-loading model: " + state.ai_path.split(/[\\/]/).pop() + "...";
+                }
 
                 const _savedAiPath = state.ai_path;
                 pywebview.api.load_model(state.ai_path).then(res => {
-                    const modalEl = document.getElementById('loading-modal');
-                    if (modalEl) { modalEl.classList.add('hidden'); modalEl.style.display = 'none'; }
+                    window.isModelLoading = false;
                     if(res.success) {
+                        const modalEl = document.getElementById('loading-modal');
+                        if (modalEl) { modalEl.classList.add('hidden'); modalEl.style.display = 'none'; }
                         if (typeof appendTerminal === 'function') appendTerminal("AI model loaded successfully.");
                         const modal = document.getElementById('first-run-modal');
                         if(modal) modal.classList.add('hidden');
@@ -1214,23 +1293,18 @@
                         const statusEl = document.getElementById('gpu-status-text');
                         if (statusEl) statusEl.innerText = "⚡ Active Model: " + _savedAiPath.split(/[\\/]/).pop();
                     } else {
-                        if (typeof appendTerminal === 'function') appendTerminal("Failed to auto-load model: " + (res.error || "Unknown error"));
-                        const modal = document.getElementById('first-run-modal');
-                        if(modal) { modal.classList.remove('hidden'); modal.style.display = 'flex'; }
-                        const statusEl = document.getElementById('gpu-status-text');
-                        if (statusEl) {
-                            statusEl.innerText = "Auto-load Error: " + (res.error || "Unknown error");
-                            statusEl.classList.add('text-error');
+                        if (typeof window.onModelLoadedError === 'function') {
+                            window.onModelLoadedError(res.error || "Failed to auto-load model");
                         }
                     }
                 }).catch(err => {
-                    const modalEl = document.getElementById('loading-modal');
-                    if (modalEl) { modalEl.classList.add('hidden'); modalEl.style.display = 'none'; }
-                    if (typeof appendTerminal === 'function') appendTerminal("Failed to auto-load model: " + err);
-                    const modal = document.getElementById('first-run-modal');
-                    if(modal) { modal.classList.remove('hidden'); modal.style.display = 'flex'; }
+                    window.isModelLoading = false;
+                    if (typeof window.onModelLoadedError === 'function') {
+                        window.onModelLoadedError("" + err);
+                    }
                 });
             }
+
 
             const modal = document.getElementById('first-run-modal');
             if (modal) {
@@ -1418,12 +1492,12 @@
             // load_model runs synchronously on the pywebview thread and returns the result
             pywebview.api.load_model(path).then(loadRes => {
                 window.isModelLoading = false;
-                const modalEl = document.getElementById('loading-modal');
-                if (modalEl) {
-                    modalEl.classList.add('hidden');
-                    modalEl.style.display = 'none';
-                }
                 if(loadRes.success) {
+                    const modalEl = document.getElementById('loading-modal');
+                    if (modalEl) {
+                        modalEl.classList.add('hidden');
+                        modalEl.style.display = 'none';
+                    }
                     if (statusEl) statusEl.innerText = "✓ Active Model: " + path.split(/[\\/]/).pop();
                     if (window.location.pathname.includes('models.html')) {
                         window.location.href = "index.html";
@@ -1433,23 +1507,17 @@
                         if (typeof activateWorkspace === 'function') activateWorkspace();
                     }
                 } else {
-                    if (statusEl) {
-                        statusEl.innerText = "Error: " + (loadRes.error || "Unknown error");
-                        statusEl.classList.add('text-error');
+                    if (typeof window.onModelLoadedError === 'function') {
+                        window.onModelLoadedError(loadRes.error || "Failed to load model");
                     }
                 }
             }).catch(err => {
                 window.isModelLoading = false;
-                const modalEl = document.getElementById('loading-modal');
-                if (modalEl) {
-                    modalEl.classList.add('hidden');
-                    modalEl.style.display = 'none';
-                }
-                if (statusEl) {
-                    statusEl.innerText = "Exception: " + err;
-                    statusEl.classList.add('text-error');
+                if (typeof window.onModelLoadedError === 'function') {
+                    window.onModelLoadedError("" + err);
                 }
             });
+
         };
 
         if (window.pywebview && window.pywebview.api && window.pywebview.api.check_model_compatibility) {

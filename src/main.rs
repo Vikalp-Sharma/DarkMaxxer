@@ -235,19 +235,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     "loaded" => {
                         let success = evt.success.unwrap_or(false);
                         let dev = evt.device.clone().unwrap_or_else(|| "CPU".to_string());
-                        let msg = if success {
-                            format!("Model loaded successfully on {}!", dev)
+                        if success {
+                            let msg = format!("Model loaded successfully on {}!", dev);
+                            if let Ok(safe_msg) = serde_json::to_string(&msg) {
+                                let js = format!(
+                                    "if(window.updateLoadStatus) window.updateLoadStatus({}, 100); if(window.onModelLoadedSuccess) window.onModelLoadedSuccess();",
+                                    safe_msg
+                                );
+                                let _ = webview.evaluate_script(&js);
+                            }
                         } else {
-                            evt.error.clone().unwrap_or_else(|| "Failed to load model".to_string())
-                        };
-                        if let Ok(safe_msg) = serde_json::to_string(&msg) {
-                            let js = format!(
-                                "if(window.updateLoadStatus) window.updateLoadStatus({}, 100); if(window.restoreState) window.restoreState();",
-                                safe_msg
-                            );
-                            let _ = webview.evaluate_script(&js);
+                            let err_msg = evt.error.clone().unwrap_or_else(|| "Failed to load model".to_string());
+                            if let Ok(safe_err) = serde_json::to_string(&err_msg) {
+                                let js = format!(
+                                    "if(window.onModelLoadedError) window.onModelLoadedError({});",
+                                    safe_err
+                                );
+                                let _ = webview.evaluate_script(&js);
+                            }
                         }
                     }
+
                     "generation_complete" => {
                         if let Some(ref txt) = evt.text {
                             // Persist assistant message to active conversation

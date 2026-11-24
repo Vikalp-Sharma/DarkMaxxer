@@ -154,7 +154,28 @@ class UniversalAIEngine:
                 from transformers import AutoTokenizer, AutoModelForCausalLM
 
                 model_dir = model_path if os.path.isdir(model_path) else os.path.dirname(model_path)
-                self.tokenizer = AutoTokenizer.from_pretrained(model_dir, local_files_only=True, trust_remote_code=True)
+                tok_candidates = [
+                    os.path.join(model_dir, "tokenizer.json"),
+                    os.path.join(model_dir, "tokenizer_config.json"),
+                    os.path.join(model_dir, "vocab.json"),
+                    os.path.join(model_dir, "vocab.txt")
+                ]
+                has_tokenizer = any(os.path.exists(f) for f in tok_candidates)
+                
+                self.tokenizer = None
+                if not has_tokenizer:
+                    log_callback("Note: No tokenizer config found in model directory. Trying standard fallback...")
+                    for fallback_name in ["Qwen/Qwen2.5-0.5B", "gpt2"]:
+                        try:
+                            self.tokenizer = AutoTokenizer.from_pretrained(fallback_name, trust_remote_code=True)
+                            log_callback(f"Attached fallback tokenizer ({fallback_name}).")
+                            break
+                        except Exception:
+                            continue
+
+                if self.tokenizer is None:
+                    self.tokenizer = AutoTokenizer.from_pretrained(model_dir, local_files_only=True, trust_remote_code=True)
+
                 if self.tokenizer.pad_token is None:
                     self.tokenizer.pad_token = self.tokenizer.eos_token
 
@@ -178,7 +199,11 @@ class UniversalAIEngine:
                 self.model = None
                 self.tokenizer = None
                 self.model_path = None
-                emit({"event": "loaded", "success": False, "error": str(e_final)})
+                err_msg = str(e_final)
+                if "Couldn't instantiate the backend tokenizer" in err_msg:
+                    err_msg = "Model directory is missing tokenizer files (tokenizer.json). For single files without config, please select a .gguf model."
+                emit({"event": "loaded", "success": False, "error": err_msg})
+
 
     def generate(self, prompt, max_new_tokens=64, temperature=0.7):
         if self.model is None:

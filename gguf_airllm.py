@@ -699,7 +699,7 @@ def _load_qwen35_via_airllm(gguf_path, callback=None):
 # ---------------------------------------------------------------------------
 # Main entry point
 # ---------------------------------------------------------------------------
-def load_gguf_via_airllm(gguf_path, callback=None):
+def load_gguf_via_airllm(gguf_path, callback=None, use_gpu=False, **kwargs):
     from airllm.persist import model_persister as am_persister
     import airllm.utils
     import airllm.airllm_base
