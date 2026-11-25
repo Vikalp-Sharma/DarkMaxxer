@@ -57,6 +57,13 @@ class UniversalAIEngine:
 
         lower = str(path).lower()
         is_gguf = lower.endswith(".gguf")
+        if not is_gguf and os.path.isfile(path):
+            try:
+                with open(path, "rb") as f:
+                    if f.read(4) == b"GGUF":
+                        is_gguf = True
+            except Exception:
+                pass
         is_safetensors = lower.endswith(".safetensors") or os.path.isdir(path)
 
         msg = f"Compatible ({device_name}). Universal loader enabled."
@@ -97,7 +104,14 @@ class UniversalAIEngine:
             log_callback(f"Resolving model architecture: {os.path.basename(model_path)} ({size_gb:.2f} GB)...")
 
             lower = str(model_path).lower()
-            is_gguf = lower.endswith(".gguf") or os.path.isfile(model_path)
+            is_gguf = lower.endswith(".gguf")
+            if not is_gguf and os.path.isfile(model_path):
+                try:
+                    with open(model_path, "rb") as f:
+                        if f.read(4) == b"GGUF":
+                            is_gguf = True
+                except Exception:
+                    pass
 
             # Strategy 1: For compact GGUF models (< 2.5 GB), try Fast Direct In-Memory loading
             if is_gguf and size_gb < 2.5:
@@ -127,6 +141,7 @@ class UniversalAIEngine:
 
                     self.model_type = "fast_transformers"
                     self.device = dev
+                    self.is_embedding_model = False
                     emit({"event": "loaded", "success": True, "model_path": model_path, "device": self.device})
                     log_callback("Fast In-Memory Engine loaded successfully!")
                     return
@@ -142,6 +157,7 @@ class UniversalAIEngine:
                     self.tokenizer = getattr(self.model, "tokenizer", None)
                     self.model_type = "gguf_airllm"
                     self.device = getattr(self.model, "airllm_device", "cpu")
+                    self.is_embedding_model = False
                     emit({"event": "loaded", "success": True, "model_path": model_path, "device": self.device})
                     return
                 except Exception as e_gguf:
@@ -154,6 +170,47 @@ class UniversalAIEngine:
                 from transformers import AutoTokenizer, AutoModelForCausalLM
 
                 model_dir = model_path if os.path.isdir(model_path) else os.path.dirname(model_path)
+                config_path = os.path.join(model_dir, "config.json")
+
+                if not os.path.exists(config_path):
+                    log_callback("Checking architecture metadata for model directory...")
+                    # Auto-recovery for known repository directories or online fetch
+                    known_repos = {
+                        "compact_reasoning": "HuggingFaceTB/SmolLM2-135M-Instruct",
+                        "embeddings_representation": "sentence-transformers/all-MiniLM-L6-v2",
+                        "chat_instruct": "Qwen/Qwen2.5-0.5B-Instruct",
+                        "code_generation": "Qwen/Qwen2.5-Coder-0.5B-Instruct"
+                    }
+                    matched_repo = None
+                    for k, r in known_repos.items():
+                        if k in model_dir.lower():
+                            matched_repo = r
+                            break
+
+                    if matched_repo:
+                        try:
+                            import urllib.request
+                            log_callback(f"Retrieving missing model architecture metadata for '{matched_repo}'...")
+                            aux_files = ["config.json", "tokenizer.json", "tokenizer_config.json", "generation_config.json", "special_tokens_map.json"]
+                            for af in aux_files:
+                                dest = os.path.join(model_dir, af)
+                                if not os.path.exists(dest):
+                                    url = f"https://huggingface.co/{matched_repo}/raw/main/{af}"
+                                    urllib.request.urlretrieve(url, dest)
+                            if os.path.exists(config_path):
+                                log_callback(f"Successfully configured '{matched_repo}' architecture metadata.")
+                        except Exception as e_rec:
+                            log_callback(f"Online metadata sync note: {e_rec}")
+
+                    if not os.path.exists(config_path):
+                        err_msg = (
+                            f"Model configuration file ('config.json') is missing in '{model_dir}'. "
+                            "Safetensors weight files require their companion architecture config to load. "
+                            "Please ensure config.json is present in the folder, or select a self-contained .gguf model."
+                        )
+                        emit({"event": "loaded", "success": False, "error": err_msg})
+                        return
+
                 tok_candidates = [
                     os.path.join(model_dir, "tokenizer.json"),
                     os.path.join(model_dir, "tokenizer_config.json"),
@@ -192,9 +249,22 @@ class UniversalAIEngine:
                 if dev == "cpu":
                     self.model = self.model.to("cpu")
 
+                # Detect if the loaded model is an embedding/representation model
+                self.is_embedding_model = False
+                try:
+                    cfg_dict = getattr(self.model, "config", None)
+                    m_type = str(getattr(cfg_dict, "model_type", "")).lower()
+                    archs = [str(a).lower() for a in getattr(cfg_dict, "architectures", [])]
+                    if "bert" in m_type or any("bert" in a for a in archs) or "embeddings" in model_dir.lower():
+                        self.is_embedding_model = True
+                        log_callback("Notice: Model is a feature/embedding representation model (BERT architecture).")
+                except Exception:
+                    pass
+
                 self.model_type = "transformers"
                 self.device = dev
                 emit({"event": "loaded", "success": True, "model_path": model_path, "device": self.device})
+                log_callback(f"Model loaded successfully on {self.device}!")
             except Exception as e_final:
                 self.model = None
                 self.tokenizer = None
@@ -202,12 +272,27 @@ class UniversalAIEngine:
                 err_msg = str(e_final)
                 if "Couldn't instantiate the backend tokenizer" in err_msg:
                     err_msg = "Model directory is missing tokenizer files (tokenizer.json). For single files without config, please select a .gguf model."
+                elif "Should have a `model_type` key in its config.json" in err_msg or "Unrecognized model" in err_msg:
+                    err_msg = f"Missing or invalid 'model_type' in '{model_dir}/config.json'. Please ensure valid config.json exists or select a .gguf model."
                 emit({"event": "loaded", "success": False, "error": err_msg})
 
 
     def generate(self, prompt, max_new_tokens=64, temperature=0.7):
         if self.model is None:
             emit({"event": "error", "message": "No model loaded."})
+            return
+
+        if getattr(self, "is_embedding_model", False):
+            model_name = os.path.basename(self.model_path or "model")
+            notice = (
+                f"ℹ️ Model Notice:\n\n"
+                f"The active model '{model_name}' is a feature/embedding representation model (BERT architecture).\n"
+                f"It is specialized for vector embeddings and semantic search rather than conversational text generation.\n\n"
+                f"💡 For interactive conversation, code writing, and assistant responses, please select a Chat / Instruct model (such as Qwen 2.5 or SmolLM2) from the Models menu."
+            )
+            emit({"event": "token", "token": notice})
+            emit({"event": "generation_complete", "text": notice})
+            self._is_generating = False
             return
 
         self._is_generating = True
