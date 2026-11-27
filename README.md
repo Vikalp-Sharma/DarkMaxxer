@@ -130,8 +130,8 @@ On first launch, `darkmaxxer-installer` prompts you for your hardware:
     [2] NVIDIA CUDA  (GeForce RTX / GTX / Tesla)
     [3] CPU Only     (Universal Intel / AMD / ARM)
 ```
-- **Zero Audio/Vision Bloat:** Downloads strictly text inference packages (`torch`, `transformers>=5.2.0`, `airllm`, `accelerate`, `gguf`, `safetensors`, `sentencepiece`, `protobuf`). **Explicitly NO `torchaudio` and NO `torchvision`**.
-- **PyEnv Auto-Detection:** Automatically detects your existing environment at `/run/media/kairo/S-M-X-F/Da-Ta/PyEnv/bin/python3` when present.
+- **Zero Audio/Vision Bloat:** Downloads strictly text inference packages (`torch`, `transformers>=4.40.0`, `airllm`, `accelerate`, `gguf`, `safetensors`, `sentencepiece`, `protobuf`). **Explicitly NO `torchaudio` and NO `torchvision`**.
+- **Dynamic Environment Detection:** Automatically detects `DARKMAXXER_PYTHON` / `PYTHON_PATH` overrides, system Python 3, or creates a lean virtual environment automatically.
 
 <br />
 
@@ -218,9 +218,9 @@ cargo build --release
 ### Windows Build & Signing
 ```bash
 cargo build --target x86_64-pc-windows-gnu --release
-makensis installer/windows/darkmaxxer.nsi
-osslsigncode sign -pkcs12 installer/windows/certs/codesign.pfx -pass DarkMaxxer2026 \
-    -n "DarkMaxxer Setup" -in dist/DarkMaxxer-2.0.0-Setup.exe -out dist/DarkMaxxer-2.0.0-Setup.signed.exe
+makensis Installers/installer/windows/darkmaxxer.nsi
+osslsigncode sign -pkcs12 Installers/installer/windows/certs/codesign.pfx -pass DarkMaxxer2026 \
+    -n "DarkMaxxer Setup" -in Installers/dist/DarkMaxxer-2.0.0-Setup.exe -out Installers/dist/DarkMaxxer-2.0.0-Setup.signed.exe
 ```
 
 <br />

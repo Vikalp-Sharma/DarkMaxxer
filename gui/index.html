@@ -435,7 +435,7 @@
 <div class="p-sm border-t border-outline-variant/10">
 <div class="flex items-center bg-surface-container-highest/50 rounded-md px-sm py-xs border border-outline-variant/30 focus-within:border-secondary transition-colors">
 <span class="text-secondary font-mono text-xs mr-2">&gt;</span>
-<input id="terminal-input" onkeypress="if(event.key === 'Enter') { if(window.pywebview && window.pywebview.api) { pywebview.api.run_command(this.value); this.value=''; } }" class="bg-transparent border-none text-xs font-mono text-on-surface focus:ring-0 w-full placeholder:text-on-surface-variant/30" placeholder="Enter command..." type="text">
+<input id="terminal-input" onkeypress="if(event.key === 'Enter') { const cmd = this.value.trim(); this.value=''; if(cmd && window.pywebview && window.pywebview.api) { appendTerminal('$ ' + cmd); pywebview.api.run_command(cmd).then(res => { if(res && res.output) appendTerminal(res.output); else if(res && !res.success) appendTerminal('[ERROR] Command failed'); }).catch(err => appendTerminal('Error: ' + err)); } }" class="bg-transparent border-none text-xs font-mono text-on-surface focus:ring-0 w-full placeholder:text-on-surface-variant/30" placeholder="Enter command..." type="text">
 </div>
 </div>
 </div>
@@ -1659,7 +1659,7 @@
     window.showError = window.showTopError;
 
     window.appendTerminal = function(msg) {
-        if (msg && (msg.toLowerCase().includes('error') || msg.toLowerCase().includes('failed') || msg.toLowerCase().includes('cannot access') || msg.includes('❌') || msg.toLowerCase().includes('exception'))) {
+        if (msg && (/^(\[ERROR\]|Engine Error:|Error:|Network error:|Folder open error:|Global workspace error:|Prompt blocked:|❌)/i.test(msg))) {
             window.showTopError(msg);
         }
         const term = document.getElementById('terminal-output');

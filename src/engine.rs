@@ -35,11 +35,74 @@ pub struct EngineSupervisor {
     process: Arc<Mutex<Option<Child>>>,
     stdin_writer: Arc<Mutex<Option<ChildStdin>>>,
     pub is_generating: Arc<Mutex<bool>>,
+    pub generating_conv_id: Arc<Mutex<Option<String>>>,
     pub is_loaded: Arc<Mutex<bool>>,
     pub is_engine_ready: Arc<Mutex<bool>>,
     pub active_model: Arc<Mutex<Option<String>>>,
     pub current_device: Arc<Mutex<String>>,
     pub latest_logs: Arc<Mutex<Vec<String>>>,
+}
+
+fn find_python_binary(app_dir: &Path) -> String {
+    // 1. Explicit env override
+    for env_key in ["DARKMAXXER_PYTHON", "PYTHON_PATH"] {
+        if let Ok(val) = std::env::var(env_key) {
+            let p = PathBuf::from(&val);
+            if p.exists() {
+                return val;
+            }
+        }
+    }
+
+    // 2. Virtual environments (app_dir, user-local share, /opt, ~/.darkmaxxer, legacy PyEnv)
+    let mut path_candidates = vec![
+        app_dir.join("venv/bin/python3"),
+        app_dir.join("venv/Scripts/python.exe"),
+        PathBuf::from("/opt/darkmaxxer/venv/bin/python3"),
+    ];
+
+    if let Some(data_dir) = dirs::data_local_dir() {
+        path_candidates.push(data_dir.join("darkmaxxer/venv/bin/python3"));
+        path_candidates.push(data_dir.join("darkmaxxer/venv/Scripts/python.exe"));
+    }
+    if let Some(home) = dirs::home_dir() {
+        path_candidates.push(home.join(".local/share/darkmaxxer/venv/bin/python3"));
+        path_candidates.push(home.join(".darkmaxxer/venv/bin/python3"));
+        path_candidates.push(home.join(".darkmaxxer/venv/Scripts/python.exe"));
+    }
+    #[cfg(not(target_os = "windows"))]
+    path_candidates.push(PathBuf::from("/run/media/kairo/S-M-X-F/Da-Ta/PyEnv/bin/python3"));
+
+    if let Some(found) = path_candidates.iter().find(|p| p.exists()) {
+        return found.to_string_lossy().to_string();
+    }
+
+    // 3. Probe system PATH python executables cleanly
+    #[cfg(target_os = "windows")]
+    let sys_candidates = ["python", "py", "python3"];
+    #[cfg(not(target_os = "windows"))]
+    let sys_candidates = ["python3", "python"];
+
+    for cand in sys_candidates {
+        let mut probe = Command::new(cand);
+        probe.arg("--version");
+        #[cfg(target_os = "windows")]
+        {
+            use std::os::windows::process::CommandExt;
+            probe.creation_flags(0x08000000);
+        }
+        if let Ok(out) = probe.output() {
+            let ver = String::from_utf8_lossy(&out.stdout);
+            if out.status.success() && ver.contains("Python 3") {
+                return cand.to_string();
+            }
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    { "python".to_string() }
+    #[cfg(not(target_os = "windows"))]
+    { "python3".to_string() }
 }
 
 impl EngineSupervisor {
@@ -48,6 +111,7 @@ impl EngineSupervisor {
             process: Arc::new(Mutex::new(None)),
             stdin_writer: Arc::new(Mutex::new(None)),
             is_generating: Arc::new(Mutex::new(false)),
+            generating_conv_id: Arc::new(Mutex::new(None)),
             is_loaded: Arc::new(Mutex::new(false)),
             is_engine_ready: Arc::new(Mutex::new(false)),
             active_model: Arc::new(Mutex::new(None)),
@@ -57,43 +121,34 @@ impl EngineSupervisor {
     }
 
     pub fn start(&self, app_dir: &Path, on_event: Arc<dyn Fn(EngineEvent) + Send + Sync + 'static>) -> Result<(), String> {
-        // Resolve Python binary: prefer user PyEnv, then local venv, then /opt, then system
-        let mut candidates = vec![
-            PathBuf::from("/run/media/kairo/S-M-X-F/Da-Ta/PyEnv/bin/python3"),
-            app_dir.join("venv/bin/python3"),
-            PathBuf::from("/opt/darkmaxxer/venv/bin/python3"),
-            app_dir.join("venv/Scripts/python.exe"),
-            PathBuf::from("python3"),
-            PathBuf::from("python"),
-        ];
-
-        if let Some(home) = dirs::home_dir() {
-            candidates.push(home.join(".darkmaxxer/venv/bin/python3"));
-            candidates.push(home.join(".darkmaxxer/venv/Scripts/python.exe"));
-        }
-
-        let python_bin = candidates.iter()
-            .find(|p| p.exists())
-            .map(|p| p.to_string_lossy().to_string())
-            .unwrap_or_else(|| "python3".to_string());
+        let python_bin = find_python_binary(app_dir);
 
         // Resolve engine_runner.py script
-        let script_candidates = [
-            app_dir.join("engine_runner.py"),
-            PathBuf::from("/opt/darkmaxxer/engine_runner.py"),
-        ];
+        let mut script_candidates = vec![app_dir.join("engine_runner.py")];
+        if let Some(data_dir) = dirs::data_local_dir() {
+            script_candidates.push(data_dir.join("darkmaxxer/engine_runner.py"));
+        }
+        script_candidates.push(PathBuf::from("/opt/darkmaxxer/engine_runner.py"));
 
         let script_path = script_candidates.iter()
             .find(|p| p.exists())
             .cloned()
             .ok_or_else(|| "Engine daemon script (engine_runner.py) not found".to_string())?;
 
-        let mut child = Command::new(&python_bin)
-            .arg(&script_path)
+        let mut cmd = Command::new(&python_bin);
+        cmd.arg(&script_path)
             .current_dir(script_path.parent().unwrap_or(app_dir))
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::inherit())
+            .stderr(Stdio::inherit());
+
+        #[cfg(target_os = "windows")]
+        {
+            use std::os::windows::process::CommandExt;
+            cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+        }
+
+        let mut child = cmd
             .spawn()
             .map_err(|e| format!("Failed to spawn AI engine daemon ({}): {}", python_bin, e))?;
 
@@ -105,6 +160,7 @@ impl EngineSupervisor {
 
         // Spawn reader thread
         let is_gen_clone = Arc::clone(&self.is_generating);
+        let gen_conv_clone = Arc::clone(&self.generating_conv_id);
         let is_loaded_clone = Arc::clone(&self.is_loaded);
         let is_ready_clone = Arc::clone(&self.is_engine_ready);
         let active_model_clone = Arc::clone(&self.active_model);
@@ -142,6 +198,7 @@ impl EngineSupervisor {
                         }
                         "generation_complete" | "cancelled" | "error" => {
                             *is_gen_clone.lock().unwrap() = false;
+                            *gen_conv_clone.lock().unwrap() = None;
                         }
                         _ => {}
                     }

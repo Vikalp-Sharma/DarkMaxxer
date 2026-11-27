@@ -31,15 +31,23 @@ fn resolve_app_dir() -> PathBuf {
             return cwd;
         }
     }
-    // 2. Binary parent directory if gui/index.html exists
+    // 2. Canonical binary parent directory (handles symlinks like /usr/local/bin/darkmaxxer)
     if let Ok(exe) = std::env::current_exe() {
-        if let Some(parent) = exe.parent() {
+        let resolved_exe = exe.canonicalize().unwrap_or(exe);
+        if let Some(parent) = resolved_exe.parent() {
             if parent.join("gui/index.html").exists() {
                 return parent.to_path_buf();
             }
         }
     }
-    // 3. System installed directory /opt/darkmaxxer
+    // 3. User-local share installation (~/.local/share/darkmaxxer or %LOCALAPPDATA%\darkmaxxer)
+    if let Some(data_dir) = dirs::data_local_dir() {
+        let user_dir = data_dir.join("darkmaxxer");
+        if user_dir.join("gui/index.html").exists() {
+            return user_dir;
+        }
+    }
+    // 4. System installed directory /opt/darkmaxxer
     let opt_dir = PathBuf::from("/opt/darkmaxxer");
     if opt_dir.join("gui/index.html").exists() {
         return opt_dir;
@@ -136,11 +144,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_custom_protocol("darkmaxxer".into(), move |_id, request| {
             let path = request.uri().path();
             let clean_path = path.trim_start_matches('/');
-            let target_file = if clean_path.is_empty() || clean_path == "index.html" {
-                gui_dir.join("index.html")
+            let mut target_file = gui_dir.clone();
+            if clean_path.is_empty() || clean_path == "index.html" {
+                target_file.push("index.html");
             } else {
-                gui_dir.join(clean_path)
-            };
+                for comp in std::path::Path::new(clean_path).components() {
+                    if let std::path::Component::Normal(seg) = comp {
+                        target_file.push(seg);
+                    }
+                }
+            }
 
             if let Ok(data) = std::fs::read(&target_file) {
                 let mime = match target_file.extension().and_then(|s| s.to_str()).unwrap_or("") {

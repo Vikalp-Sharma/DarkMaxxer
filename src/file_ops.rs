@@ -38,6 +38,51 @@ impl FileOps {
         folder.map(|p| p.to_string_lossy().to_string())
     }
 
+    /// Flatten workspace directory into relative (folders, files) lists using forward slashes.
+    pub fn list_flat_tree(root_path: &Path) -> Option<(Vec<String>, Vec<String>)> {
+        if !root_path.exists() {
+            return None;
+        }
+
+        fn walk(root: &Path, current: &Path, depth: usize, folders: &mut Vec<String>, files: &mut Vec<String>) {
+            if depth > 5 || (folders.len() + files.len()) > 2000 {
+                return;
+            }
+            if let Ok(entries) = fs::read_dir(current) {
+                let mut sorted: Vec<_> = entries.flatten().map(|e| e.path()).collect();
+                sorted.sort();
+                for p in sorted {
+                    let name = p.file_name().unwrap_or_default().to_string_lossy();
+                    if name.starts_with('.')
+                        || name == "target"
+                        || name == "venv"
+                        || name == "__pycache__"
+                        || name == "node_modules"
+                    {
+                        continue;
+                    }
+                    let rel = p.strip_prefix(root).ok()
+                        .map(|r| r.to_string_lossy().replace('\\', "/"))
+                        .unwrap_or_default();
+                    if rel.is_empty() {
+                        continue;
+                    }
+                    if p.is_dir() {
+                        folders.push(rel);
+                        walk(root, &p, depth + 1, folders, files);
+                    } else {
+                        files.push(rel);
+                    }
+                }
+            }
+        }
+
+        let mut folders = Vec::new();
+        let mut files = Vec::new();
+        walk(root_path, root_path, 0, &mut folders, &mut files);
+        Some((folders, files))
+    }
+
     pub fn get_file_tree(root_path: &Path) -> Option<FileNode> {
         if !root_path.exists() {
             return None;
@@ -104,8 +149,10 @@ impl FileOps {
     pub fn run_command(cmd: &str, cwd: Option<&str>) -> (bool, String) {
         #[cfg(target_os = "windows")]
         let mut process = {
+            use std::os::windows::process::CommandExt;
             let mut c = Command::new("cmd");
             c.args(["/C", cmd]);
+            c.creation_flags(0x08000000); // CREATE_NO_WINDOW
             c
         };
 

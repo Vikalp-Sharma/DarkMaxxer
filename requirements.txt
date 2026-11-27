@@ -3,7 +3,7 @@
 # Python is strictly used as the local AI inference runtime engine.
 
 torch
-transformers>=5.2.0
+transformers>=4.40.0
 airllm
 accelerate
 gguf

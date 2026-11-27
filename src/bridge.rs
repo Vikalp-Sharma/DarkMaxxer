@@ -29,6 +29,17 @@ impl BridgeHandler {
         }
     }
 
+    fn resolve_workspace_path(&self, raw_path: &str) -> PathBuf {
+        let p = std::path::Path::new(raw_path);
+        if p.is_absolute() {
+            return p.to_path_buf();
+        }
+        let base = self.config.get_config().active_workspace_dir
+            .map(PathBuf::from)
+            .unwrap_or_else(|| self.app_dir.clone());
+        base.join(p)
+    }
+
     pub fn handle_call(&self, req: IpcRequest) -> serde_json::Value {
         match req.method.as_str() {
             "check_app_ready" => {
@@ -42,6 +53,11 @@ impl BridgeHandler {
             "get_active_state" => {
                 let conf = self.config.get_config();
                 let is_gen = *self.engine.is_generating.lock().unwrap();
+                let gen_conv_id = if is_gen {
+                    self.engine.generating_conv_id.lock().unwrap().clone()
+                } else {
+                    None
+                };
                 let loaded = *self.engine.is_loaded.lock().unwrap();
                 let ready = self.engine.is_ready();
                 let dev = self.engine.current_device.lock().unwrap().clone();
@@ -75,10 +91,11 @@ impl BridgeHandler {
                     "workspace_mode": conf.workspace_mode,
                     "active_sidebar_tab": conf.active_sidebar_tab,
                     "is_generating": is_gen,
+                    "generating_conv_id": gen_conv_id,
                     "engine_ready": ready,
                     "device": dev,
                     "terminal_logs": *self.engine.latest_logs.lock().unwrap(),
-                    "file_ops_active": true
+                    "file_ops_active": ws_path.is_some()
                 })
             }
 
@@ -123,11 +140,17 @@ impl BridgeHandler {
                 if let Some(conv) = self.config.get_conversation(id) {
                     self.config.update_setting("active_conv_id", serde_json::Value::String(id.to_string()));
                     let ws_dir = self.config.minds_dir.join(id);
+                    let _ = std::fs::create_dir_all(&ws_dir);
                     self.config.update_setting(
                         "active_workspace_dir",
                         serde_json::Value::String(ws_dir.to_string_lossy().to_string()),
                     );
-                    serde_json::json!({ "success": true, "conversation": conv })
+                    serde_json::json!({
+                        "success": true,
+                        "conv_id": conv.id,
+                        "history": conv.history,
+                        "conversation": conv
+                    })
                 } else {
                     serde_json::json!({ "success": false, "error": "Conversation not found" })
                 }
@@ -159,8 +182,13 @@ impl BridgeHandler {
 
             "open_external_folder" => {
                 if let Some(path) = FileOps::select_workspace_folder() {
+                    let folder_name = std::path::Path::new(&path)
+                        .file_name()
+                        .map(|n| n.to_string_lossy().to_string())
+                        .unwrap_or_else(|| path.clone());
+                    self.config.update_setting("active_conv_id", serde_json::Value::Null);
                     self.config.update_setting("active_workspace_dir", serde_json::Value::String(path.clone()));
-                    serde_json::json!({ "success": true, "path": path })
+                    serde_json::json!({ "success": true, "path": path, "folder_name": folder_name })
                 } else {
                     serde_json::json!({ "success": false, "error": "No folder selected" })
                 }
@@ -216,13 +244,21 @@ impl BridgeHandler {
                     }
                 }
 
-                match self.engine.generate(prompt, 128, 0.7) {
+                *self.engine.generating_conv_id.lock().unwrap() = conf.active_conv_id.clone();
+
+                match self.engine.generate(prompt, 512, 0.7) {
                     Ok(_) => serde_json::json!({ "success": true }),
-                    Err(e) => serde_json::json!({ "success": false, "error": e }),
+                    Err(e) => {
+                        *self.engine.is_generating.lock().unwrap() = false;
+                        *self.engine.generating_conv_id.lock().unwrap() = None;
+                        serde_json::json!({ "success": false, "error": e })
+                    }
                 }
             }
 
             "cancel_generation" => {
+                *self.engine.is_generating.lock().unwrap() = false;
+                *self.engine.generating_conv_id.lock().unwrap() = None;
                 let _ = self.engine.cancel();
                 serde_json::json!({ "success": true })
             }
@@ -233,25 +269,40 @@ impl BridgeHandler {
                     .map(PathBuf::from)
                     .unwrap_or_else(|| self.app_dir.clone());
 
-                if let Some(tree) = FileOps::get_file_tree(&ws_path) {
-                    serde_json::json!({ "success": true, "tree": tree })
+                if let Some((folders, files)) = FileOps::list_flat_tree(&ws_path) {
+                    let tree = FileOps::get_file_tree(&ws_path);
+                    serde_json::json!({
+                        "success": true,
+                        "active": true,
+                        "folders": folders,
+                        "files": files,
+                        "tree": tree
+                    })
                 } else {
-                    serde_json::json!({ "success": false, "error": "Workspace not found" })
+                    serde_json::json!({
+                        "success": false,
+                        "active": false,
+                        "folders": [],
+                        "files": [],
+                        "error": "Workspace not found"
+                    })
                 }
             }
 
             "read_file" => {
-                let path = req.args.first().and_then(|v| v.as_str()).unwrap_or_default();
-                match FileOps::read_file(path) {
+                let raw_path = req.args.first().and_then(|v| v.as_str()).unwrap_or_default();
+                let resolved = self.resolve_workspace_path(raw_path);
+                match FileOps::read_file(&resolved.to_string_lossy()) {
                     Ok(content) => serde_json::json!({ "success": true, "content": content }),
                     Err(e) => serde_json::json!({ "success": false, "error": e }),
                 }
             }
 
             "save_file" => {
-                let path = req.args.first().and_then(|v| v.as_str()).unwrap_or_default();
+                let raw_path = req.args.first().and_then(|v| v.as_str()).unwrap_or_default();
                 let content = req.args.get(1).and_then(|v| v.as_str()).unwrap_or_default();
-                match FileOps::save_file(path, content) {
+                let resolved = self.resolve_workspace_path(raw_path);
+                match FileOps::save_file(&resolved.to_string_lossy(), content) {
                     Ok(_) => serde_json::json!({ "success": true }),
                     Err(e) => serde_json::json!({ "success": false, "error": e }),
                 }
@@ -262,6 +313,17 @@ impl BridgeHandler {
                 let conf = self.config.get_config();
                 let cwd = conf.active_workspace_dir.as_deref();
                 let (ok, output) = FileOps::run_command(cmd, cwd);
+                {
+                    let mut logs = self.engine.latest_logs.lock().unwrap();
+                    logs.push(format!("$ {}", cmd));
+                    if !output.trim().is_empty() {
+                        logs.push(output.trim().to_string());
+                    }
+                    if logs.len() > 100 {
+                        let drain_n = logs.len() - 100;
+                        logs.drain(0..drain_n);
+                    }
+                }
                 serde_json::json!({ "success": ok, "output": output })
             }
 

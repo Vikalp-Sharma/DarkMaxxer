@@ -112,16 +112,19 @@ impl ConfigManager {
         let _ = fs::create_dir_all(&context_dir);
         let _ = fs::create_dir_all(&minds_dir);
 
-        // Also check if local config.json exists in working dir
+        // Seed defaults from local config.json only if user config doesn't exist yet;
+        // always persist runtime state to user config dir (~/.config/DarkMaxxer/config.json).
         let local_config = PathBuf::from("config.json");
-        let target_config = if local_config.exists() {
-            local_config
+        let seed_path = if config_file.exists() {
+            &config_file
+        } else if local_config.exists() {
+            &local_config
         } else {
-            config_file
+            &config_file
         };
 
-        let loaded_config = if target_config.exists() {
-            match fs::read_to_string(&target_config) {
+        let loaded_config = if seed_path.exists() {
+            match fs::read_to_string(seed_path) {
                 Ok(content) => serde_json::from_str(&content).unwrap_or_default(),
                 Err(_) => AppConfig::default(),
             }
@@ -132,7 +135,7 @@ impl ConfigManager {
         Self {
             context_dir,
             minds_dir,
-            config_file: target_config,
+            config_file,
             config: Arc::new(Mutex::new(loaded_config)),
         }
     }

@@ -165,9 +165,12 @@ class UniversalAIEngine:
 
             # Strategy 3: Standard Transformers / Safetensors / PyTorch Directory
             try:
+                if self._cancel_requested:
+                    return
                 log_callback("Loading via Universal Safetensors / HuggingFace Engine...")
                 import torch
-                from transformers import AutoTokenizer, AutoModelForCausalLM
+                import transformers
+                from transformers import AutoTokenizer, AutoModel, AutoModelForCausalLM
 
                 model_dir = model_path if os.path.isdir(model_path) else os.path.dirname(model_path)
                 config_path = os.path.join(model_dir, "config.json")
@@ -191,12 +194,18 @@ class UniversalAIEngine:
                         try:
                             import urllib.request
                             log_callback(f"Retrieving missing model architecture metadata for '{matched_repo}'...")
-                            aux_files = ["config.json", "tokenizer.json", "tokenizer_config.json", "generation_config.json", "special_tokens_map.json"]
+                            aux_files = [
+                                "config.json", "tokenizer.json", "tokenizer_config.json",
+                                "generation_config.json", "special_tokens_map.json", "vocab.txt"
+                            ]
                             for af in aux_files:
                                 dest = os.path.join(model_dir, af)
                                 if not os.path.exists(dest):
-                                    url = f"https://huggingface.co/{matched_repo}/raw/main/{af}"
-                                    urllib.request.urlretrieve(url, dest)
+                                    try:
+                                        url = f"https://huggingface.co/{matched_repo}/raw/main/{af}"
+                                        urllib.request.urlretrieve(url, dest)
+                                    except Exception:
+                                        pass
                             if os.path.exists(config_path):
                                 log_callback(f"Successfully configured '{matched_repo}' architecture metadata.")
                         except Exception as e_rec:
@@ -211,6 +220,9 @@ class UniversalAIEngine:
                         emit({"event": "loaded", "success": False, "error": err_msg})
                         return
 
+                if self._cancel_requested:
+                    return
+
                 tok_candidates = [
                     os.path.join(model_dir, "tokenizer.json"),
                     os.path.join(model_dir, "tokenizer_config.json"),
@@ -218,7 +230,7 @@ class UniversalAIEngine:
                     os.path.join(model_dir, "vocab.txt")
                 ]
                 has_tokenizer = any(os.path.exists(f) for f in tok_candidates)
-                
+
                 self.tokenizer = None
                 if not has_tokenizer:
                     log_callback("Note: No tokenizer config found in model directory. Trying standard fallback...")
@@ -236,30 +248,49 @@ class UniversalAIEngine:
                 if self.tokenizer.pad_token is None:
                     self.tokenizer.pad_token = self.tokenizer.eos_token
 
-                dev = "cuda:0" if (use_gpu and torch.cuda.is_available()) else "cpu"
-                dtype = torch.float16 if dev != "cpu" else torch.float32
-
-                self.model = AutoModelForCausalLM.from_pretrained(
-                    model_dir,
-                    device_map="auto" if dev != "cpu" else None,
-                    torch_dtype=dtype,
-                    local_files_only=True,
-                    trust_remote_code=True
-                )
-                if dev == "cpu":
-                    self.model = self.model.to("cpu")
-
-                # Detect if the loaded model is an embedding/representation model
+                # Inspect config.json beforehand to identify encoder/embedding architectures
                 self.is_embedding_model = False
                 try:
-                    cfg_dict = getattr(self.model, "config", None)
-                    m_type = str(getattr(cfg_dict, "model_type", "")).lower()
-                    archs = [str(a).lower() for a in getattr(cfg_dict, "architectures", [])]
-                    if "bert" in m_type or any("bert" in a for a in archs) or "embeddings" in model_dir.lower():
+                    with open(config_path, "r", encoding="utf-8") as cf:
+                        raw_cfg = json.load(cf)
+                    m_type = str(raw_cfg.get("model_type", "")).lower()
+                    archs = [str(a).lower() for a in raw_cfg.get("architectures", [])]
+                    encoder_types = ("bert", "roberta", "mpnet", "distilbert", "electra", "albert", "xlm-roberta")
+                    if m_type in encoder_types or any(any(et in a for et in encoder_types) and "forcausallm" not in a for a in archs) or "embeddings" in model_dir.lower():
                         self.is_embedding_model = True
-                        log_callback("Notice: Model is a feature/embedding representation model (BERT architecture).")
                 except Exception:
                     pass
+
+                if self._cancel_requested:
+                    self.tokenizer = None
+                    return
+
+                dev = "cuda:0" if (use_gpu and torch.cuda.is_available()) else "cpu"
+                dtype = torch.float16 if dev != "cpu" else torch.float32
+                dtype_kw = "dtype" if int(transformers.__version__.split(".")[0]) >= 5 else "torch_dtype"
+                load_kwargs = {
+                    dtype_kw: dtype,
+                    "local_files_only": True,
+                    "trust_remote_code": True,
+                }
+                if dev != "cpu":
+                    load_kwargs["device_map"] = "auto"
+
+                if self.is_embedding_model:
+                    log_callback("Notice: Model is a feature/embedding representation model (BERT/Encoder architecture).")
+                    self.model = AutoModel.from_pretrained(model_dir, **load_kwargs)
+                else:
+                    self.model = AutoModelForCausalLM.from_pretrained(model_dir, **load_kwargs)
+
+                if self._cancel_requested:
+                    self.model = None
+                    self.tokenizer = None
+                    self.model_path = None
+                    gc.collect()
+                    return
+
+                if dev == "cpu":
+                    self.model = self.model.to("cpu")
 
                 self.model_type = "transformers"
                 self.device = dev
